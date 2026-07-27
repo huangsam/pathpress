@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin
+*.kt~
+*.kts~
+
+# GraphHopper
+.graphhopper/
+*.graphhopper/
+
+# Generated PDFs
+*.pdf
+
+# IDE
+.idea/
+*.iml
+out/
+
+# Environment variables
+.env
+.local.env
+
+# Other files
+*.pbf
+.DS_Store
