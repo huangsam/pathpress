@@ -27,6 +27,7 @@ class PathPressCommand : CliktCommand(
     val prompt by option("--prompt", help = "Natural language trip themes, vibe, or preferences (e.g. 'coastal scenic bakeries')")
     val profile by option("--profile", help = "Routing profile ('scenic' or 'car')").default("scenic")
     val llmProviderName by option("--llm-provider", help = "LLM provider: gemini, claude, openai, ollama, or none").default("none")
+    val llmModel by option("--llm-model", help = "Model name for LLM (e.g. 'qwen3.6:35b-mlx')").default("qwen3.6:35b-mlx")
     val llmKey by option("--llm-key", help = "API Key for the chosen LLM provider")
     val llmUrl by option("--llm-url", help = "Endpoint URL for LLM (e.g. for Ollama or custom server)")
 
@@ -38,7 +39,7 @@ class PathPressCommand : CliktCommand(
         println("Duration: $days days")
         println("Profile: $profile")
         if (!prompt.isNullOrBlank()) println("Prompt: $prompt")
-        println("LLM Provider: $llmProviderName")
+        println("LLM Provider: $llmProviderName (Model: $llmModel)")
         println("Output: $outputFile")
         println()
 
@@ -52,7 +53,7 @@ class PathPressCommand : CliktCommand(
 
         // 2. Initialize LLM Provider & Plan Trip Concept
         println("Initializing AI Trip Planner ($llmProviderName)...")
-        val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl)
+        val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl, llmModel)
         val tripPlan = llm.planTrip(
             startName = startGeo.displayName,
             endName = endGeo.displayName,

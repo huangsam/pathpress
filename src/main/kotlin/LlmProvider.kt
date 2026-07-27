@@ -32,7 +32,8 @@ interface LlmProvider {
         fun create(
             providerName: String,
             apiKey: String?,
-            apiUrl: String?
+            apiUrl: String?,
+            modelName: String? = null
         ): LlmProvider {
             return when (providerName.lowercase()) {
                 "gemini" -> GeminiProvider(apiKey ?: System.getenv("GEMINI_API_KEY") ?: "")
@@ -41,7 +42,10 @@ interface LlmProvider {
                     apiKey = apiKey ?: System.getenv("OPENAI_API_KEY") ?: "",
                     endpoint = apiUrl ?: "https://api.openai.com/v1/chat/completions"
                 )
-                "ollama" -> OllamaProvider(endpoint = apiUrl ?: "http://localhost:11434/api/generate")
+                "ollama" -> OllamaProvider(
+                    endpoint = apiUrl ?: "http://localhost:11434/api/generate",
+                    modelName = modelName ?: "qwen3.6:35b-mlx"
+                )
                 else -> NoOpFallbackProvider()
             }
         }
@@ -262,7 +266,10 @@ class OpenAiCompatibleProvider(
     }
 }
 
-class OllamaProvider(private val endpoint: String) : HttpLlmProvider() {
+class OllamaProvider(
+    private val endpoint: String,
+    private val modelName: String = "qwen3.6:35b-mlx"
+) : HttpLlmProvider() {
     override fun planTrip(
         startName: String,
         endName: String,
@@ -275,7 +282,7 @@ class OllamaProvider(private val endpoint: String) : HttpLlmProvider() {
             val promptText = buildPrompt(startName, endName, days, userPrompt)
             val requestBody = mapper.writeValueAsString(
                 mapOf(
-                    "model" to "qwen2.5-coder",
+                    "model" to modelName,
                     "prompt" to promptText,
                     "stream" to false
                 )
