@@ -185,7 +185,7 @@ object PoiExtractor {
         return map
     }
 
-    private fun isRelevantPoi(tags: Map<String, String>): Boolean {
+    internal fun isRelevantPoi(tags: Map<String, String>): Boolean {
         val amenity = tags["amenity"]
         val tourism = tags["tourism"]
         val natural = tags["natural"]
@@ -199,7 +199,7 @@ object PoiExtractor {
             leisure in RELEVANT_LEISURE
     }
 
-    private fun rankAndSelectPois(candidates: List<POI>, limit: Int): List<POI> {
+    internal fun rankAndSelectPois(candidates: List<POI>, limit: Int): List<POI> {
         if (candidates.isEmpty()) return emptyList()
 
         // Deduplicate by name (keeping the closest instance)
@@ -260,7 +260,7 @@ object PoiExtractor {
         return r * c
     }
 
-    private fun minDistanceToPolyline(
+    internal fun minDistanceToPolyline(
         lat: Double,
         lng: Double,
         polyline: List<LocationCoords>,
@@ -279,7 +279,7 @@ object PoiExtractor {
         return minDist
     }
 
-    private fun pointToSegmentDistanceMeters(
+    internal fun pointToSegmentDistanceMeters(
         px: Double,
         py: Double,
         ax: Double,

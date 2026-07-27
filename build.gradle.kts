@@ -26,12 +26,18 @@ dependencies {
 
     // CLI argument parsing
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
+
+    // Unit testing
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 }
 
 kotlin { jvmToolchain(21) }
 
 application { mainClass.set("com.pathpress.MainKt") }
 
-ktfmt {
-    kotlinLangStyle()
+ktfmt { kotlinLangStyle() }
+
+tasks.test {
+    useJUnitPlatform()
 }
