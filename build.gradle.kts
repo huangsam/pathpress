@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.4.10"
     application
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 group = "com.pathpress"
@@ -23,8 +24,8 @@ dependencies {
     // JSON processing
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 
-    // CLI argument parsing - manual parsing instead of external dependency
-    // implementation("com.github.ajalt.clikt:clikt:4.2.2")
+    // CLI argument parsing
+    implementation("com.github.ajalt.clikt:clikt:4.2.2")
 }
 
 kotlin {

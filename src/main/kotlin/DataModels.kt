@@ -49,7 +49,9 @@ data class RouteLeg(
     val dayNumber: Int,
     val totalDays: Int,
     val distanceMeters: Double? = null,
-    val durationSeconds: Double? = null
+    val durationSeconds: Double? = null,
+    val dayTitle: String? = null,
+    val pois: List<POI> = emptyList()
 ) {
     /**
      * Generate a Google Maps URL for directions on this leg.
@@ -76,7 +78,8 @@ data class RouteLeg(
 data class Route(
     val legs: List<RouteLeg>,
     val totalDistanceMeters: Double,
-    val totalDurationSeconds: Double
+    val totalDurationSeconds: Double,
+    val narrative: String = ""
 )
 
 /**

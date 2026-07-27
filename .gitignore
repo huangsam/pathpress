@@ -26,3 +26,4 @@ out/
 # Other files
 *.pbf
 .DS_Store
+dist/
