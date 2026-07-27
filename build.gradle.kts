@@ -38,6 +38,4 @@ application { mainClass.set("com.pathpress.MainKt") }
 
 ktfmt { kotlinLangStyle() }
 
-tasks.test {
-    useJUnitPlatform()
-}
+tasks.test { useJUnitPlatform() }

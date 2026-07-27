@@ -219,7 +219,7 @@ object PdfExporter {
             .replace(Regex("[^\\x20-\\x7E]"), "")
     }
 
-    private fun escapeXml(text: String): String {
+    internal fun escapeXml(text: String): String {
         val clean = sanitizeText(text)
         return clean
             .replace("&", "&amp;")
@@ -229,7 +229,7 @@ object PdfExporter {
             .replace("'", "&apos;")
     }
 
-    private fun formatDistance(meters: Double): String {
+    internal fun formatDistance(meters: Double): String {
         return if (meters >= 1000) {
             "${String.format("%.1f", meters / 1000)} km"
         } else {
@@ -246,7 +246,7 @@ object PdfExporter {
         }
     }
 
-    private fun formatDuration(seconds: Double): String {
+    internal fun formatDuration(seconds: Double): String {
         val hours = seconds.toInt() / 3600
         val minutes = (seconds.toInt() % 3600) / 60
         return if (hours > 0) {

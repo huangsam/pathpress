@@ -200,7 +200,7 @@ object PoiExtractor {
     }
 
     internal fun rankAndSelectPois(candidates: List<POI>, limit: Int): List<POI> {
-        if (candidates.isEmpty()) return emptyList()
+        if (candidates.isEmpty() || limit <= 0) return emptyList()
 
         // Deduplicate by name (keeping the closest instance)
         val distinctByName =

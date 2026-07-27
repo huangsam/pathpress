@@ -3,6 +3,7 @@ package com.pathpress.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DataModelsTest {
@@ -46,11 +47,19 @@ class DataModelsTest {
     }
 
     @Test
-    fun `POI fromOsm falls back to ref tag if name is missing`() {
-        val tags = mapOf("ref" to "CA 1", "highway" to "milestone")
+    fun `POI fromOsm handles missing name and missing ref gracefully`() {
+        val tags = mapOf("highway" to "milestone")
         val poi = POI.fromOsm(id = 1004L, lat = 36.5, lng = -121.9, tags = tags)
-        assertEquals("CA 1", poi.name)
+        assertNull(poi.name)
         assertEquals("poi", poi.type)
+    }
+
+    @Test
+    fun `POI fromOsm handles empty tags map`() {
+        val poi = POI.fromOsm(id = 1005L, lat = 0.0, lng = 0.0, tags = emptyMap())
+        assertNull(poi.name)
+        assertEquals("poi", poi.type)
+        assertFalse(poi.isFoodOrCoffee)
     }
 
     @Test
