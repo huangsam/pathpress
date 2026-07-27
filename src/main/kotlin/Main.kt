@@ -60,7 +60,9 @@ class PathPressCommand :
 
     override fun run() {
         if (!prompt.isNullOrBlank() && llmProviderName.lowercase() == "none") {
-            throw com.github.ajalt.clikt.core.UsageError("A --prompt was provided, but no --llm-provider was specified. Please specify a provider (e.g., --llm-provider ollama) or remove the prompt.")
+            throw com.github.ajalt.clikt.core.UsageError(
+                "A --prompt was provided, but no --llm-provider was specified. Please specify a provider (e.g., --llm-provider ollama) or remove the prompt."
+            )
         }
 
         logger.info("PathPress v${BuildConfig.VERSION}")
@@ -81,7 +83,9 @@ class PathPressCommand :
         logger.info(
             "  -> Start: '${startGeo.displayName}' (${startGeo.coords.lat}, ${startGeo.coords.lng})"
         )
-        logger.info("  -> End:   '${endGeo.displayName}' (${endGeo.coords.lat}, ${endGeo.coords.lng})")
+        logger.info(
+            "  -> End:   '${endGeo.displayName}' (${endGeo.coords.lat}, ${endGeo.coords.lng})"
+        )
 
         // 2. Initialize LLM Provider & Plan Trip Concept
         logger.info("Initializing AI Trip Planner ($llmProviderName)...")
@@ -151,10 +155,12 @@ class PathPressCommand :
                 val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
                 val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
                 val overnightStr = leg.endTownName?.let { " [Overnight in $it]" } ?: ""
-                
+
                 val legLog = buildString {
                     appendLine("Day ${leg.dayNumber}: ${leg.dayTitle}$overnightStr")
-                    appendLine("  Distance: ${formatDistance(legDist)} | Driving Time: ${formatDuration(legDur)}")
+                    appendLine(
+                        "  Distance: ${formatDistance(legDist)} | Driving Time: ${formatDuration(legDur)}"
+                    )
                     if (!leg.legStory.isNullOrBlank()) {
                         appendLine("  Story: \"${leg.legStory}\"")
                     }
@@ -167,10 +173,11 @@ class PathPressCommand :
                         for (poi in leg.pois) {
                             val poiName = poi.name ?: "Unnamed POI"
                             val distOffStr =
-                                PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)?.let {
-                                    " ($it)"
-                                } ?: ""
-                            appendLine("    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}")
+                                PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)
+                                    ?.let { " ($it)" } ?: ""
+                            appendLine(
+                                "    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}"
+                            )
                             if (!poi.description.isNullOrBlank()) {
                                 appendLine("      Description: ${poi.description}")
                             }
@@ -202,14 +209,16 @@ class PathPressCommand :
         PdfExporter.exportToPdf(htmlContent, outputFile)
 
         logger.info("✓ PDF exported successfully to: $outputFile")
-        
+
         val summaryLog = buildString {
             appendLine("Daily Summary:")
             for (leg in route.legs) {
                 val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
                 val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
                 val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
-                appendLine("  Day ${leg.dayNumber}: ${leg.dayTitle}$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})")
+                appendLine(
+                    "  Day ${leg.dayNumber}: ${leg.dayTitle}$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})"
+                )
             }
         }
         logger.info("\n{}", summaryLog.trimEnd())
