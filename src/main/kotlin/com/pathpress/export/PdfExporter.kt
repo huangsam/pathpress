@@ -71,6 +71,14 @@ object PdfExporter {
             .replace("ø", "o")
             .replace("Å", "A")
             .replace("å", "a")
+            .replace("“", "\"")
+            .replace("”", "\"")
+            .replace("‘", "'")
+            .replace("’", "'")
+            .replace("–", "-")
+            .replace("—", " - ")
+            .replace("…", "...")
+            .replace("\u00A0", " ")
             .replace(Regex("[^\\x20-\\x7E]"), "")
     }
 
