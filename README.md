@@ -35,14 +35,17 @@ A robust, hybrid AI road trip planner using OpenStreetMap data and GraphHopper. 
 ./gradlew shadowJar
 ```
 
-### 3. Run PathPress
+### 3. Run PathPress Examples
 
 ```bash
-# Option A: Via Gradle
-./gradlew run --args='--start "San Jose" --end "San Diego" --days 3 --prompt "Scenic coastal drive with bakeries" --output itinerary.pdf'
+# Example 1: Multi-day trip with Ollama (qwen3.6:35b-mlx), town-centric pacing & verbose POI breakdown
+./gradlew run --args="--start 'San Francisco, CA' --end 'San Luis Obispo, CA' --days 2 --llm-provider ollama --llm-model 'qwen3.6:35b-mlx' --prompt 'scenic coastal highlights' --verbose"
 
-# Option B: Via Standalone Fat-JAR
-java -jar build/libs/pathpress-1.0.0-all.jar --start "San Jose" --end "San Diego" --days 3 --output itinerary.pdf
+# Example 2: 1-Day trip with coastal scenic prompt & terminal breakdown
+./gradlew run --args="--start 'San Jose, CA' --end 'Monterey, CA' --days 1 --prompt 'coastal scenic bakeries' --verbose"
+
+# Example 3: Standalone Fat-JAR
+java -jar build/libs/pathpress-1.2.0-all.jar --start "San Jose" --end "San Diego" --days 3 --llm-provider gemini --output itinerary.pdf
 ```
 
 ## CLI Usage
@@ -57,11 +60,13 @@ Options:
   --prompt=<text>        Natural language trip themes, vibe, or preferences
   --profile=<text>       Routing profile ('scenic' or 'car') (default: scenic)
   --llm-provider=<text>  LLM provider: gemini, claude, openai, ollama, or none (default: none)
+  --llm-model=<text>     Model name for LLM (default: qwen3.6:35b-mlx)
   --llm-key=<text>       API Key for the chosen LLM provider
-  --llm-url=<text>       Endpoint URL for LLM (e.g. for Ollama or custom server)
+  --llm-url=<text>       Endpoint URL for LLM (e.g. http://localhost:11434/api/generate)
+  -v, --verbose          Print detailed real POI corridor breakdown, distances & storytelling to terminal
   --output=<text>        Output PDF file path (default: itinerary.pdf)
-  --pbf=<text>           Path to OSM PBF file
-  --graph=<text>         GraphHopper graph storage directory
+  --pbf=<text>           Path to OSM PBF file (default: california-latest.osm.pbf)
+  --graph=<text>         GraphHopper graph storage directory (default: .graphhopper)
 ```
 
 ## License
