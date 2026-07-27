@@ -40,24 +40,26 @@ object PdfExporter {
     }
 
     fun generateHtml(route: Route, startLocation: String, endLocation: String): String {
+        val safeStart = sanitizeText(startLocation)
+        val safeEnd = sanitizeText(endLocation)
         return buildString {
             appendLine("<!DOCTYPE html>")
-            appendHTML(prettyPrint = false).html {
+            appendHTML(prettyPrint = false, xhtmlCompatible = true).html {
                 lang = "en"
                 head {
                     meta { charset = "UTF-8" }
                     title { +"PathPress Scenic Itinerary" }
-                    style { unsafe { raw(pdfStyles(startLocation, endLocation)) } }
+                    style { unsafe { raw(pdfStyles(safeStart, safeEnd)) } }
                 }
                 body {
-                    coverPage(route, startLocation, endLocation)
+                    coverPage(route, safeStart, safeEnd)
                     dailySchedule(route)
                 }
             }
         }
     }
 
-    private fun sanitizeText(text: String): String {
+    internal fun sanitizeText(text: String): String {
         val normalized = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
         return normalized
             .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")

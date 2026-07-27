@@ -3,6 +3,7 @@ package com.pathpress.export
 import com.pathpress.export.PdfExporter.formatDistance
 import com.pathpress.export.PdfExporter.formatDuration
 import com.pathpress.export.PdfExporter.formatOffRouteDistance
+import com.pathpress.export.PdfExporter.sanitizeText
 import com.pathpress.model.*
 import com.pathpress.poi.*
 import com.pathpress.routing.*
@@ -26,7 +27,7 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
             }
         }
         if (route.narrative.isNotBlank()) {
-            div("hero-narrative") { +"\"${route.narrative}\"" }
+            div("hero-narrative") { +"\"${sanitizeText(route.narrative)}\"" }
         }
     }
 }
@@ -93,7 +94,7 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
                 td {
                     style = "vertical-align: top;"
                     div("day-badge") { +"Day ${leg.dayNumber} of ${leg.totalDays}" }
-                    div("leg-title editorial-heading") { +cleanTitle }
+                    div("leg-title editorial-heading") { +sanitizeText(cleanTitle) }
                     div("meta-pills") {
                         span("meta-badge") {
                             unsafe { raw(LucideIcon.route("#334155", 12)) }
@@ -106,7 +107,7 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
                         if (leg.endTownName != null) {
                             span("meta-badge-overnight") {
                                 unsafe { raw(LucideIcon.mapPin("#276749", 12)) }
-                                +" Overnight in ${leg.endTownName}"
+                                +" Overnight in ${sanitizeText(leg.endTownName)}"
                             }
                         }
                     }
@@ -130,7 +131,7 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
         }
 
         if (!leg.legStory.isNullOrBlank()) {
-            div("leg-story") { +"\"${leg.legStory}\"" }
+            div("leg-story") { +"\"${sanitizeText(leg.legStory)}\"" }
         }
 
         if (leg.pois.isNotEmpty()) {
@@ -188,7 +189,7 @@ internal fun FlowContent.poiCard(poi: POI) {
         div("poi-card-header") {
             a(href = poiSearchUrl) {
                 style = "color: #0284c7; text-decoration: none;"
-                +poiName
+                +sanitizeText(poiName)
             }
             span("tag-badge") { +poiType }
             if (distOffRoute != null) {
@@ -196,7 +197,7 @@ internal fun FlowContent.poiCard(poi: POI) {
             }
         }
         if (!poi.description.isNullOrBlank()) {
-            div("poi-card-desc") { +poi.description }
+            div("poi-card-desc") { +sanitizeText(poi.description) }
         }
     }
 }
@@ -223,7 +224,7 @@ internal fun FlowContent.infoCard(
         for (item in items) {
             div("info-card-item") {
                 style = "color: $textColor;"
-                +"\u2022 $item"
+                +"\u2022 ${sanitizeText(item)}"
             }
         }
     }
