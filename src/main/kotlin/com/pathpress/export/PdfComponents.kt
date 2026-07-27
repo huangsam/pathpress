@@ -22,7 +22,7 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
         div("hero-subtitle") {
             unsafe {
                 raw(
-                    "${LucideIcon.mapPin("#94a3b8", 15)} ${startLocation} ${LucideIcon.arrowRight("#94a3b8", 14)} ${LucideIcon.mapPin("#94a3b8", 15)} ${endLocation}"
+                    "${LucideIcon.mapPin("#94a3b8", 15)} $startLocation ${LucideIcon.arrowRight("#94a3b8", 14)} ${LucideIcon.mapPin("#94a3b8", 15)} $endLocation"
                 )
             }
         }
@@ -244,7 +244,7 @@ internal fun pdfStyles(startLocation: String, endLocation: String): String =
         letter-spacing: 0.8px;
       }
       @top-right {
-        content: "${startLocation} to ${endLocation}";
+        content: "$startLocation to $endLocation";
         font-family: 'Inter', Helvetica, sans-serif;
         font-size: 8px;
         color: #a0aec0;
