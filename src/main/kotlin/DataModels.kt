@@ -17,14 +17,26 @@ data class POI(
     val lat: Double,
     val lng: Double,
     val tags: Map<String, String>,
-    val type: String
+    val type: String,
+    val distanceFromRouteMeters: Double? = null,
+    val description: String? = null,
+    val insiderTip: String? = null,
+    val isFoodOrCoffee: Boolean = false
 ) {
     companion object {
-        fun fromOsm(id: Long, lat: Double, lng: Double, tags: Map<String, String>): POI {
+        fun fromOsm(
+            id: Long,
+            lat: Double,
+            lng: Double,
+            tags: Map<String, String>,
+            distanceFromRouteMeters: Double? = null
+        ): POI {
             val name = tags["name"] ?: tags["ref"]
             val type = tags.entries.firstOrNull { (k, _) ->
-                k in listOf("amenity", "highway", "tourism", "shop")
+                k in listOf("amenity", "tourism", "natural", "historic", "leisure", "shop", "place")
             }?.value ?: "poi"
+
+            val isFood = tags["amenity"] in listOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream")
 
             return POI(
                 id = id.toString(),
@@ -32,7 +44,9 @@ data class POI(
                 lat = lat,
                 lng = lng,
                 tags = tags,
-                type = type
+                type = type,
+                distanceFromRouteMeters = distanceFromRouteMeters,
+                isFoodOrCoffee = isFood
             )
         }
     }
@@ -51,7 +65,11 @@ data class RouteLeg(
     val distanceMeters: Double? = null,
     val durationSeconds: Double? = null,
     val dayTitle: String? = null,
-    val pois: List<POI> = emptyList()
+    val pois: List<POI> = emptyList(),
+    val legStory: String? = null,
+    val foodRecommendations: List<String> = emptyList(),
+    val insiderTips: List<String> = emptyList(),
+    val endTownName: String? = null
 ) {
     /**
      * Generate a Google Maps URL for directions on this leg.

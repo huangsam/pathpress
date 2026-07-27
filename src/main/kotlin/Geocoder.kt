@@ -52,9 +52,15 @@ object Geocoder {
             }
         }
 
-        // Known local mappings for common typos in test queries
+        // Known local mappings for common California cities & test queries
         val normalized = trimmed.lowercase()
         if (normalized.contains("jose")) return GeocodedLocation(LocationCoords(37.3382, -121.8863), "San Jose, CA")
+        if (normalized.contains("monterey")) return GeocodedLocation(LocationCoords(36.6002, -121.8947), "Monterey, CA")
+        if (normalized.contains("carmel")) return GeocodedLocation(LocationCoords(36.5552, -121.9233), "Carmel-by-the-Sea, CA")
+        if (normalized.contains("santa cruz")) return GeocodedLocation(LocationCoords(36.9741, -122.0308), "Santa Cruz, CA")
+        if (normalized.contains("luis obispo") || normalized.contains("slo")) return GeocodedLocation(LocationCoords(35.2828, -120.6596), "San Luis Obispo, CA")
+        if (normalized.contains("santa barbara")) return GeocodedLocation(LocationCoords(34.4208, -119.6982), "Santa Barbara, CA")
+        if (normalized.contains("big sur")) return GeocodedLocation(LocationCoords(36.2704, -121.8081), "Big Sur, CA")
         if (normalized.contains("digo") || normalized.contains("diego")) return GeocodedLocation(LocationCoords(32.7157, -117.1611), "San Diego, CA")
         if (normalized.contains("francisco")) return GeocodedLocation(LocationCoords(37.7749, -122.4194), "San Francisco, CA")
         if (normalized.contains("angeles")) return GeocodedLocation(LocationCoords(34.0522, -118.2437), "Los Angeles, CA")
