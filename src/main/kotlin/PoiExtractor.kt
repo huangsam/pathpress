@@ -6,51 +6,68 @@ import com.graphhopper.reader.osm.OSMInputFile
 import java.io.File
 import kotlin.math.*
 
-data class TownInfo(
-    val name: String,
-    val lat: Double,
-    val lng: Double,
-    val type: String
-)
+data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
 
 /**
- * Utility for querying real points of interest (POIs) and towns directly from an OpenStreetMap PBF file.
+ * Utility for querying real points of interest (POIs) and towns directly from an OpenStreetMap PBF
+ * file.
  */
 object PoiExtractor {
 
-    private val RELEVANT_AMENITIES = setOf(
-        "cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court"
-    )
+    private val RELEVANT_AMENITIES =
+        setOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court")
 
-    private val RELEVANT_TOURISM = setOf(
-        "viewpoint", "attraction", "museum", "hotel", "motel", "hostel", "alpine_hut",
-        "camp_site", "picnic_site", "artwork", "gallery", "zoo", "theme_park"
-    )
+    private val RELEVANT_TOURISM =
+        setOf(
+            "viewpoint",
+            "attraction",
+            "museum",
+            "hotel",
+            "motel",
+            "hostel",
+            "alpine_hut",
+            "camp_site",
+            "picnic_site",
+            "artwork",
+            "gallery",
+            "zoo",
+            "theme_park",
+        )
 
-    private val RELEVANT_NATURAL = setOf(
-        "park", "beach", "peak", "viewpoint", "spring", "bay", "cave_entrance", "forest", "cliff"
-    )
+    private val RELEVANT_NATURAL =
+        setOf(
+            "park",
+            "beach",
+            "peak",
+            "viewpoint",
+            "spring",
+            "bay",
+            "cave_entrance",
+            "forest",
+            "cliff",
+        )
 
-    private val RELEVANT_LEISURE = setOf(
-        "park", "nature_reserve", "garden", "marina"
-    )
+    private val RELEVANT_LEISURE = setOf("park", "nature_reserve", "garden", "marina")
 
-    private val RELEVANT_HISTORIC = setOf(
-        "monument", "memorial", "castle", "ruins", "archaeological_site", "building", "battlefield"
-    )
+    private val RELEVANT_HISTORIC =
+        setOf(
+            "monument",
+            "memorial",
+            "castle",
+            "ruins",
+            "archaeological_site",
+            "building",
+            "battlefield",
+        )
 
-    private val RELEVANT_PLACES = setOf(
-        "city", "town", "village", "hamlet"
-    )
+    private val RELEVANT_PLACES = setOf("city", "town", "village", "hamlet")
 
-    /**
-     * Extract real POIs along a route leg polyline within a corridor buffer.
-     */
+    /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
         pbfPath: String,
         legPoints: List<LocationCoords>,
         maxDistanceMeters: Double = 5000.0,
-        limitPerLeg: Int = 6
+        limitPerLeg: Int = 6,
     ): List<POI> {
         val file = File(pbfPath)
         if (!file.exists() || legPoints.isEmpty()) {
@@ -80,13 +97,14 @@ object PoiExtractor {
                             if (isMatch) {
                                 val dist = minDistanceToPolyline(node.lat, node.lon, legPoints)
                                 if (dist <= maxDistanceMeters) {
-                                    val poi = POI.fromOsm(
-                                        id = node.id,
-                                        lat = node.lat,
-                                        lng = node.lon,
-                                        tags = tags,
-                                        distanceFromRouteMeters = dist
-                                    )
+                                    val poi =
+                                        POI.fromOsm(
+                                            id = node.id,
+                                            lat = node.lat,
+                                            lng = node.lon,
+                                            tags = tags,
+                                            distanceFromRouteMeters = dist,
+                                        )
                                     candidates.add(poi)
                                 }
                             }
@@ -104,13 +122,14 @@ object PoiExtractor {
     }
 
     /**
-     * Find towns/cities near target coordinates along a multi-day route to enable town-centric pacing.
+     * Find towns/cities near target coordinates along a multi-day route to enable town-centric
+     * pacing.
      */
     fun findNearbyTowns(
         pbfPath: String,
         targetLat: Double,
         targetLng: Double,
-        maxDistanceMeters: Double = 35000.0
+        maxDistanceMeters: Double = 35000.0,
     ): List<TownInfo> {
         val file = File(pbfPath)
         if (!file.exists()) return emptyList()
@@ -149,7 +168,12 @@ object PoiExtractor {
         }
 
         val placePriority = mapOf("city" to 1, "town" to 2, "village" to 3, "hamlet" to 4)
-        return towns.sortedWith(compareBy({ placePriority[it.type] ?: 5 }, { haversineMeters(targetLat, targetLng, it.lat, it.lng) }))
+        return towns.sortedWith(
+            compareBy(
+                { placePriority[it.type] ?: 5 },
+                { haversineMeters(targetLat, targetLng, it.lat, it.lng) },
+            )
+        )
     }
 
     private fun extractTags(node: ReaderNode): Map<String, String> {
@@ -169,27 +193,33 @@ object PoiExtractor {
         val leisure = tags["leisure"]
 
         return amenity in RELEVANT_AMENITIES ||
-                tourism in RELEVANT_TOURISM ||
-                natural in RELEVANT_NATURAL ||
-                historic in RELEVANT_HISTORIC ||
-                leisure in RELEVANT_LEISURE
+            tourism in RELEVANT_TOURISM ||
+            natural in RELEVANT_NATURAL ||
+            historic in RELEVANT_HISTORIC ||
+            leisure in RELEVANT_LEISURE
     }
 
     private fun rankAndSelectPois(candidates: List<POI>, limit: Int): List<POI> {
         if (candidates.isEmpty()) return emptyList()
 
         // Deduplicate by name (keeping the closest instance)
-        val distinctByName = candidates.groupBy { it.name?.lowercase() ?: it.id }
-            .mapValues { (_, list) -> list.minByOrNull { it.distanceFromRouteMeters ?: Double.MAX_VALUE }!! }
-            .values
-            .toList()
+        val distinctByName =
+            candidates
+                .groupBy { it.name?.lowercase() ?: it.id }
+                .mapValues { (_, list) ->
+                    list.minByOrNull { it.distanceFromRouteMeters ?: Double.MAX_VALUE }!!
+                }
+                .values
+                .toList()
 
-        val sortedCandidates = distinctByName.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
+        val sortedCandidates =
+            distinctByName.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
 
         val typeCounts = mutableMapOf<String, Int>()
         val selected = mutableListOf<POI>()
 
-        // 1. Pass 1: Select diverse POIs enforcing max 1 per type (e.g. 1 cafe, 1 restaurant, 1 viewpoint, 1 park, 1 historic, 1 artwork)
+        // 1. Pass 1: Select diverse POIs enforcing max 1 per type (e.g. 1 cafe, 1 restaurant, 1
+        // viewpoint, 1 park, 1 historic, 1 artwork)
         for (poi in sortedCandidates) {
             val count = typeCounts.getOrDefault(poi.type, 0)
             if (count < 1) {
@@ -220,14 +250,21 @@ object PoiExtractor {
         val r = 6371000.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLon / 2) * sin(dLon / 2)
+        val a =
+            sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) *
+                    cos(Math.toRadians(lat2)) *
+                    sin(dLon / 2) *
+                    sin(dLon / 2)
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return r * c
     }
 
-    private fun minDistanceToPolyline(lat: Double, lng: Double, polyline: List<LocationCoords>): Double {
+    private fun minDistanceToPolyline(
+        lat: Double,
+        lng: Double,
+        polyline: List<LocationCoords>,
+    ): Double {
         if (polyline.isEmpty()) return Double.MAX_VALUE
         if (polyline.size == 1) return haversineMeters(lat, lng, polyline[0].lat, polyline[0].lng)
 
@@ -243,9 +280,12 @@ object PoiExtractor {
     }
 
     private fun pointToSegmentDistanceMeters(
-        px: Double, py: Double,
-        ax: Double, ay: Double,
-        bx: Double, by: Double
+        px: Double,
+        py: Double,
+        ax: Double,
+        ay: Double,
+        bx: Double,
+        by: Double,
     ): Double {
         val l2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay)
         if (l2 == 0.0) return haversineMeters(px, py, ax, ay)

@@ -1,8 +1,6 @@
 package com.pathpress.core
 
-/**
- * Formatter for generating Google Maps URLs with zero external dependencies.
- */
+/** Formatter for generating Google Maps URLs with zero external dependencies. */
 object MapUrlFormatter {
 
     /**
@@ -18,7 +16,7 @@ object MapUrlFormatter {
         startLat: Double,
         startLng: Double,
         endLat: Double,
-        endLng: Double
+        endLng: Double,
     ): String {
         return buildString {
             append("https://www.google.com/maps/dir/?api=1")

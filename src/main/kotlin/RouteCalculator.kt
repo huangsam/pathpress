@@ -5,16 +5,15 @@ import com.graphhopper.GraphHopper
 import com.graphhopper.config.Profile
 import com.graphhopper.util.GHUtility
 
-/**
- * Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction.
- */
+/** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(
     private val graphHopper: GraphHopper,
-    val pbfFilePath: String = "california-latest.osm.pbf"
+    val pbfFilePath: String = "california-latest.osm.pbf",
 ) {
 
     /**
-     * Calculate a route between start and end coordinates, dividing it into daily legs with real POIs.
+     * Calculate a route between start and end coordinates, dividing it into daily legs with real
+     * POIs.
      */
     fun calculateRouteWithLegs(
         startLat: Double,
@@ -23,7 +22,7 @@ class RouteCalculator(
         endLng: Double,
         days: Int,
         dayTitles: List<String> = emptyList(),
-        profile: String = "car"
+        profile: String = "car",
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
 
@@ -47,15 +46,29 @@ class RouteCalculator(
         path: com.graphhopper.ResponsePath,
         days: Int,
         dayTitles: List<String>,
-        profile: String
+        profile: String,
     ): List<RouteLeg> {
         val pointsList = path.points
-        val allCoords = (0 until pointsList.size()).map { LocationCoords(pointsList.getLat(it), pointsList.getLon(it)) }
+        val allCoords =
+            (0 until pointsList.size()).map {
+                LocationCoords(pointsList.getLat(it), pointsList.getLon(it))
+            }
         val totalDays = days
 
         if (totalDays == 1) {
-            val realPois = PoiExtractor.extractPoisForLeg(pbfFilePath, allCoords, maxDistanceMeters = 8000.0, limitPerLeg = 6)
-                .ifEmpty { filterNearbyPois(pointsList.getLat(pointsList.size() / 2), pointsList.getLon(pointsList.size() / 2)) }
+            val realPois =
+                PoiExtractor.extractPoisForLeg(
+                        pbfFilePath,
+                        allCoords,
+                        maxDistanceMeters = 8000.0,
+                        limitPerLeg = 6,
+                    )
+                    .ifEmpty {
+                        filterNearbyPois(
+                            pointsList.getLat(pointsList.size() / 2),
+                            pointsList.getLon(pointsList.size() / 2),
+                        )
+                    }
 
             return listOf(
                 RouteLeg(
@@ -68,7 +81,7 @@ class RouteCalculator(
                     distanceMeters = path.distance,
                     durationSeconds = path.time / 1000.0,
                     dayTitle = dayTitles.getOrNull(0) ?: "Day 1 Scenic Drive",
-                    pois = realPois
+                    pois = realPois,
                 )
             )
         }
@@ -82,12 +95,19 @@ class RouteCalculator(
 
         for (dayIndex in 1 until totalDays) {
             val fraction = dayIndex.toDouble() / totalDays
-            val targetIdx = (pointsList.size() * fraction).toInt().coerceIn(0, pointsList.size() - 1)
+            val targetIdx =
+                (pointsList.size() * fraction).toInt().coerceIn(0, pointsList.size() - 1)
             val targetLat = pointsList.getLat(targetIdx)
             val targetLng = pointsList.getLon(targetIdx)
 
             // Search for candidate towns near target milestone
-            val candidateTowns = PoiExtractor.findNearbyTowns(pbfFilePath, targetLat, targetLng, maxDistanceMeters = 40000.0)
+            val candidateTowns =
+                PoiExtractor.findNearbyTowns(
+                    pbfFilePath,
+                    targetLat,
+                    targetLng,
+                    maxDistanceMeters = 40000.0,
+                )
             val bestTown = candidateTowns.firstOrNull()
 
             if (bestTown != null) {
@@ -98,7 +118,12 @@ class RouteCalculator(
                 townNames.add(null)
             }
         }
-        legWaypoints.add(LocationCoords(pointsList.getLat(pointsList.size() - 1), pointsList.getLon(pointsList.size() - 1)))
+        legWaypoints.add(
+            LocationCoords(
+                pointsList.getLat(pointsList.size() - 1),
+                pointsList.getLon(pointsList.size() - 1),
+            )
+        )
         townNames.add(null)
 
         val legs = mutableListOf<RouteLeg>()
@@ -107,23 +132,43 @@ class RouteCalculator(
             val legStart = legWaypoints[dayIndex]
             val legEnd = legWaypoints[dayIndex + 1]
 
-            val legReq = GHRequest(legStart.lat, legStart.lng, legEnd.lat, legEnd.lng).setProfile("car")
+            val legReq =
+                GHRequest(legStart.lat, legStart.lng, legEnd.lat, legEnd.lng).setProfile("car")
             val legRes = graphHopper.route(legReq)
 
-            val (dist, dur, legPoints) = if (!legRes.hasErrors() && legRes.best.points.size() > 0) {
-                val p = legRes.best.points
-                val coords = (0 until p.size()).map { LocationCoords(p.getLat(it), p.getLon(it)) }
-                Triple(legRes.best.distance, legRes.best.time / 1000.0, coords)
-            } else {
-                val fallbackCoords = listOf(legStart, legEnd)
-                Triple(path.distance / totalDays, (path.time / 1000.0) / totalDays, fallbackCoords)
-            }
+            val (dist, dur, legPoints) =
+                if (!legRes.hasErrors() && legRes.best.points.size() > 0) {
+                    val p = legRes.best.points
+                    val coords =
+                        (0 until p.size()).map { LocationCoords(p.getLat(it), p.getLon(it)) }
+                    Triple(legRes.best.distance, legRes.best.time / 1000.0, coords)
+                } else {
+                    val fallbackCoords = listOf(legStart, legEnd)
+                    Triple(
+                        path.distance / totalDays,
+                        (path.time / 1000.0) / totalDays,
+                        fallbackCoords,
+                    )
+                }
 
-            val realPois = PoiExtractor.extractPoisForLeg(pbfFilePath, legPoints, maxDistanceMeters = 8000.0, limitPerLeg = 6)
-                .ifEmpty { filterNearbyPois((legStart.lat + legEnd.lat) / 2, (legStart.lng + legEnd.lng) / 2) }
+            val realPois =
+                PoiExtractor.extractPoisForLeg(
+                        pbfFilePath,
+                        legPoints,
+                        maxDistanceMeters = 8000.0,
+                        limitPerLeg = 6,
+                    )
+                    .ifEmpty {
+                        filterNearbyPois(
+                            (legStart.lat + legEnd.lat) / 2,
+                            (legStart.lng + legEnd.lng) / 2,
+                        )
+                    }
 
             val endTown = townNames.getOrNull(dayIndex)
-            val defaultTitle = if (!endTown.isNullOrBlank()) "Drive to $endTown" else "Day ${dayIndex + 1} Scenic Leg"
+            val defaultTitle =
+                if (!endTown.isNullOrBlank()) "Drive to $endTown"
+                else "Day ${dayIndex + 1} Scenic Leg"
 
             legs.add(
                 RouteLeg(
@@ -137,7 +182,7 @@ class RouteCalculator(
                     durationSeconds = dur,
                     dayTitle = dayTitles.getOrNull(dayIndex) ?: defaultTitle,
                     pois = realPois,
-                    endTownName = endTown
+                    endTownName = endTown,
                 )
             )
         }
@@ -145,14 +190,8 @@ class RouteCalculator(
         return legs
     }
 
-    /**
-     * Fallback POIs if PBF has no match.
-     */
-    fun filterNearbyPois(
-        lat: Double,
-        lng: Double,
-        radiusMeters: Double = 5000.0
-    ): List<POI> {
+    /** Fallback POIs if PBF has no match. */
+    fun filterNearbyPois(lat: Double, lng: Double, radiusMeters: Double = 5000.0): List<POI> {
         return listOf(
             POI(
                 id = "poi-viewpoint-${lat.hashCode()}",
@@ -161,7 +200,7 @@ class RouteCalculator(
                 lng = lng + 0.005,
                 tags = mapOf("tourism" to "viewpoint"),
                 type = "viewpoint",
-                distanceFromRouteMeters = 300.0
+                distanceFromRouteMeters = 300.0,
             ),
             POI(
                 id = "poi-cafe-${lng.hashCode()}",
@@ -171,19 +210,18 @@ class RouteCalculator(
                 tags = mapOf("amenity" to "cafe"),
                 type = "cafe",
                 distanceFromRouteMeters = 150.0,
-                isFoodOrCoffee = true
-            )
+                isFoodOrCoffee = true,
+            ),
         )
     }
 
-    fun calculateRoute(
-        startLat: Double,
-        startLng: Double,
-        endLat: Double,
-        endLng: Double
-    ): Route {
+    fun calculateRoute(startLat: Double, startLng: Double, endLat: Double, endLng: Double): Route {
         val legs = calculateRouteWithLegs(startLat, startLng, endLat, endLng, days = 1)
-        return Route(legs, legs.sumOf { it.distanceMeters ?: 0.0 }, legs.sumOf { it.durationSeconds ?: 0.0 })
+        return Route(
+            legs,
+            legs.sumOf { it.distanceMeters ?: 0.0 },
+            legs.sumOf { it.durationSeconds ?: 0.0 },
+        )
     }
 
     companion object {
@@ -191,8 +229,12 @@ class RouteCalculator(
             val hopper = GraphHopper()
             hopper.setOSMFile(pbfFilePath)
             hopper.setGraphHopperLocation(graphPath)
-            hopper.setEncodedValuesString("car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed")
-            hopper.setProfiles(Profile("car").setCustomModel(GHUtility.loadCustomModelFromJar("car.json")))
+            hopper.setEncodedValuesString(
+                "car_access, car_average_speed, road_access, road_environment, max_speed, ferry_speed"
+            )
+            hopper.setProfiles(
+                Profile("car").setCustomModel(GHUtility.loadCustomModelFromJar("car.json"))
+            )
             hopper.importOrLoad()
 
             return RouteCalculator(hopper, pbfFilePath)

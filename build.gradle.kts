@@ -2,14 +2,14 @@ plugins {
     kotlin("jvm") version "2.4.10"
     application
     id("com.gradleup.shadow") version "8.3.6"
+    id("com.ncorti.ktfmt.gradle") version "0.22.0"
 }
 
 group = "com.pathpress"
+
 version = "1.0.0"
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
 dependencies {
     implementation(kotlin("stdlib"))
@@ -28,10 +28,10 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
 }
 
-kotlin {
-    jvmToolchain(21)
-}
+kotlin { jvmToolchain(21) }
 
-application {
-    mainClass.set("com.pathpress.MainKt")
+application { mainClass.set("com.pathpress.MainKt") }
+
+ktfmt {
+    kotlinLangStyle()
 }
