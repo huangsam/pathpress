@@ -69,7 +69,6 @@ class PathPressCommand :
         logger.info("LLM Provider: $llmProviderName (Model: $llmModel)")
         logger.info("Output: $outputFile")
         logger.info("Verbose Mode: ${if (verbose) "ENABLED" else "DISABLED"}")
-        logger.info("")
 
         // 1. Geocode start and end locations (resolving typos to clean display names & coordinates)
         logger.info("Geocoding locations...")
@@ -79,7 +78,6 @@ class PathPressCommand :
             "  -> Start: '${startGeo.displayName}' (${startGeo.coords.lat}, ${startGeo.coords.lng})"
         )
         logger.info("  -> End:   '${endGeo.displayName}' (${endGeo.coords.lat}, ${endGeo.coords.lng})")
-        logger.info("")
 
         // 2. Initialize LLM Provider & Plan Trip Concept
         logger.info("Initializing AI Trip Planner ($llmProviderName)...")
@@ -139,7 +137,6 @@ class PathPressCommand :
         logger.info("Route calculated successfully!")
         logger.info("  Total distance: ${formatDistance(route.totalDistanceMeters)}")
         logger.info("  Estimated duration: ${formatDuration(route.totalDurationSeconds)}")
-        logger.info("")
 
         // 6. Print Verbose Detailed POI Breakdown to Terminal if requested
         if (verbose) {
@@ -150,48 +147,49 @@ class PathPressCommand :
                 val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
                 val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
                 val overnightStr = leg.endTownName?.let { " [Overnight in $it]" } ?: ""
-                logger.info("\nDay ${leg.dayNumber}: ${leg.dayTitle}$overnightStr")
-                logger.info(
-                    "  Distance: ${formatDistance(legDist)} | Driving Time: ${formatDuration(legDur)}"
-                )
-                if (!leg.legStory.isNullOrBlank()) {
-                    logger.info("  Story: \"${leg.legStory}\"")
-                }
-                logger.info("  Google Maps Leg Directions: ${leg.toDirectionsUrl()}")
+                
+                val legLog = buildString {
+                    appendLine("Day ${leg.dayNumber}: ${leg.dayTitle}$overnightStr")
+                    appendLine("  Distance: ${formatDistance(legDist)} | Driving Time: ${formatDuration(legDur)}")
+                    if (!leg.legStory.isNullOrBlank()) {
+                        appendLine("  Story: \"${leg.legStory}\"")
+                    }
+                    appendLine("  Google Maps Leg Directions: ${leg.toDirectionsUrl()}")
 
-                logger.info("  Real Extracted Corridor POIs (${leg.pois.size}):")
-                if (leg.pois.isEmpty()) {
-                    logger.info("    (No POIs extracted for this corridor)")
-                } else {
-                    for (poi in leg.pois) {
-                        val poiName = poi.name ?: "Unnamed POI"
-                        val distOffStr =
-                            PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)?.let {
-                                " ($it)"
-                            } ?: ""
-                        logger.info("    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}")
-                        if (!poi.description.isNullOrBlank()) {
-                            logger.info("      Description: ${poi.description}")
+                    appendLine("  Real Extracted Corridor POIs (${leg.pois.size}):")
+                    if (leg.pois.isEmpty()) {
+                        appendLine("    (No POIs extracted for this corridor)")
+                    } else {
+                        for (poi in leg.pois) {
+                            val poiName = poi.name ?: "Unnamed POI"
+                            val distOffStr =
+                                PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)?.let {
+                                    " ($it)"
+                                } ?: ""
+                            appendLine("    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}")
+                            if (!poi.description.isNullOrBlank()) {
+                                appendLine("      Description: ${poi.description}")
+                            }
+                        }
+                    }
+
+                    if (leg.foodRecommendations.isNotEmpty()) {
+                        appendLine("  Coffee & Local Food Recommendations:")
+                        for (rec in leg.foodRecommendations) {
+                            appendLine("    ☕ $rec")
+                        }
+                    }
+
+                    if (leg.insiderTips.isNotEmpty()) {
+                        appendLine("  Insider Tips:")
+                        for (tip in leg.insiderTips) {
+                            appendLine("    💡 $tip")
                         }
                     }
                 }
-
-                if (leg.foodRecommendations.isNotEmpty()) {
-                    logger.info("  Coffee & Local Food Recommendations:")
-                    for (rec in leg.foodRecommendations) {
-                        logger.info("    ☕ $rec")
-                    }
-                }
-
-                if (leg.insiderTips.isNotEmpty()) {
-                    logger.info("  Insider Tips:")
-                    for (tip in leg.insiderTips) {
-                        logger.info("    💡 $tip")
-                    }
-                }
+                logger.info("\n{}", legLog.trimEnd())
             }
             logger.info("=".repeat(65))
-            logger.info("")
         }
 
         // 7. Render HTML & Export to PDF
@@ -200,16 +198,17 @@ class PathPressCommand :
         PdfExporter.exportToPdf(htmlContent, outputFile)
 
         logger.info("✓ PDF exported successfully to: $outputFile")
-        logger.info("")
-        logger.info("Daily Summary:")
-        for (leg in route.legs) {
-            val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
-            val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
-            val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
-            logger.info(
-                "  Day ${leg.dayNumber}: ${leg.dayTitle}$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})"
-            )
+        
+        val summaryLog = buildString {
+            appendLine("Daily Summary:")
+            for (leg in route.legs) {
+                val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
+                val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
+                val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
+                appendLine("  Day ${leg.dayNumber}: ${leg.dayTitle}$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})")
+            }
         }
+        logger.info("\n{}", summaryLog.trimEnd())
     }
 }
 
