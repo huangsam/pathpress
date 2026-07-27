@@ -21,6 +21,9 @@ dependencies {
     implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
     implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
 
+    // HTML DSL
+    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.11.0")
+
     // QR Code generation
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
