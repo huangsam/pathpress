@@ -24,6 +24,15 @@ class PdfExporterTest {
     }
 
     @Test
+    fun `sanitizeText removes diacritics and non-ascii characters`() {
+        assertEquals("Nuoc Mia Vien Dong 2", PdfExporter.sanitizeText("Nước Mía Viễn Đông 2"))
+        assertEquals("Pho Co II", PdfExporter.sanitizeText("Phở Cổ II"))
+        assertEquals("Aero", PdfExporter.sanitizeText("Ærø"))
+        assertEquals("San Jose, CA", PdfExporter.sanitizeText("San Jose, CA"))
+        assertEquals("Coffee Shop ", PdfExporter.sanitizeText("Coffee Shop ☕"))
+    }
+
+    @Test
     fun `formatDistance formats meters and kilometers cleanly`() {
         assertEquals("500 m", PdfExporter.formatDistance(500.0))
         assertEquals("0 m", PdfExporter.formatDistance(0.0))
