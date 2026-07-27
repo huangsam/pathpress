@@ -27,3 +27,4 @@ out/
 *.pbf
 .DS_Store
 dist/
+.gradle-home/

@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.int
 import com.pathpress.core.*
+import org.slf4j.LoggerFactory
 
 object BuildConfig {
     const val VERSION: String = "1.2.0"
@@ -55,31 +56,33 @@ class PathPressCommand :
             )
             .flag(default = false)
 
+    private val logger = LoggerFactory.getLogger(PathPressCommand::class.java)
+
     override fun run() {
-        println("PathPress v${BuildConfig.VERSION}")
-        println("=".repeat(50))
-        println("Start Input: $startLocation")
-        println("End Input: $endLocation")
-        println("Duration: $days days")
-        println("Profile: $profile")
-        if (!prompt.isNullOrBlank()) println("Prompt: $prompt")
-        println("LLM Provider: $llmProviderName (Model: $llmModel)")
-        println("Output: $outputFile")
-        println("Verbose Mode: ${if (verbose) "ENABLED" else "DISABLED"}")
-        println()
+        logger.info("PathPress v${BuildConfig.VERSION}")
+        logger.info("=".repeat(50))
+        logger.info("Start Input: $startLocation")
+        logger.info("End Input: $endLocation")
+        logger.info("Duration: $days days")
+        logger.info("Profile: $profile")
+        if (!prompt.isNullOrBlank()) logger.info("Prompt: $prompt")
+        logger.info("LLM Provider: $llmProviderName (Model: $llmModel)")
+        logger.info("Output: $outputFile")
+        logger.info("Verbose Mode: ${if (verbose) "ENABLED" else "DISABLED"}")
+        logger.info("")
 
         // 1. Geocode start and end locations (resolving typos to clean display names & coordinates)
-        println("Geocoding locations...")
+        logger.info("Geocoding locations...")
         val startGeo = Geocoder.geocode(startLocation)
         val endGeo = Geocoder.geocode(endLocation)
-        println(
+        logger.info(
             "  -> Start: '${startGeo.displayName}' (${startGeo.coords.lat}, ${startGeo.coords.lng})"
         )
-        println("  -> End:   '${endGeo.displayName}' (${endGeo.coords.lat}, ${endGeo.coords.lng})")
-        println()
+        logger.info("  -> End:   '${endGeo.displayName}' (${endGeo.coords.lat}, ${endGeo.coords.lng})")
+        logger.info("")
 
         // 2. Initialize LLM Provider & Plan Trip Concept
-        println("Initializing AI Trip Planner ($llmProviderName)...")
+        logger.info("Initializing AI Trip Planner ($llmProviderName)...")
         val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl, llmModel)
         val tripPlan =
             llm.planTrip(
@@ -92,7 +95,7 @@ class PathPressCommand :
             )
 
         // 3. Initialize GraphHopper Routing Engine
-        println("Loading spatial routing data from $pbfPath...")
+        logger.info("Loading spatial routing data from $pbfPath...")
         val routeCalculator =
             try {
                 RouteCalculator.create(graphPath, pbfPath)
@@ -104,7 +107,7 @@ class PathPressCommand :
             }
 
         // 4. Calculate Driving Route & Extract Real Corridor POIs
-        println("Calculating driving route & extracting real OSM corridor POIs...")
+        logger.info("Calculating driving route & extracting real OSM corridor POIs...")
         val rawLegs =
             routeCalculator.calculateRouteWithLegs(
                 startLat = startGeo.coords.lat,
@@ -117,7 +120,7 @@ class PathPressCommand :
             )
 
         // 5. Curate POIs & Generate Leg Storytelling with LLM
-        println("Curating POIs & storytelling with LLM...")
+        logger.info("Curating POIs & storytelling with LLM...")
         val curatedLegs =
             rawLegs.map { leg ->
                 val curation = llm.curateLegPois(leg, prompt)
@@ -133,32 +136,32 @@ class PathPressCommand :
         val totalDuration = curatedLegs.sumOf { it.durationSeconds ?: 0.0 }
         val route = Route(curatedLegs, totalDistance, totalDuration, narrative = tripPlan.narrative)
 
-        println("Route calculated successfully!")
-        println("  Total distance: ${formatDistance(route.totalDistanceMeters)}")
-        println("  Estimated duration: ${formatDuration(route.totalDurationSeconds)}")
-        println()
+        logger.info("Route calculated successfully!")
+        logger.info("  Total distance: ${formatDistance(route.totalDistanceMeters)}")
+        logger.info("  Estimated duration: ${formatDuration(route.totalDurationSeconds)}")
+        logger.info("")
 
         // 6. Print Verbose Detailed POI Breakdown to Terminal if requested
         if (verbose) {
-            println("=".repeat(65))
-            println("DETAILED POI CORRIDOR BREAKDOWN & CURATION (--verbose)")
-            println("=".repeat(65))
+            logger.info("=".repeat(65))
+            logger.info("DETAILED POI CORRIDOR BREAKDOWN & CURATION (--verbose)")
+            logger.info("=".repeat(65))
             for (leg in route.legs) {
                 val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
                 val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
                 val overnightStr = leg.endTownName?.let { " [Overnight in $it]" } ?: ""
-                println("\nDay ${leg.dayNumber}: ${leg.dayTitle}$overnightStr")
-                println(
+                logger.info("\nDay ${leg.dayNumber}: ${leg.dayTitle}$overnightStr")
+                logger.info(
                     "  Distance: ${formatDistance(legDist)} | Driving Time: ${formatDuration(legDur)}"
                 )
                 if (!leg.legStory.isNullOrBlank()) {
-                    println("  Story: \"${leg.legStory}\"")
+                    logger.info("  Story: \"${leg.legStory}\"")
                 }
-                println("  Google Maps Leg Directions: ${leg.toDirectionsUrl()}")
+                logger.info("  Google Maps Leg Directions: ${leg.toDirectionsUrl()}")
 
-                println("  Real Extracted Corridor POIs (${leg.pois.size}):")
+                logger.info("  Real Extracted Corridor POIs (${leg.pois.size}):")
                 if (leg.pois.isEmpty()) {
-                    println("    (No POIs extracted for this corridor)")
+                    logger.info("    (No POIs extracted for this corridor)")
                 } else {
                     for (poi in leg.pois) {
                         val poiName = poi.name ?: "Unnamed POI"
@@ -166,44 +169,44 @@ class PathPressCommand :
                             PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)?.let {
                                 " ($it)"
                             } ?: ""
-                        println("    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}")
+                        logger.info("    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}")
                         if (!poi.description.isNullOrBlank()) {
-                            println("      Description: ${poi.description}")
+                            logger.info("      Description: ${poi.description}")
                         }
                     }
                 }
 
                 if (leg.foodRecommendations.isNotEmpty()) {
-                    println("  Coffee & Local Food Recommendations:")
+                    logger.info("  Coffee & Local Food Recommendations:")
                     for (rec in leg.foodRecommendations) {
-                        println("    ☕ $rec")
+                        logger.info("    ☕ $rec")
                     }
                 }
 
                 if (leg.insiderTips.isNotEmpty()) {
-                    println("  Insider Tips:")
+                    logger.info("  Insider Tips:")
                     for (tip in leg.insiderTips) {
-                        println("    💡 $tip")
+                        logger.info("    💡 $tip")
                     }
                 }
             }
-            println("=".repeat(65))
-            println()
+            logger.info("=".repeat(65))
+            logger.info("")
         }
 
         // 7. Render HTML & Export to PDF
-        println("Exporting itinerary to PDF ($outputFile)...")
+        logger.info("Exporting itinerary to PDF ($outputFile)...")
         val htmlContent = PdfExporter.generateHtml(route, startGeo.displayName, endGeo.displayName)
         PdfExporter.exportToPdf(htmlContent, outputFile)
 
-        println("✓ PDF exported successfully to: $outputFile")
-        println()
-        println("Daily Summary:")
+        logger.info("✓ PDF exported successfully to: $outputFile")
+        logger.info("")
+        logger.info("Daily Summary:")
         for (leg in route.legs) {
             val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
             val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
             val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
-            println(
+            logger.info(
                 "  Day ${leg.dayNumber}: ${leg.dayTitle}$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})"
             )
         }

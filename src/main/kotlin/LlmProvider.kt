@@ -7,6 +7,9 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import org.slf4j.LoggerFactory
+
+private val logger = LoggerFactory.getLogger(LlmProvider::class.java)
 
 data class TripPlanResponse(
     val dayThemes: List<String>,
@@ -300,7 +303,7 @@ class GeminiProvider(private val apiKey: String) : HttpLlmProvider() {
                 }
             }
         } catch (e: Exception) {
-            println("Gemini Provider warning: ${e.message}")
+            logger.warn("Gemini Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
             .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
@@ -337,7 +340,7 @@ class GeminiProvider(private val apiKey: String) : HttpLlmProvider() {
                 if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
             }
         } catch (e: Exception) {
-            println("Gemini Curation warning: ${e.message}")
+            logger.warn("Gemini Curation warning: {}", e.message)
         }
         return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
@@ -416,7 +419,7 @@ class ClaudeProvider(private val apiKey: String) : HttpLlmProvider() {
                 }
             }
         } catch (e: Exception) {
-            println("Claude Provider warning: ${e.message}")
+            logger.warn("Claude Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
             .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
@@ -452,7 +455,7 @@ class ClaudeProvider(private val apiKey: String) : HttpLlmProvider() {
                 if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
             }
         } catch (e: Exception) {
-            println("Claude Curation warning: ${e.message}")
+            logger.warn("Claude Curation warning: {}", e.message)
         }
         return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
@@ -521,7 +524,7 @@ class OpenAiCompatibleProvider(private val apiKey: String, private val endpoint:
                 }
             }
         } catch (e: Exception) {
-            println("OpenAI Provider warning: ${e.message}")
+            logger.warn("OpenAI Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
             .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
@@ -562,7 +565,7 @@ class OpenAiCompatibleProvider(private val apiKey: String, private val endpoint:
                 if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
             }
         } catch (e: Exception) {
-            println("OpenAI Curation warning: ${e.message}")
+            logger.warn("OpenAI Curation warning: {}", e.message)
         }
         return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
@@ -615,7 +618,7 @@ class OllamaProvider(
                 }
             }
         } catch (e: Exception) {
-            println("Ollama Provider warning: ${e.message}")
+            logger.warn("Ollama Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
             .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
@@ -645,7 +648,7 @@ class OllamaProvider(
                 }
             }
         } catch (e: Exception) {
-            println("Ollama Curation warning: ${e.message}")
+            logger.warn("Ollama Curation warning: {}", e.message)
         }
         return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }

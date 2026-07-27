@@ -41,4 +41,58 @@ class PdfExporterTest {
         assertEquals("1h 0m", PdfExporter.formatDuration(3600.0))
         assertEquals("2h 15m", PdfExporter.formatDuration(8100.0))
     }
+
+    @Test
+    fun `generateHtml outputs modern editorial elements SVG icons and QR codes`() {
+        val poi =
+            POI(
+                id = "1",
+                name = "Big Sur Viewpoint",
+                lat = 36.2,
+                lng = -121.8,
+                tags = emptyMap(),
+                type = "viewpoint",
+                description = "Stunning coast view",
+            )
+        val leg =
+            RouteLeg(
+                startLat = 37.7749,
+                startLng = -122.4194,
+                endLat = 36.6002,
+                endLng = -121.8947,
+                dayNumber = 1,
+                totalDays = 1,
+                dayTitle = "Coastal Hwy 1",
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = listOf(poi),
+                foodRecommendations = listOf("Coastal Bakery"),
+                insiderTips = listOf("Stop before sunset"),
+            )
+        val route =
+            Route(
+                legs = listOf(leg),
+                totalDistanceMeters = 50000.0,
+                totalDurationSeconds = 3600.0,
+                narrative = "Pacific Coast Highway drive",
+            )
+
+        val html = PdfExporter.generateHtml(route, "San Francisco", "Monterey")
+
+        assertTrue(html.contains("hero-banner"))
+        assertTrue(html.contains("editorial-heading"))
+        assertTrue(html.contains("data:image/png;base64,"))
+        assertTrue(html.contains("<svg"))
+        assertTrue(html.contains("Merriweather"))
+        assertTrue(html.contains("Inter"))
+        assertTrue(html.contains("Big Sur Viewpoint"))
+    }
+
+    @Test
+    fun `QrCodeGenerator creates non-empty Base64 PNG data URI`() {
+        val uri = QrCodeGenerator.generateQrCodeDataUri("https://maps.google.com")
+        assertTrue(uri.startsWith("data:image/png;base64,"))
+        assertTrue(uri.length > 100)
+    }
 }

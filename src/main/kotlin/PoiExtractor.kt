@@ -5,6 +5,7 @@ import com.graphhopper.reader.ReaderNode
 import com.graphhopper.reader.osm.OSMInputFile
 import java.io.File
 import kotlin.math.*
+import org.slf4j.LoggerFactory
 
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
 
@@ -13,6 +14,8 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * file.
  */
 object PoiExtractor {
+
+    private val logger = LoggerFactory.getLogger(PoiExtractor::class.java)
 
     private val RELEVANT_AMENITIES =
         setOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court")
@@ -114,7 +117,7 @@ object PoiExtractor {
             }
             osmInput.close()
         } catch (e: Exception) {
-            println("Warning: Error reading OSM PBF for POI extraction: ${e.message}")
+            logger.warn("Error reading OSM PBF for POI extraction: {}", e.message)
             return emptyList()
         }
 
@@ -164,7 +167,7 @@ object PoiExtractor {
             }
             osmInput.close()
         } catch (e: Exception) {
-            println("Warning: Error searching for towns: ${e.message}")
+            logger.warn("Error searching for towns: {}", e.message)
         }
 
         val placePriority = mapOf("city" to 1, "town" to 2, "village" to 3, "hamlet" to 4)

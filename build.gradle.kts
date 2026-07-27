@@ -1,7 +1,6 @@
 plugins {
     kotlin("jvm") version "2.4.10"
     application
-    id("com.gradleup.shadow") version "8.3.6"
     id("com.ncorti.ktfmt.gradle") version "0.22.0"
 }
 
@@ -20,12 +19,20 @@ dependencies {
     // PDF rendering (JVM-native)
     implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
     implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
+    implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
+
+    // QR Code generation
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:javase:3.5.3")
 
     // JSON processing
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 
     // CLI argument parsing
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
+
+    // Logging
+    implementation("org.slf4j:slf4j-simple:2.0.13")
 
     // Unit testing
     testImplementation(kotlin("test"))
