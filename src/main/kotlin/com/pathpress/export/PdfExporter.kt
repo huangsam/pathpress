@@ -1,7 +1,11 @@
-package com.pathpress.core
+package com.pathpress.export
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import com.openhtmltopdf.svgsupport.BatikSVGDrawer
+import com.pathpress.llm.*
+import com.pathpress.model.*
+import com.pathpress.poi.*
+import com.pathpress.routing.*
 
 /** Exports trip itineraries to magazine-grade PDF using openhtmltopdf (JVM-native). */
 object PdfExporter {

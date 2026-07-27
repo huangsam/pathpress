@@ -1,9 +1,13 @@
-package com.pathpress.core
+package com.pathpress.routing
 
 import com.graphhopper.GHRequest
 import com.graphhopper.GraphHopper
 import com.graphhopper.config.Profile
 import com.graphhopper.util.GHUtility
+import com.pathpress.export.*
+import com.pathpress.llm.*
+import com.pathpress.model.*
+import com.pathpress.poi.*
 
 /** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(

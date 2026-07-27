@@ -1,4 +1,9 @@
-package com.pathpress.core
+package com.pathpress.export
+
+import com.pathpress.llm.*
+import com.pathpress.model.*
+import com.pathpress.poi.*
+import com.pathpress.routing.*
 
 /** Vector SVG icon generator providing clean, inline SVG markup for PDF rendering. */
 object LucideIcon {
