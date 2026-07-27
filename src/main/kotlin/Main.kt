@@ -59,6 +59,10 @@ class PathPressCommand :
     private val logger = LoggerFactory.getLogger(PathPressCommand::class.java)
 
     override fun run() {
+        if (!prompt.isNullOrBlank() && llmProviderName.lowercase() == "none") {
+            throw com.github.ajalt.clikt.core.UsageError("A --prompt was provided, but no --llm-provider was specified. Please specify a provider (e.g., --llm-provider ollama) or remove the prompt.")
+        }
+
         logger.info("PathPress v${BuildConfig.VERSION}")
         logger.info("=".repeat(50))
         logger.info("Start Input: $startLocation")
