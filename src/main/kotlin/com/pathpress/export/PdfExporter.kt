@@ -84,131 +84,134 @@ object PdfExporter {
             appendLine("      @top-right { content: none; }")
             appendLine("    }")
             appendLine(
-                "    body { font-family: 'Inter', Helvetica, Arial, sans-serif; color: #2d3748; margin: 0; padding: 0; line-height: 1.5; font-size: 13px; }"
+                "    body { font-family: 'Inter', Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; line-height: 1.6; font-size: 12px; }"
             )
             appendLine(
                 "    h1, h2, h3, .editorial-heading { font-family: 'Merriweather', Georgia, serif; }"
             )
 
+            // Cover Page container
+            appendLine("    .cover-container { margin-bottom: 20px; }")
+
             // Hero Header Banner
             appendLine(
-                "    .hero-banner { background-color: #1e293b; color: #ffffff; padding: 24px 28px; border-radius: 10px; margin-bottom: 20px; }"
+                "    .hero-banner { background-color: #0f172a; color: #f8fafc; padding: 40px 32px; border-radius: 12px; margin-bottom: 24px; }"
             )
             appendLine(
-                "    .hero-title { font-size: 24px; font-weight: bold; color: #ffffff; margin: 0 0 8px 0; letter-spacing: -0.3px; line-height: 1.3; }"
+                "    .hero-title { font-size: 32px; font-weight: bold; color: #f8fafc; margin: 0 0 12px 0; letter-spacing: -0.5px; line-height: 1.2; }"
             )
             appendLine(
-                "    .hero-subtitle { font-size: 13px; color: #cbd5e0; margin-bottom: 12px; font-weight: 500; line-height: 1.4; }"
+                "    .hero-subtitle { font-size: 14px; color: #94a3b8; margin-bottom: 18px; font-weight: 500; line-height: 1.4; letter-spacing: 0.5px; text-transform: uppercase; }"
             )
             appendLine(
-                "    .hero-narrative { background-color: #334155; border-left: 3px solid #60a5fa; padding: 10px 14px; font-style: italic; color: #f1f5f9; font-size: 12px; border-radius: 4px; line-height: 1.4; }"
+                "    .hero-narrative { background-color: #1e293b; border-left: 4px solid #38bdf8; padding: 16px 20px; font-style: italic; color: #f1f5f9; font-size: 13px; border-radius: 6px; line-height: 1.5; }"
             )
 
             // Overview Metadata Card
             appendLine(
-                "    .metadata-card { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px; }"
+                "    .metadata-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 22px; margin-bottom: 30px; }"
             )
             appendLine("    .metadata-grid { width: 100%; border-collapse: collapse; }")
+            appendLine("    .metadata-grid td { padding: 6px 8px; vertical-align: middle; }")
             appendLine(
-                "    .metadata-grid td { padding: 4px 6px; font-size: 12px; vertical-align: middle; }"
+                "    .meta-label { color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; }"
             )
             appendLine(
-                "    .meta-label { color: #718096; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }"
-            )
-            appendLine(
-                "    .meta-val { color: #1a202c; font-weight: 600; font-size: 13px; margin-top: 2px; display: inline-block; }"
+                "    .meta-val { color: #0f172a; font-weight: bold; font-size: 14px; margin-top: 4px; display: inline-block; }"
             )
 
             // Section titles
             appendLine(
-                "    .section-title { font-size: 17px; color: #1a202c; border-bottom: 2px solid #3182ce; padding-bottom: 6px; margin-top: 20px; margin-bottom: 16px; font-weight: bold; line-height: 1.4; }"
+                "    .section-title { font-size: 18px; color: #0f172a; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-top: 24px; margin-bottom: 20px; font-weight: bold; line-height: 1.4; }"
             )
 
             // Leg Container
             appendLine(
-                "    .leg { margin-bottom: 22px; padding: 20px 22px; border: 1px solid #cbd5e0; border-radius: 10px; background: #ffffff; page-break-inside: auto; }"
+                "    .leg { margin-bottom: 32px; padding: 24px 28px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; page-break-inside: auto; }"
             )
+            appendLine("    .leg + .leg { page-break-before: always; }")
 
             // Leg Top Header Grid
             appendLine(
-                "    .leg-top-grid { width: 100%; border-collapse: collapse; margin-bottom: 14px; }"
+                "    .leg-top-grid { width: 100%; border-collapse: collapse; margin-bottom: 18px; page-break-inside: avoid; }"
             )
             appendLine(
-                "    .day-badge { color: #2b6cb0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; display: block; }"
+                "    .day-badge { color: #0284c7; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }"
             )
             appendLine(
-                "    .leg-title { font-size: 18px; font-weight: bold; color: #1a202c; margin: 0 0 8px 0; line-height: 1.3; }"
+                "    .leg-title { font-size: 20px; font-weight: bold; color: #0f172a; margin: 0 0 10px 0; line-height: 1.3; }"
             )
 
             // Header Meta Pills
             appendLine("    .meta-pills { margin-top: 4px; }")
             appendLine(
-                "    .meta-badge { display: inline-block; background: #edf2f7; color: #2d3748; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; border: 1px solid #cbd5e0; line-height: 1.3; }"
+                "    .meta-badge { display: inline-block; background: #f1f5f9; color: #334155; padding: 5px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; margin-right: 6px; border: 1px solid #e2e8f0; line-height: 1.3; }"
             )
             appendLine(
-                "    .meta-badge-overnight { display: inline-block; background: #f0fff4; color: #22543d; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; border: 1px solid #c6f6d5; line-height: 1.3; }"
+                "    .meta-badge-overnight { display: inline-block; background: #f0fdf4; color: #166534; padding: 5px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; margin-right: 6px; border: 1px solid #bbf7d0; line-height: 1.3; }"
             )
 
             // Compact Top-Right Nav Action Box
             appendLine(
-                "    .nav-action-box { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center; }"
+                "    .nav-action-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; text-align: center; }"
             )
             appendLine(
-                "    .qr-img { border: 1px solid #cbd5e0; border-radius: 4px; background: #ffffff; padding: 2px; display: block; margin: 0 auto 6px auto; }"
+                "    .qr-img { border: 1px solid #e2e8f0; border-radius: 6px; background: #ffffff; padding: 4px; display: block; margin: 0 auto 8px auto; }"
             )
             appendLine(
-                "    a.maps-btn-sm { display: block; padding: 6px 10px; background: #3182ce; color: #ffffff; text-decoration: none; border-radius: 5px; font-size: 11px; font-weight: bold; line-height: 1.2; white-space: nowrap; }"
+                "    a.maps-btn-sm { display: block; padding: 8px 12px; background: #0284c7; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 11px; font-weight: bold; line-height: 1.2; white-space: nowrap; letter-spacing: 0.3px; }"
             )
 
             // Leg Story
             appendLine(
-                "    .leg-story { font-style: italic; color: #4a5568; margin-bottom: 16px; background: #f7fafc; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #4299e1; font-size: 12px; line-height: 1.5; }"
+                "    .leg-story { font-style: italic; color: #475569; margin-bottom: 20px; background: #f8fafc; padding: 16px 20px; border-radius: 10px; border-left: 4px solid #38bdf8; font-size: 13px; line-height: 1.6; }"
             )
 
             // POIs Section
             appendLine(
-                "    .poi-section { margin-top: 16px; background: #f8fafc; padding: 14px 16px; border-radius: 8px; border: 1px solid #e2e8f0; }"
+                "    .poi-section { margin-top: 20px; background: #ffffff; padding: 0; border-radius: 0; border: none; }"
             )
             appendLine(
-                "    .poi-title { font-size: 14px; font-weight: bold; color: #2d3748; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; line-height: 1.4; }"
+                "    .poi-title { font-size: 15px; font-weight: bold; color: #0f172a; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; line-height: 1.4; }"
             )
             appendLine(
-                "    .poi-card { background: #ffffff; border: 1px solid #edf2f7; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; page-break-inside: avoid; }"
+                "    .poi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; page-break-inside: avoid; }"
             )
             appendLine(
-                "    .poi-card-header { font-size: 12px; font-weight: bold; color: #2b6cb0; margin-bottom: 4px; }"
+                "    .poi-card-header { font-size: 13px; font-weight: bold; color: #0284c7; margin-bottom: 6px; }"
             )
             appendLine(
-                "    .poi-card-desc { color: #718096; font-size: 11px; margin-top: 4px; line-height: 1.4; }"
+                "    .poi-card-desc { color: #475569; font-size: 12px; margin-top: 6px; line-height: 1.5; }"
             )
             appendLine(
-                "    .tag-badge { background: #e2e8f0; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px; text-transform: capitalize; font-weight: normal; }"
+                "    .tag-badge { background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 6px; font-size: 10px; margin-left: 8px; text-transform: capitalize; font-weight: 500; }"
             )
             appendLine(
-                "    .dist-badge { background: #feebc8; color: #744210; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px; font-weight: normal; }"
+                "    .dist-badge { background: #ffedd5; color: #9a3412; padding: 3px 8px; border-radius: 6px; font-size: 10px; margin-left: 8px; font-weight: 500; }"
             )
 
             // Cards (Food & Tips)
             appendLine(
-                "    .info-card { margin-top: 14px; background: #fffaf0; border: 1px solid #feebc8; padding: 12px 14px; border-radius: 8px; page-break-inside: avoid; }"
+                "    .info-card { margin-top: 18px; background: #fffbeb; border: 1px solid #fde68a; padding: 16px 18px; border-radius: 10px; page-break-inside: avoid; }"
             )
             appendLine(
-                "    .info-card-title { font-size: 13px; font-weight: bold; color: #744210; margin-bottom: 8px; line-height: 1.4; }"
+                "    .info-card-title { font-size: 14px; font-weight: bold; color: #92400e; margin-bottom: 10px; line-height: 1.4; }"
             )
             appendLine(
-                "    .info-card-item { font-size: 11px; color: #975a16; margin-bottom: 4px; line-height: 1.4; }"
+                "    .info-card-item { font-size: 12px; color: #92400e; margin-bottom: 6px; line-height: 1.5; }"
             )
             appendLine("  </style>")
             appendLine("</head>")
             appendLine("<body>")
 
             // Hero Header Banner (Cover Page Header)
+            appendLine("  <div class=\"cover-container\">")
             appendLine("  <div class=\"hero-banner\">")
             appendLine(
                 "    <div class=\"hero-title editorial-heading\">PathPress Scenic Road Trip</div>"
             )
             appendLine(
-                "    <div class=\"hero-subtitle\">${LucideIcon.mapPin("#cbd5e0", 15)} $safeStart ${LucideIcon.arrowRight("#cbd5e0", 14)} ${LucideIcon.mapPin("#cbd5e0", 15)} $safeEnd</div>"
+                "    <div class=\"hero-subtitle\">${LucideIcon.mapPin("#94a3b8", 15)} $safeStart ${LucideIcon.arrowRight("#94a3b8", 14)} ${LucideIcon.mapPin("#94a3b8", 15)} $safeEnd</div>"
             )
             if (safeNarrative.isNotBlank()) {
                 appendLine("    <div class=\"hero-narrative\">\"$safeNarrative\"</div>")
@@ -220,19 +223,20 @@ object PdfExporter {
             appendLine("    <table class=\"metadata-grid\">")
             appendLine("      <tr>")
             appendLine(
-                "        <td><span class=\"meta-label\">Total Distance</span><br/><span class=\"meta-val\">${LucideIcon.route("#3182ce", 14)} ${formatDistance(route.totalDistanceMeters)}</span></td>"
+                "        <td><span class=\"meta-label\">Total Distance</span><br/><span class=\"meta-val\">${LucideIcon.route("#0284c7", 14)} ${formatDistance(route.totalDistanceMeters)}</span></td>"
             )
             appendLine(
-                "        <td><span class=\"meta-label\">Est. Drive Time</span><br/><span class=\"meta-val\">${LucideIcon.clock("#3182ce", 14)} ${formatDuration(route.totalDurationSeconds)}</span></td>"
+                "        <td><span class=\"meta-label\">Est. Drive Time</span><br/><span class=\"meta-val\">${LucideIcon.clock("#0284c7", 14)} ${formatDuration(route.totalDurationSeconds)}</span></td>"
             )
             appendLine(
-                "        <td><span class=\"meta-label\">Trip Duration</span><br/><span class=\"meta-val\">${LucideIcon.calendar("#3182ce", 14)} ${route.legs.size} ${if (route.legs.size == 1) "Day" else "Days"}</span></td>"
+                "        <td><span class=\"meta-label\">Trip Duration</span><br/><span class=\"meta-val\">${LucideIcon.calendar("#0284c7", 14)} ${route.legs.size} ${if (route.legs.size == 1) "Day" else "Days"}</span></td>"
             )
             appendLine(
-                "        <td><span class=\"meta-label\">Routing Vibe</span><br/><span class=\"meta-val\">${LucideIcon.compass("#3182ce", 14)} Scenic Corridor</span></td>"
+                "        <td><span class=\"meta-label\">Routing Vibe</span><br/><span class=\"meta-val\">${LucideIcon.compass("#0284c7", 14)} Scenic Corridor</span></td>"
             )
             appendLine("      </tr>")
             appendLine("    </table>")
+            appendLine("  </div>")
             appendLine("  </div>")
 
             // Daily Schedule
@@ -265,10 +269,10 @@ object PdfExporter {
                 appendLine("          <div class=\"leg-title editorial-heading\">$cleanTitle</div>")
                 appendLine("          <div class=\"meta-pills\">")
                 appendLine(
-                    "            <span class=\"meta-badge\">${LucideIcon.route("#2b6cb0", 12)} ${formatDistance(distance)}</span>"
+                    "            <span class=\"meta-badge\">${LucideIcon.route("#334155", 12)} ${formatDistance(distance)}</span>"
                 )
                 appendLine(
-                    "            <span class=\"meta-badge\">${LucideIcon.clock("#2b6cb0", 12)} ${formatDuration(duration)}</span>"
+                    "            <span class=\"meta-badge\">${LucideIcon.clock("#334155", 12)} ${formatDuration(duration)}</span>"
                 )
                 if (safeEndTown != null) {
                     appendLine(
@@ -301,7 +305,7 @@ object PdfExporter {
                 if (leg.pois.isNotEmpty()) {
                     appendLine("    <div class=\"poi-section\">")
                     appendLine(
-                        "      <div class=\"poi-title\">${LucideIcon.camera("#2b6cb0", 16)} <span style=\"vertical-align: middle;\">Corridor POIs &amp; Scenic Highlights</span></div>"
+                        "      <div class=\"poi-title\">${LucideIcon.camera("#0284c7", 16)} <span style=\"vertical-align: middle;\">Corridor POIs &amp; Scenic Highlights</span></div>"
                     )
                     for (poi in leg.pois) {
                         val poiSearchUrl = escapeXml(MapUrlFormatter.formatPoiUrl(poi))
@@ -317,7 +321,7 @@ object PdfExporter {
                         appendLine("      <div class=\"poi-card\">")
                         appendLine("        <div class=\"poi-card-header\">")
                         appendLine(
-                            "          <a href=\"$poiSearchUrl\" style=\"color: #2b6cb0; text-decoration: none;\">$poiName</a>"
+                            "          <a href=\"$poiSearchUrl\" style=\"color: #0284c7; text-decoration: none;\">$poiName</a>"
                         )
                         appendLine("          <span class=\"tag-badge\">$poiType</span>")
                         if (distOffRoute != null) {
@@ -337,7 +341,7 @@ object PdfExporter {
                 if (leg.foodRecommendations.isNotEmpty()) {
                     appendLine("    <div class=\"info-card\">")
                     appendLine(
-                        "      <div class=\"info-card-title\">${LucideIcon.coffee("#744210", 16)} <span style=\"vertical-align: middle;\">Local Coffee &amp; Food Recommendations</span></div>"
+                        "      <div class=\"info-card-title\">${LucideIcon.coffee("#92400e", 16)} <span style=\"vertical-align: middle;\">Local Coffee &amp; Food Recommendations</span></div>"
                     )
                     for (foodRec in leg.foodRecommendations) {
                         appendLine(
