@@ -302,7 +302,7 @@ object PdfExporter {
                     for (poi in leg.pois) {
                         val poiSearchUrl = escapeXml(MapUrlFormatter.formatPoiUrl(poi))
                         val poiName = escapeXml(poi.name ?: "Point of Interest")
-                        val poiType = escapeXml(poi.type)
+                        val poiType = escapeXml(poi.type.split("_").joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } })
                         val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters)
 
                         appendLine("      <div class=\"poi-card\">")
