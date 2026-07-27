@@ -63,6 +63,25 @@ class DataModelsTest {
     }
 
     @Test
+    fun `RouteLeg helper methods generate valid Google Maps URLs`() {
+        val leg =
+            RouteLeg(
+                startLat = 37.7749,
+                startLng = -122.4194,
+                endLat = 36.9741,
+                endLng = -122.0308,
+                dayNumber = 1,
+                totalDays = 1,
+            )
+        val dirUrl = leg.toDirectionsUrl()
+        assertTrue(dirUrl.contains("origin=37.7749,-122.4194"))
+        assertTrue(dirUrl.contains("destination=36.9741,-122.0308"))
+
+        val mapUrl = leg.toMapUrl()
+        assertTrue(mapUrl.contains("center=37.3745,-122.2251"))
+    }
+
+    @Test
     fun `LocationCoords constructs correctly`() {
         val coords = LocationCoords(37.7749, -122.4194)
         assertEquals(37.7749, coords.lat)
