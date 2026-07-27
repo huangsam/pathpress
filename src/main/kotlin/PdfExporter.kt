@@ -100,7 +100,7 @@ object PdfExporter {
                         val poiSearchUrl = escapeXml(MapUrlFormatter.formatPoiUrl(poi))
                         val poiName = escapeXml(poi.name ?: "Point of Interest")
                         val poiType = escapeXml(poi.type)
-                        val distOffRoute = poi.distanceFromRouteMeters?.let { "${String.format("%.1f", it / 1000.0)} km off route" }
+                        val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters)
 
                         appendLine("      <div class=\"poi-item\">")
                         appendLine("        • <a href=\"$poiSearchUrl\" style=\"color: #3182ce; font-weight: bold;\">$poiName</a>")
@@ -142,8 +142,19 @@ object PdfExporter {
         }
     }
 
+    private fun sanitizeText(text: String): String {
+        val normalized = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+        return normalized.replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+            .replace("Đ", "D").replace("đ", "d")
+            .replace("Æ", "Ae").replace("æ", "ae")
+            .replace("Ø", "O").replace("ø", "o")
+            .replace("Å", "A").replace("å", "a")
+            .replace(Regex("[^\\x20-\\x7E]"), "")
+    }
+
     private fun escapeXml(text: String): String {
-        return text.replace("&", "&amp;")
+        val clean = sanitizeText(text)
+        return clean.replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
@@ -155,6 +166,15 @@ object PdfExporter {
             "${String.format("%.1f", meters / 1000)} km"
         } else {
             "${String.format("%.0f", meters)} m"
+        }
+    }
+
+    fun formatOffRouteDistance(meters: Double?): String? {
+        if (meters == null) return null
+        return if (meters < 1000.0) {
+            "${kotlin.math.round(meters).toInt()} m off route"
+        } else {
+            "${String.format("%.1f", meters / 1000.0)} km off route"
         }
     }
 

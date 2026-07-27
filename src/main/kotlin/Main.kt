@@ -132,8 +132,8 @@ class PathPressCommand : CliktCommand(
                 } else {
                     for (poi in leg.pois) {
                         val poiName = poi.name ?: "Unnamed POI"
-                        val distOff = poi.distanceFromRouteMeters?.let { " (${String.format("%.1f", it / 1000.0)} km off route)" } ?: ""
-                        println("    • $poiName [${poi.type}]$distOff @ ${poi.lat}, ${poi.lng}")
+                        val distOffStr = PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)?.let { " ($it)" } ?: ""
+                        println("    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}")
                         if (!poi.description.isNullOrBlank()) {
                             println("      Description: ${poi.description}")
                         }

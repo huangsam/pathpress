@@ -178,28 +178,42 @@ object PoiExtractor {
     private fun rankAndSelectPois(candidates: List<POI>, limit: Int): List<POI> {
         if (candidates.isEmpty()) return emptyList()
 
+        // Deduplicate by name (keeping the closest instance)
         val distinctByName = candidates.groupBy { it.name?.lowercase() ?: it.id }
             .mapValues { (_, list) -> list.minByOrNull { it.distanceFromRouteMeters ?: Double.MAX_VALUE }!! }
             .values
             .toList()
 
-        val foodPois = distinctByName.filter { it.isFoodOrCoffee }.sortedBy { it.distanceFromRouteMeters }
-        val scenicPois = distinctByName.filter { !it.isFoodOrCoffee }.sortedBy { it.distanceFromRouteMeters }
+        val sortedCandidates = distinctByName.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
 
+        val typeCounts = mutableMapOf<String, Int>()
         val selected = mutableListOf<POI>()
 
-        val maxFood = minOf(2, foodPois.size)
-        val maxScenic = limit - maxFood
-
-        selected.addAll(foodPois.take(maxFood))
-        selected.addAll(scenicPois.take(maxScenic))
-
-        if (selected.size < limit) {
-            val remaining = distinctByName.filter { it !in selected }.sortedBy { it.distanceFromRouteMeters }
-            selected.addAll(remaining.take(limit - selected.size))
+        // 1. Pass 1: Select diverse POIs enforcing max 1 per type (e.g. 1 cafe, 1 restaurant, 1 viewpoint, 1 park, 1 historic, 1 artwork)
+        for (poi in sortedCandidates) {
+            val count = typeCounts.getOrDefault(poi.type, 0)
+            if (count < 1) {
+                selected.add(poi)
+                typeCounts[poi.type] = count + 1
+            }
+            if (selected.size >= limit) break
         }
 
-        return selected.sortedBy { it.distanceFromRouteMeters }
+        // 2. Pass 2: If we still need more POIs to fill the limit, relax the cap to max 2 per type
+        if (selected.size < limit) {
+            for (poi in sortedCandidates) {
+                if (poi !in selected) {
+                    val count = typeCounts.getOrDefault(poi.type, 0)
+                    if (count < 2) {
+                        selected.add(poi)
+                        typeCounts[poi.type] = count + 1
+                    }
+                }
+                if (selected.size >= limit) break
+            }
+        }
+
+        return selected.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
     }
 
     fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
