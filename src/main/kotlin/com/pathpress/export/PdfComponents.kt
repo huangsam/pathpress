@@ -280,7 +280,6 @@ internal fun pdfStyles(startLocation: String, endLocation: String): String =
     .meta-val { color: #0f172a; font-weight: bold; font-size: 14px; margin-top: 4px; display: inline-block; }
     .section-title { font-size: 18px; color: #0f172a; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-top: 24px; margin-bottom: 20px; font-weight: bold; line-height: 1.4; }
     .leg { margin-bottom: 32px; padding: 24px 28px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; page-break-inside: auto; }
-    .leg + .leg { page-break-before: always; }
     .leg-top-grid { width: 100%; border-collapse: collapse; margin-bottom: 18px; page-break-inside: avoid; }
     .day-badge { color: #0284c7; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
     .leg-title { font-size: 20px; font-weight: bold; color: #0f172a; margin: 0 0 10px 0; line-height: 1.3; }

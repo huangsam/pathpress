@@ -108,4 +108,66 @@ class PdfExporterTest {
         assertTrue(uri.startsWith("data:image/png;base64,"))
         assertTrue(uri.length > 100)
     }
+
+    @Test
+    fun `generate pdf for inspection`() {
+        val leg1 =
+            RouteLeg(
+                startLat = 37.0,
+                startLng = -121.0,
+                endLat = 36.0,
+                endLng = -120.0,
+                dayNumber = 1,
+                totalDays = 2,
+                dayTitle = "Day 1",
+                endTownName = "Town A",
+                distanceMeters = 100000.0,
+                durationSeconds = 7200.0,
+                pois = emptyList(),
+                foodRecommendations = listOf("Food 1"),
+                insiderTips =
+                    listOf(
+                        "Tip 1",
+                        "Tip 2",
+                        "Tip 3",
+                        "Tip 4",
+                        "Tip 5",
+                        "Tip 6",
+                        "Tip 7",
+                        "Tip 8",
+                        "Tip 9",
+                        "Tip 10",
+                        "Tip 11",
+                        "Tip 12",
+                        "Tip 13",
+                        "Tip 14",
+                        "Tip 15",
+                    ),
+            )
+        val leg2 =
+            RouteLeg(
+                startLat = 36.0,
+                startLng = -120.0,
+                endLat = 35.0,
+                endLng = -119.0,
+                dayNumber = 2,
+                totalDays = 2,
+                dayTitle = "Day 2",
+                endTownName = "Town B",
+                distanceMeters = 100000.0,
+                durationSeconds = 7200.0,
+                pois = emptyList(),
+                foodRecommendations = emptyList(),
+                insiderTips = emptyList(),
+            )
+        val route =
+            Route(
+                legs = listOf(leg1, leg2),
+                totalDistanceMeters = 200000.0,
+                totalDurationSeconds = 14400.0,
+                narrative = "Test Narrative",
+            )
+        val html = PdfExporter.generateHtml(route, "San Jose", "San Diego")
+        PdfExporter.exportToPdf(html, "/tmp/test_itinerary.pdf")
+    }
 }
