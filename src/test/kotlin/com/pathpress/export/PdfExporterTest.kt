@@ -34,17 +34,36 @@ class PdfExporterTest {
 
     @Test
     fun `formatDistance formats meters and kilometers cleanly`() {
-        assertEquals("500 m", PdfExporter.formatDistance(500.0))
-        assertEquals("0 m", PdfExporter.formatDistance(0.0))
-        assertEquals("1.5 km", PdfExporter.formatDistance(1500.0))
-        assertEquals("120.0 km", PdfExporter.formatDistance(120000.0))
+        assertEquals("500 m", PdfExporter.formatDistance(500.0, DistanceUnit.METRIC))
+        assertEquals("0 m", PdfExporter.formatDistance(0.0, DistanceUnit.METRIC))
+        assertEquals("1.5 km", PdfExporter.formatDistance(1500.0, DistanceUnit.METRIC))
+        assertEquals("120.0 km", PdfExporter.formatDistance(120000.0, DistanceUnit.METRIC))
+
+        assertEquals("295 ft", PdfExporter.formatDistance(90.0, DistanceUnit.IMPERIAL))
+        assertEquals("1.0 mi", PdfExporter.formatDistance(1609.344, DistanceUnit.IMPERIAL))
+        assertEquals("74.6 mi", PdfExporter.formatDistance(120000.0, DistanceUnit.IMPERIAL))
     }
 
     @Test
     fun `formatOffRouteDistance handles nulls meters and km thresholds`() {
         assertNull(PdfExporter.formatOffRouteDistance(null))
-        assertEquals("250 m off route", PdfExporter.formatOffRouteDistance(249.6))
-        assertEquals("2.5 km off route", PdfExporter.formatOffRouteDistance(2500.0))
+        assertEquals(
+            "250 m off route",
+            PdfExporter.formatOffRouteDistance(249.6, DistanceUnit.METRIC),
+        )
+        assertEquals(
+            "2.5 km off route",
+            PdfExporter.formatOffRouteDistance(2500.0, DistanceUnit.METRIC),
+        )
+
+        assertEquals(
+            "250 ft off route",
+            PdfExporter.formatOffRouteDistance(76.2, DistanceUnit.IMPERIAL),
+        )
+        assertEquals(
+            "1.6 mi off route",
+            PdfExporter.formatOffRouteDistance(2500.0, DistanceUnit.IMPERIAL),
+        )
     }
 
     @Test

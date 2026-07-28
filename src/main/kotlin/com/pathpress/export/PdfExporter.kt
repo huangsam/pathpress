@@ -39,7 +39,12 @@ object PdfExporter {
         }
     }
 
-    fun generateHtml(route: Route, startLocation: String, endLocation: String): String {
+    fun generateHtml(
+        route: Route,
+        startLocation: String,
+        endLocation: String,
+        unit: DistanceUnit = DistanceUnit.METRIC,
+    ): String {
         val safeStart = sanitizeText(startLocation)
         val safeEnd = sanitizeText(endLocation)
         return buildString {
@@ -52,8 +57,8 @@ object PdfExporter {
                     style { unsafe { raw(pdfStyles(safeStart, safeEnd)) } }
                 }
                 body {
-                    coverPage(route, safeStart, safeEnd)
-                    dailySchedule(route)
+                    coverPage(route, safeStart, safeEnd, unit)
+                    dailySchedule(route, unit)
                     navigationAppendix(route)
                 }
             }
@@ -93,20 +98,46 @@ object PdfExporter {
             .replace("'", "&apos;")
     }
 
-    internal fun formatDistance(meters: Double): String {
-        return if (meters >= 1000) {
-            "${String.format("%.1f", meters / 1000)} km"
-        } else {
-            "${String.format("%.0f", meters)} m"
+    fun formatDistance(meters: Double, unit: DistanceUnit = DistanceUnit.METRIC): String {
+        return when (unit) {
+            DistanceUnit.METRIC -> {
+                if (meters >= 1000) {
+                    "${String.format(java.util.Locale.US, "%.1f", meters / 1000.0)} km"
+                } else {
+                    "${String.format(java.util.Locale.US, "%.0f", meters)} m"
+                }
+            }
+            DistanceUnit.IMPERIAL -> {
+                val miles = meters / 1609.344
+                val feet = meters * 3.28084
+                if (miles >= 0.1) {
+                    "${String.format(java.util.Locale.US, "%.1f", miles)} mi"
+                } else {
+                    "${String.format(java.util.Locale.US, "%.0f", feet)} ft"
+                }
+            }
         }
     }
 
-    fun formatOffRouteDistance(meters: Double?): String? {
+    fun formatOffRouteDistance(meters: Double?, unit: DistanceUnit = DistanceUnit.METRIC): String? {
         if (meters == null) return null
-        return if (meters < 1000.0) {
-            "${kotlin.math.round(meters).toInt()} m off route"
-        } else {
-            "${String.format("%.1f", meters / 1000.0)} km off route"
+        return when (unit) {
+            DistanceUnit.METRIC -> {
+                if (meters < 1000.0) {
+                    "${kotlin.math.round(meters).toInt()} m off route"
+                } else {
+                    "${String.format(java.util.Locale.US, "%.1f", meters / 1000.0)} km off route"
+                }
+            }
+            DistanceUnit.IMPERIAL -> {
+                val miles = meters / 1609.344
+                val feet = meters * 3.28084
+                if (miles < 0.1) {
+                    "${kotlin.math.round(feet).toInt()} ft off route"
+                } else {
+                    "${String.format(java.util.Locale.US, "%.1f", miles)} mi off route"
+                }
+            }
         }
     }
 

@@ -9,10 +9,15 @@ import com.pathpress.poi.*
 import com.pathpress.routing.*
 import kotlinx.html.*
 
-internal fun FlowContent.coverPage(route: Route, startLocation: String, endLocation: String) {
+internal fun FlowContent.coverPage(
+    route: Route,
+    startLocation: String,
+    endLocation: String,
+    unit: DistanceUnit = DistanceUnit.METRIC,
+) {
     div("cover-container") {
         heroBanner(route, startLocation, endLocation)
-        metadataCard(route)
+        metadataCard(route, unit)
     }
 }
 
@@ -32,7 +37,7 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
     }
 }
 
-internal fun FlowContent.metadataCard(route: Route) {
+internal fun FlowContent.metadataCard(route: Route, unit: DistanceUnit = DistanceUnit.METRIC) {
     div("metadata-card") {
         table("metadata-grid") {
             tr {
@@ -41,7 +46,7 @@ internal fun FlowContent.metadataCard(route: Route) {
                     br()
                     span("meta-val") {
                         unsafe { raw(LucideIcon.route("#0284c7", 14)) }
-                        +" ${formatDistance(route.totalDistanceMeters)}"
+                        +" ${formatDistance(route.totalDistanceMeters, unit)}"
                     }
                 }
                 td {
@@ -73,14 +78,18 @@ internal fun FlowContent.metadataCard(route: Route) {
     }
 }
 
-internal fun FlowContent.dailySchedule(route: Route) {
+internal fun FlowContent.dailySchedule(route: Route, unit: DistanceUnit = DistanceUnit.METRIC) {
     div("section-title editorial-heading") { +"Daily Schedule & Itinerary" }
     for (leg in route.legs) {
-        legCard(leg, route)
+        legCard(leg, route, unit)
     }
 }
 
-internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
+internal fun FlowContent.legCard(
+    leg: RouteLeg,
+    route: Route,
+    unit: DistanceUnit = DistanceUnit.METRIC,
+) {
     val rawTitle = leg.dayTitle ?: "Scenic Drive"
     val cleanTitle =
         rawTitle.replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "").ifBlank {
@@ -99,7 +108,7 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
             div("meta-pills") {
                 span("meta-badge") {
                     unsafe { raw(LucideIcon.route("#334155", 12)) }
-                    +" ${formatDistance(distance)}"
+                    +" ${formatDistance(distance, unit)}"
                 }
                 span("meta-badge") {
                     unsafe { raw(LucideIcon.clock("#334155", 12)) }
@@ -128,7 +137,7 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
         }
 
         if (leg.pois.isNotEmpty()) {
-            poiSection(leg.pois)
+            poiSection(leg.pois, unit)
         }
     }
 }
@@ -268,22 +277,22 @@ internal fun renderLegSvgMap(leg: RouteLeg, width: Int = 620, height: Int = 220)
  * - Avoid combining `display: inline-block` with `vertical-align: middle` on SVG replacement
  *   elements adjacent to inline text.
  */
-internal fun FlowContent.poiSection(pois: List<POI>) {
+internal fun FlowContent.poiSection(pois: List<POI>, unit: DistanceUnit = DistanceUnit.METRIC) {
     div("poi-section") {
         div("poi-title") {
             unsafe { raw(LucideIcon.camera("#0284c7", 16)) }
             span { +" Corridor POIs & Scenic Highlights" }
         }
-        pois.forEachIndexed { idx, poi -> poiCard(poi, index = idx + 1) }
+        pois.forEachIndexed { idx, poi -> poiCard(poi, index = idx + 1, unit = unit) }
     }
 }
 
-internal fun FlowContent.poiCard(poi: POI, index: Int) {
+internal fun FlowContent.poiCard(poi: POI, index: Int, unit: DistanceUnit = DistanceUnit.METRIC) {
     val poiSearchUrl = MapUrlFormatter.formatPoiUrl(poi)
     val poiName = poi.name ?: "Point of Interest"
     val poiType =
         poi.type.split("_").joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
-    val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters)
+    val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters, unit)
 
     div("poi-card") {
         div("poi-card-header") {

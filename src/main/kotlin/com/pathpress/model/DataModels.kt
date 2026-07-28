@@ -110,3 +110,9 @@ fun RouteLeg.toRoute(): Route {
         totalDurationSeconds = this.durationSeconds ?: 0.0,
     )
 }
+
+/** Distance formatting unit system. */
+enum class DistanceUnit {
+    METRIC, // km, m
+    IMPERIAL, // mi, ft
+}
