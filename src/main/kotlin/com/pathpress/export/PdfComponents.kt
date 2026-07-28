@@ -193,14 +193,12 @@ internal fun renderLegSvgMap(leg: RouteLeg, width: Int = 620, height: Int = 220)
     }
 
     val rawStartX = toSvgX(leg.startLng)
-    val rawStartY = toSvgY(leg.startLat)
     val rawEndX = toSvgX(leg.endLng)
-    val rawEndY = toSvgY(leg.endLat)
 
     val startX = (rawStartX - 22.0).coerceAtLeast(35.0)
-    val startY = rawStartY
+    val startY = toSvgY(leg.startLat)
     val endX = (rawEndX + 22.0).coerceAtMost(width - 35.0)
-    val endY = rawEndY
+    val endY = toSvgY(leg.endLat)
 
     val pathData = buildString {
         append(
