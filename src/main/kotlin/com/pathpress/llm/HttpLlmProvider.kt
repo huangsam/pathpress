@@ -40,9 +40,9 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             {
               "dayThemes": ["Day 1 title", "Day 2 title", ...],
               "waypoints": [{"lat": 40.7128, "lng": -74.0060, "name": "New York"}],
-              "narrative": "A short summary paragraph of the trip vibe."
+              "narrative": "<REQUIRED: 2-3 sentence evocative description of the overall trip vibe, landscape, and theme. Must be specific to $startName → $endName and the theme above. Do NOT use generic filler like 'a wonderful journey'. Write like a travel magazine editor.>"
             }
-            Return ONLY valid raw JSON.
+            Return ONLY valid raw JSON. The "narrative" field is mandatory and must not be null or empty.
         """
             .trimIndent()
     }
@@ -110,12 +110,16 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
     protected fun parseTripPlan(jsonText: String, days: Int): TripPlanResponse {
         val cleanJson = jsonText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
+
+        // Extract narrative first independently - it's cheap and must survive any parse failure
+        val narrativeFallback = extractNarrativeFromRawJson(jsonText)
+
         return try {
             val map: Map<String, Any> = mapper.readValue(cleanJson)
             val themes =
                 (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
                     ?: (1..days).map { "Day $it" }
-            val narrative = map["narrative"]?.toString().takeValidText() ?: ""
+            val narrative = map["narrative"]?.toString().takeValidText() ?: narrativeFallback ?: ""
             val waypoints =
                 (map["waypoints"] as? List<*>)
                     ?.mapNotNull { w ->
@@ -132,9 +136,24 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             TripPlanResponse(
                 dayThemes = (1..days).map { "Day $it" },
                 waypoints = emptyList(),
-                narrative = "",
+                narrative = narrativeFallback ?: "",
             )
         }
+    }
+
+    /**
+     * Regex-based fallback to extract the narrative string directly from the raw LLM JSON text.
+     * This is intentionally decoupled from full JSON parsing so the narrative is not lost if other
+     * fields (e.g. waypoints) cause a parse exception.
+     */
+    private fun extractNarrativeFromRawJson(jsonText: String): String? {
+        val match = Regex(""""narrative"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(jsonText) ?: return null
+        return match.groupValues[1]
+            .replace("\\\"", "\"")
+            .replace("\\n", " ")
+            .replace("\\\\", "\\")
+            .trim()
+            .takeValidText()
     }
 
     protected fun parseCurationResponse(jsonText: String, leg: RouteLeg): CuratedLegResult {
