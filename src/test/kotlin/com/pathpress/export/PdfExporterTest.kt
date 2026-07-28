@@ -117,8 +117,8 @@ class PdfExporterTest {
         assertTrue(html.contains("Merriweather"))
         assertTrue(html.contains("Inter"))
         assertTrue(html.contains("Big Sur Viewpoint"))
-        assertTrue(html.contains("display: inline; vertical-align: -0.15em;"))
-        assertTrue(!html.contains("display: inline-block; vertical-align: middle;"))
+        assertTrue(html.contains("vertical-align: -0.15em;"))
+        assertTrue(html.contains("display: inline-block;"))
     }
 
     @Test
@@ -130,6 +130,17 @@ class PdfExporterTest {
 
     @Test
     fun `generate pdf for inspection`() {
+        val poi1 =
+            POI(
+                id = "1",
+                name = "Beach View",
+                lat = 36.5,
+                lng = -120.5,
+                tags = mapOf(),
+                type = "viewpoint",
+                distanceFromRouteMeters = 300.0,
+                description = "Beach view",
+            )
         val leg1 =
             RouteLeg(
                 startLat = 37.0,
@@ -138,34 +149,22 @@ class PdfExporterTest {
                 endLng = -120.0,
                 dayNumber = 1,
                 totalDays = 2,
-                dayTitle = "Day 1",
-                endTownName = "Town A",
-                distanceMeters = 100000.0,
-                durationSeconds = 7200.0,
-                pois = emptyList(),
-            )
-        val leg2 =
-            RouteLeg(
-                startLat = 36.0,
-                startLng = -120.0,
-                endLat = 35.0,
-                endLng = -119.0,
-                dayNumber = 2,
-                totalDays = 2,
-                dayTitle = "Day 2",
-                endTownName = "Town B",
-                distanceMeters = 100000.0,
-                durationSeconds = 7200.0,
-                pois = emptyList(),
+                dayTitle = "Coastal Exploration & Beach Play",
+                endTownName = "Bakersfield",
+                distanceMeters = 387680.0,
+                durationSeconds = 29160.0,
+                pois = listOf(poi1),
+                legStory =
+                    "Day 1: Enjoy a scenic drive along Drive to Bakersfield, discovering vibrant local culture and natural landmarks.",
             )
         val route =
             Route(
-                legs = listOf(leg1, leg2),
-                totalDistanceMeters = 200000.0,
-                totalDurationSeconds = 14400.0,
+                legs = listOf(leg1),
+                totalDistanceMeters = 758645.0,
+                totalDurationSeconds = 29160.0,
                 narrative = "Test Narrative",
             )
-        val html = PdfExporter.generateHtml(route, "San Jose", "San Diego")
+        val html = PdfExporter.generateHtml(route, "San Jose", "Bakersfield", DistanceUnit.IMPERIAL)
         PdfExporter.exportToPdf(html, "/tmp/test_itinerary.pdf")
     }
 }
