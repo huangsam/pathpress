@@ -4,6 +4,7 @@ import com.graphhopper.GHRequest
 import com.graphhopper.GraphHopper
 import com.graphhopper.config.Profile
 import com.graphhopper.util.GHUtility
+import com.pathpress.config.Config
 import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
@@ -27,7 +28,7 @@ class RouteCalculator(
         days: Int,
         dayTitles: List<String> = emptyList(),
         profile: String = "car",
-        limitPerLeg: Int = PoiExtractor.DEFAULT_POIS_PER_LEG,
+        limitPerLeg: Int = Config.current.defaultPoisPerLeg,
         userPrompt: String? = null,
         includeThemeParks: Boolean = false,
     ): List<RouteLeg> {

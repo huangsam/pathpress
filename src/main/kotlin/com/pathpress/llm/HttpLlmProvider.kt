@@ -2,14 +2,14 @@ package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.pathpress.config.Config
 import com.pathpress.model.*
 import com.pathpress.util.*
 import java.net.http.HttpClient
-import java.time.Duration
 
-abstract class HttpLlmProvider : LlmProvider {
+abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvider {
     protected val client: HttpClient =
-        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build()
+        HttpClient.newBuilder().connectTimeout(config.httpLlmConnectTimeout).build()
     protected val mapper = jacksonObjectMapper()
 
     protected fun buildPrompt(

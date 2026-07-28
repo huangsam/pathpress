@@ -1,6 +1,7 @@
 package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.pathpress.config.Config
 import com.pathpress.model.*
 import com.pathpress.util.*
 import java.net.URI
@@ -13,8 +14,9 @@ private val logger = LoggerFactory.getLogger(OpenAiCompatibleProvider::class.jav
 class OpenAiCompatibleProvider(
     private val apiKey: String,
     private val endpoint: String,
-    val modelName: String = LlmProvider.DEFAULT_OPENAI_MODEL,
-) : HttpLlmProvider() {
+    config: Config = Config.current,
+    val modelName: String = config.defaultOpenAiModel,
+) : HttpLlmProvider(config) {
     override fun planTrip(
         startName: String,
         endName: String,

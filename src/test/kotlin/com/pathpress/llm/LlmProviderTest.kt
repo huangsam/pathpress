@@ -1,5 +1,6 @@
 package com.pathpress.llm
 
+import com.pathpress.config.Config
 import com.pathpress.model.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,7 +19,7 @@ class LlmProviderTest {
     fun `LlmProvider factory configures default and custom models for providers`() {
         val defaultGemini = LlmProvider.create("gemini", apiKey = "test-key", apiUrl = null)
         assertIs<GeminiProvider>(defaultGemini)
-        assertEquals(LlmProvider.DEFAULT_GEMINI_MODEL, defaultGemini.modelName)
+        assertEquals(Config.current.defaultGeminiModel, defaultGemini.modelName)
 
         val customGemini =
             LlmProvider.create(

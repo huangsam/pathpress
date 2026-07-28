@@ -1,5 +1,6 @@
 package com.pathpress.llm
 
+import com.pathpress.config.Config
 import com.pathpress.model.*
 
 data class TripPlanResponse(
@@ -25,39 +26,39 @@ interface LlmProvider {
     fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult
 
     companion object {
-        const val DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
-        const val DEFAULT_CLAUDE_MODEL = "claude-3-haiku-20240307"
-        const val DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
-        const val DEFAULT_OLLAMA_MODEL = "gemma4:12b-mlx"
-
         fun create(
             providerName: String,
             apiKey: String?,
             apiUrl: String?,
             modelName: String? = null,
+            config: Config = Config.current,
         ): LlmProvider {
             return when (providerName.lowercase()) {
                 "gemini" ->
                     GeminiProvider(
                         apiKey = apiKey ?: System.getenv("GEMINI_API_KEY") ?: "",
-                        modelName = modelName ?: DEFAULT_GEMINI_MODEL,
+                        modelName = modelName ?: config.defaultGeminiModel,
+                        config = config,
                     )
                 "claude",
                 "anthropic" ->
                     ClaudeProvider(
                         apiKey = apiKey ?: System.getenv("ANTHROPIC_API_KEY") ?: "",
-                        modelName = modelName ?: DEFAULT_CLAUDE_MODEL,
+                        modelName = modelName ?: config.defaultClaudeModel,
+                        config = config,
                     )
                 "openai" ->
                     OpenAiCompatibleProvider(
                         apiKey = apiKey ?: System.getenv("OPENAI_API_KEY") ?: "",
                         endpoint = apiUrl ?: "https://api.openai.com/v1/chat/completions",
-                        modelName = modelName ?: DEFAULT_OPENAI_MODEL,
+                        modelName = modelName ?: config.defaultOpenAiModel,
+                        config = config,
                     )
                 "ollama" ->
                     OllamaProvider(
                         endpoint = apiUrl ?: "http://localhost:11434/api/chat",
-                        modelName = modelName ?: DEFAULT_OLLAMA_MODEL,
+                        modelName = modelName ?: config.defaultOllamaModel,
+                        config = config,
                     )
                 else -> NoOpFallbackProvider()
             }

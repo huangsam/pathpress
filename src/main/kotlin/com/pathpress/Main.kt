@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.int
+import com.pathpress.config.Config
 import com.pathpress.export.*
 import com.pathpress.export.PdfExporter.formatDuration
 import com.pathpress.llm.*
@@ -51,16 +52,16 @@ class PathPressCommand :
     val llmModel by
         option(
                 "--llm-model",
-                help = "Model name for LLM (e.g. '${LlmProvider.DEFAULT_OLLAMA_MODEL}')",
+                help = "Model name for LLM (e.g. '${Config.current.defaultOllamaModel}')",
             )
-            .default(LlmProvider.DEFAULT_OLLAMA_MODEL)
+            .default(Config.current.defaultOllamaModel)
     val llmKey by option("--llm-key", help = "API Key for the chosen LLM provider")
     val llmUrl by
         option("--llm-url", help = "Endpoint URL for LLM (e.g. for Ollama or custom server)")
     val poisPerLeg by
         option("--pois-per-leg", help = "Maximum POIs to extract per day/leg")
             .int()
-            .default(PoiExtractor.DEFAULT_POIS_PER_LEG)
+            .default(Config.current.defaultPoisPerLeg)
     val includeThemeParks by
         option(
                 "--include-theme-parks",

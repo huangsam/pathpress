@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.graphhopper.reader.ReaderElement
 import com.graphhopper.reader.ReaderNode
 import com.graphhopper.reader.osm.OSMInputFile
+import com.pathpress.config.Config
 import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
@@ -16,15 +17,14 @@ import org.slf4j.LoggerFactory
 
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
 
-const val GRID_CELL_SIZE_DEG = 0.05 // ~5.5 km per cell
-
 data class GridCell(val latIndex: Int, val lngIndex: Int) {
     companion object {
-        fun fromCoords(lat: Double, lng: Double): GridCell =
-            GridCell(
-                floor(lat / GRID_CELL_SIZE_DEG).toInt(),
-                floor(lng / GRID_CELL_SIZE_DEG).toInt(),
-            )
+        fun fromCoords(
+            lat: Double,
+            lng: Double,
+            gridCellSizeDeg: Double = Config.current.gridCellSizeDeg,
+        ): GridCell =
+            GridCell(floor(lat / gridCellSizeDeg).toInt(), floor(lng / gridCellSizeDeg).toInt())
     }
 }
 
@@ -48,8 +48,6 @@ data class PoiCacheStore(
  * file, backed by a fast JSON cache (`pois_cache.json`).
  */
 object PoiExtractor {
-    const val DEFAULT_POIS_PER_LEG = 10
-
     private val logger = LoggerFactory.getLogger(PoiExtractor::class.java)
     private val mapper = ObjectMapper().registerKotlinModule()
 
@@ -259,11 +257,12 @@ object PoiExtractor {
         pbfPath: String,
         legPoints: List<LocationCoords>,
         maxDistanceMeters: Double = 5000.0,
-        limitPerLeg: Int = DEFAULT_POIS_PER_LEG,
+        limitPerLeg: Int = Config.current.defaultPoisPerLeg,
         userPrompt: String? = null,
         includeThemeParks: Boolean = false,
         excludePeaks: Boolean = false,
         excludeIndustrial: Boolean = true,
+        config: Config = Config.current,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
@@ -293,10 +292,10 @@ object PoiExtractor {
         val minLng = legPoints.minOf { it.lng } - bufferDeg
         val maxLng = legPoints.maxOf { it.lng } + bufferDeg
 
-        val minLatCell = floor(minLat / GRID_CELL_SIZE_DEG).toInt()
-        val maxLatCell = floor(maxLat / GRID_CELL_SIZE_DEG).toInt()
-        val minLngCell = floor(minLng / GRID_CELL_SIZE_DEG).toInt()
-        val maxLngCell = floor(maxLng / GRID_CELL_SIZE_DEG).toInt()
+        val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
+        val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
+        val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
+        val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
 
         val candidatePois = mutableSetOf<POI>()
         for (latIdx in minLatCell..maxLatCell) {
@@ -370,10 +369,10 @@ object PoiExtractor {
         val minLng = targetLng - bufferDeg
         val maxLng = targetLng + bufferDeg
 
-        val minLatCell = floor(minLat / GRID_CELL_SIZE_DEG).toInt()
-        val maxLatCell = floor(maxLat / GRID_CELL_SIZE_DEG).toInt()
-        val minLngCell = floor(minLng / GRID_CELL_SIZE_DEG).toInt()
-        val maxLngCell = floor(maxLng / GRID_CELL_SIZE_DEG).toInt()
+        val minLatCell = floor(minLat / Config.current.gridCellSizeDeg).toInt()
+        val maxLatCell = floor(maxLat / Config.current.gridCellSizeDeg).toInt()
+        val minLngCell = floor(minLng / Config.current.gridCellSizeDeg).toInt()
+        val maxLngCell = floor(maxLng / Config.current.gridCellSizeDeg).toInt()
 
         val candidateTowns = mutableSetOf<TownInfo>()
         for (latIdx in minLatCell..maxLatCell) {

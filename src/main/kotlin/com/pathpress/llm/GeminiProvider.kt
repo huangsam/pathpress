@@ -1,6 +1,7 @@
 package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.pathpress.config.Config
 import com.pathpress.model.*
 import com.pathpress.util.*
 import java.net.URI
@@ -12,8 +13,9 @@ private val logger = LoggerFactory.getLogger(GeminiProvider::class.java)
 
 class GeminiProvider(
     private val apiKey: String,
-    val modelName: String = LlmProvider.DEFAULT_GEMINI_MODEL,
-) : HttpLlmProvider() {
+    config: Config = Config.current,
+    val modelName: String = config.defaultGeminiModel,
+) : HttpLlmProvider(config) {
     override fun planTrip(
         startName: String,
         endName: String,

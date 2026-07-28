@@ -2,6 +2,7 @@ package com.pathpress.routing
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.pathpress.config.Config
 import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
@@ -27,7 +28,7 @@ object Geocoder {
 
     private val httpClient: HttpClient =
         HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
+            .connectTimeout(Config.current.geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build()
 
