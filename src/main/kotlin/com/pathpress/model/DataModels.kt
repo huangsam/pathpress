@@ -77,8 +77,6 @@ data class RouteLeg(
     val dayTitle: String? = null,
     val pois: List<POI> = emptyList(),
     val legStory: String? = null,
-    val foodRecommendations: List<String> = emptyList(),
-    val insiderTips: List<String> = emptyList(),
     val endTownName: String? = null,
 ) {
     /** Generate a Google Maps URL for directions on this leg. */

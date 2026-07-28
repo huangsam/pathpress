@@ -81,8 +81,6 @@ class PdfExporterTest {
                 distanceMeters = 50000.0,
                 durationSeconds = 3600.0,
                 pois = listOf(poi),
-                foodRecommendations = listOf("Coastal Bakery"),
-                insiderTips = listOf("Stop before sunset"),
             )
         val route =
             Route(
@@ -124,25 +122,6 @@ class PdfExporterTest {
                 distanceMeters = 100000.0,
                 durationSeconds = 7200.0,
                 pois = emptyList(),
-                foodRecommendations = listOf("Food 1"),
-                insiderTips =
-                    listOf(
-                        "Tip 1",
-                        "Tip 2",
-                        "Tip 3",
-                        "Tip 4",
-                        "Tip 5",
-                        "Tip 6",
-                        "Tip 7",
-                        "Tip 8",
-                        "Tip 9",
-                        "Tip 10",
-                        "Tip 11",
-                        "Tip 12",
-                        "Tip 13",
-                        "Tip 14",
-                        "Tip 15",
-                    ),
             )
         val leg2 =
             RouteLeg(
@@ -157,8 +136,6 @@ class PdfExporterTest {
                 distanceMeters = 100000.0,
                 durationSeconds = 7200.0,
                 pois = emptyList(),
-                foodRecommendations = emptyList(),
-                insiderTips = emptyList(),
             )
         val route =
             Route(

@@ -22,12 +22,7 @@ data class TripPlanResponse(
     val narrative: String = "",
 )
 
-data class CuratedLegResult(
-    val legStory: String,
-    val curatedPois: List<POI>,
-    val foodRecommendations: List<String>,
-    val insiderTips: List<String>,
-)
+data class CuratedLegResult(val legStory: String, val curatedPois: List<POI>)
 
 /** Interface for LLM providers (Gemini, Claude, OpenAI, Ollama, and Fallback). */
 interface LlmProvider {
@@ -125,30 +120,7 @@ class NoOpFallbackProvider : LlmProvider {
                 poi.copy(description = desc, insiderTip = tip)
             }
 
-        val foodPois = updatedPois.filter { it.isFoodOrCoffee }
-        val foodRecs =
-            if (foodPois.isNotEmpty()) {
-                foodPois.take(2).map {
-                    "Stop by ${it.name} for local drinks and food recommendations."
-                }
-            } else {
-                listOf(
-                    "Keep an eye out for roadside farm stands and artisanal cafes near town centers."
-                )
-            }
-
-        val insiderTips =
-            listOf(
-                "Plan your stops during mid-morning or golden hour for the best scenic views.",
-                "Download offline maps for rural road segments along this leg.",
-            )
-
-        return CuratedLegResult(
-            legStory = story,
-            curatedPois = updatedPois,
-            foodRecommendations = foodRecs,
-            insiderTips = insiderTips,
-        )
+        return CuratedLegResult(legStory = story, curatedPois = updatedPois)
     }
 }
 
@@ -229,23 +201,13 @@ abstract class HttpLlmProvider : LlmProvider {
             2. Do NOT invent founding dates, historical facts, menu items, or any detail not present in the osm_tags above.
             3. Do NOT apply coastal, ocean, or beach imagery to landlocked locations. Use the coords to infer geography.
             4. Descriptions must be atmosphere and vibe only — not factual claims about history or specific offerings unless confirmed in osm_tags.
-            5. Food recommendations must reference only the food/drink POIs in the list above.
-            6. insiderTips must be practical driving/timing tips for this specific leg — not generic travel advice.
 
             Output ONLY valid raw JSON with this exact structure:
             {
               "legStory": "1-2 sentence engaging description of driving this leg toward $legRegion.",
               "poiDescriptions": {
                  "<POI Name>": "1-2 sentence atmosphere/vibe description. No invented facts."
-              },
-              "foodRecommendations": [
-                 "Specific recommendation referencing a real food POI from the list above.",
-                 "Second recommendation referencing another real food POI if available."
-              ],
-              "insiderTips": [
-                 "Practical driving or timing tip specific to this corridor.",
-                 "Second practical tip."
-              ]
+              }
             }
         """
             .trimIndent()
@@ -290,11 +252,6 @@ abstract class HttpLlmProvider : LlmProvider {
                 (map["poiDescriptions"] as? Map<*, *>)?.entries?.associate { (k, v) ->
                     k.toString().lowercase() to v.toString()
                 } ?: emptyMap()
-            val foodRecs =
-                (map["foodRecommendations"] as? List<*>)?.mapNotNull { it?.toString() }
-                    ?: emptyList()
-            val insiderTips =
-                (map["insiderTips"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
 
             val fallbackResult = NoOpFallbackProvider().curateLegPois(leg, null)
 
@@ -321,12 +278,7 @@ abstract class HttpLlmProvider : LlmProvider {
                     poi.copy(description = desc, insiderTip = tip)
                 }
 
-            CuratedLegResult(
-                legStory = legStory,
-                curatedPois = updatedPois,
-                foodRecommendations = foodRecs.ifEmpty { fallbackResult.foodRecommendations },
-                insiderTips = insiderTips.ifEmpty { fallbackResult.insiderTips },
-            )
+            CuratedLegResult(legStory = legStory, curatedPois = updatedPois)
         } catch (e: Exception) {
             NoOpFallbackProvider().curateLegPois(leg, null)
         }

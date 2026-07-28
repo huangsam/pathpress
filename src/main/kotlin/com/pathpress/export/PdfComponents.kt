@@ -123,29 +123,6 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
         if (leg.pois.isNotEmpty()) {
             poiSection(leg.pois)
         }
-
-        if (leg.foodRecommendations.isNotEmpty()) {
-            infoCard(
-                title = "Local Coffee & Food Recommendations",
-                icon = LucideIcon.coffee("#92400e", 16),
-                items = leg.foodRecommendations,
-                textColor = "#92400e",
-                bgColor = "#fffbeb",
-                borderColor = "#fde68a",
-            )
-        }
-
-        if (leg.insiderTips.isNotEmpty()) {
-            infoCard(
-                title = "Insider Driving & Scenic Tips",
-                icon = LucideIcon.lightbulb("#22543d", 16),
-                items = leg.insiderTips,
-                textColor = "#276749",
-                bgColor = "#f0fff4",
-                borderColor = "#c6f6d5",
-                titleColor = "#22543d",
-            )
-        }
     }
 }
 
@@ -184,34 +161,6 @@ internal fun FlowContent.poiCard(poi: POI) {
         }
         if (!poi.description.isNullOrBlank()) {
             div("poi-card-desc") { +sanitizeText(poi.description) }
-        }
-    }
-}
-
-internal fun FlowContent.infoCard(
-    title: String,
-    icon: String,
-    items: List<String>,
-    textColor: String,
-    bgColor: String,
-    borderColor: String,
-    titleColor: String = textColor,
-) {
-    div("info-card") {
-        style = "background: $bgColor; border-color: $borderColor;"
-        div("info-card-title") {
-            style = "color: $titleColor;"
-            unsafe { raw(icon) }
-            span {
-                style = "vertical-align: middle;"
-                +" $title"
-            }
-        }
-        for (item in items) {
-            div("info-card-item") {
-                style = "color: $textColor;"
-                +"\u2022 ${sanitizeText(item)}"
-            }
         }
     }
 }

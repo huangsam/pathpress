@@ -27,6 +27,7 @@ class RouteCalculator(
         days: Int,
         dayTitles: List<String> = emptyList(),
         profile: String = "car",
+        limitPerLeg: Int = 10,
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
 
@@ -40,10 +41,10 @@ class RouteCalculator(
             if (fallbackRes.hasErrors()) {
                 throw IllegalStateException("Route calculation failed: ${response.errors}")
             }
-            return extractLegsFromResponse(fallbackRes.best, days, dayTitles, profile)
+            return extractLegsFromResponse(fallbackRes.best, days, dayTitles, profile, limitPerLeg)
         }
 
-        return extractLegsFromResponse(response.best, days, dayTitles, profile)
+        return extractLegsFromResponse(response.best, days, dayTitles, profile, limitPerLeg)
     }
 
     private fun extractLegsFromResponse(
@@ -51,6 +52,7 @@ class RouteCalculator(
         days: Int,
         dayTitles: List<String>,
         profile: String,
+        limitPerLeg: Int,
     ): List<RouteLeg> {
         val pointsList = path.points
         val allCoords =
@@ -65,7 +67,7 @@ class RouteCalculator(
                         pbfFilePath,
                         allCoords,
                         maxDistanceMeters = 8000.0,
-                        limitPerLeg = 6,
+                        limitPerLeg = limitPerLeg,
                     )
                     .ifEmpty {
                         filterNearbyPois(
@@ -160,7 +162,7 @@ class RouteCalculator(
                         pbfFilePath,
                         legPoints,
                         maxDistanceMeters = 8000.0,
-                        limitPerLeg = 6,
+                        limitPerLeg = limitPerLeg,
                     )
                     .ifEmpty {
                         filterNearbyPois(

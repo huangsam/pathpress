@@ -55,6 +55,8 @@ class PathPressCommand :
     val llmKey by option("--llm-key", help = "API Key for the chosen LLM provider")
     val llmUrl by
         option("--llm-url", help = "Endpoint URL for LLM (e.g. for Ollama or custom server)")
+    val poisPerLeg by
+        option("--pois-per-leg", help = "Maximum POIs to extract per day/leg").int().default(10)
     val verbose by
         option(
                 "-v",
@@ -130,6 +132,7 @@ class PathPressCommand :
                 days = days,
                 dayTitles = tripPlan.dayThemes,
                 profile = if (profile.lowercase() == "scenic") "car" else profile,
+                limitPerLeg = poisPerLeg,
             )
 
         // 5. Curate POIs & Generate Leg Storytelling with LLM
@@ -137,12 +140,7 @@ class PathPressCommand :
         val curatedLegs =
             rawLegs.map { leg ->
                 val curation = llm.curateLegPois(leg, prompt)
-                leg.copy(
-                    legStory = curation.legStory,
-                    pois = curation.curatedPois,
-                    foodRecommendations = curation.foodRecommendations,
-                    insiderTips = curation.insiderTips,
-                )
+                leg.copy(legStory = curation.legStory, pois = curation.curatedPois)
             }
 
         val totalDistance = curatedLegs.sumOf { it.distanceMeters ?: 0.0 }
@@ -188,20 +186,6 @@ class PathPressCommand :
                             if (!poi.description.isNullOrBlank()) {
                                 appendLine("      Description: ${poi.description}")
                             }
-                        }
-                    }
-
-                    if (leg.foodRecommendations.isNotEmpty()) {
-                        appendLine("  Coffee & Local Food Recommendations:")
-                        for (rec in leg.foodRecommendations) {
-                            appendLine("    ☕ $rec")
-                        }
-                    }
-
-                    if (leg.insiderTips.isNotEmpty()) {
-                        appendLine("  Insider Tips:")
-                        for (tip in leg.insiderTips) {
-                            appendLine("    💡 $tip")
                         }
                     }
                 }
