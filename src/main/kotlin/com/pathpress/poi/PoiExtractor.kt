@@ -382,36 +382,107 @@ object PoiExtractor {
         return bestProgress
     }
 
+    private val KNOWN_CHAINS =
+        setOf(
+            "taco bell",
+            "mcdonald's",
+            "mcdonalds",
+            "subway",
+            "burger king",
+            "kfc",
+            "wendy's",
+            "domino's",
+            "pizza hut",
+            "starbucks",
+            "dunkin",
+            "dunkin'",
+            "hampton inn",
+            "best western",
+            "motel 6",
+            "super 8",
+            "quality inn",
+            "days inn",
+            "holiday inn",
+            "comfort inn",
+            "courtyard",
+            "la quinta",
+            "capital one cafe",
+            "jack in the box",
+            "in-n-out",
+            "panda express",
+            "teriyaki madness",
+            "carl's jr",
+            "arby's",
+            "dairy queen",
+            "sonic drive-in",
+            "chevron",
+            "7-eleven",
+            "circle k",
+            "shell",
+            "bp",
+            "exxon",
+            "mobil",
+            "speedway",
+        )
+
     /**
      * Calculates a popularity & metadata completeness score for a POI using OSM tag signals.
      *
      * Higher scores indicate notable landmarks, established businesses, or well-documented spots
-     * (e.g. Wikipedia/Wikidata entries, websites, opening hours, brand tags).
+     * (e.g. Wikipedia/Wikidata entries, websites, opening hours). Known national chains receive a
+     * heavy penalty.
      */
     internal fun calculatePoiQualityScore(poi: POI): Double {
         var score = 0.0
         val tags = poi.tags
+        val nameLower = poi.name?.lowercase() ?: ""
+        val brandLower = tags["brand"]?.lowercase() ?: ""
+        val operatorLower = tags["operator"]?.lowercase() ?: ""
+
+        val isChain =
+            KNOWN_CHAINS.any { chain ->
+                nameLower.contains(chain) ||
+                    brandLower.contains(chain) ||
+                    operatorLower.contains(chain)
+            }
+
+        if (isChain) {
+            score -= 15.0 // Heavy penalty for corporate fast food, motels, and gas station chains
+        }
 
         // Major popularity / notability signals
-        if (tags.containsKey("wikipedia") || tags.containsKey("wikidata")) score += 10.0
+        if (tags.containsKey("wikipedia") || tags.containsKey("wikidata")) score += 12.0
         if (
             tags.containsKey("website") ||
                 tags.containsKey("url") ||
                 tags.containsKey("contact:website")
         )
             score += 5.0
-        if (tags.containsKey("brand") || tags.containsKey("operator")) score += 3.0
+        if (!isChain && (tags.containsKey("brand") || tags.containsKey("operator"))) score += 2.0
         if (tags.containsKey("opening_hours")) score += 3.0
         if (tags.containsKey("phone") || tags.containsKey("contact:phone")) score += 2.0
-        if (tags.containsKey("cuisine")) score += 2.0
-        if (tags.containsKey("description") || tags.containsKey("note")) score += 1.5
+        if (tags.containsKey("cuisine")) score += 3.0
+        if (tags.containsKey("description") || tags.containsKey("note")) score += 2.0
         if (tags.containsKey("wheelchair") || tags.containsKey("outdoor_seating")) score += 1.0
 
-        // Bonus for tourist attractions / historic landmarks / parks
+        // Strong bonus for tourist attractions, historic landmarks, viewpoints, parks, nature, and
+        // culture
         if (
-            poi.type in setOf("viewpoint", "attraction", "museum", "park", "historic", "monument")
+            poi.type in
+                setOf(
+                    "viewpoint",
+                    "attraction",
+                    "museum",
+                    "park",
+                    "nature_reserve",
+                    "historic",
+                    "monument",
+                    "peak",
+                    "beach",
+                    "artwork",
+                )
         ) {
-            score += 2.0
+            score += 8.0
         }
 
         // Mild distance penalty so 1 km detour reduces score by ~1.0 point

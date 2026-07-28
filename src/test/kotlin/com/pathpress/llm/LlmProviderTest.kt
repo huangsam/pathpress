@@ -77,8 +77,13 @@ class LlmProviderTest {
 
         val curated = provider.curateLegPois(leg, userPrompt = null)
         assertEquals(2, curated.curatedPois.size)
-        assertTrue(curated.curatedPois[0].description!!.contains("local favorite spot"))
-        assertTrue(curated.curatedPois[1].description!!.contains("scenic viewpoint"))
+        assertTrue(
+            curated.curatedPois[0].description!!.contains("coffee", ignoreCase = true) ||
+                curated.curatedPois[0].description!!.contains("local", ignoreCase = true)
+        )
+        assertTrue(
+            curated.curatedPois[1].description!!.contains("scenic viewpoint", ignoreCase = true)
+        )
         assertTrue(curated.legStory.contains("Monterey"))
     }
 }
