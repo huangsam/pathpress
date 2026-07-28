@@ -6,6 +6,7 @@ import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
 import com.pathpress.poi.*
+import com.pathpress.util.*
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
@@ -139,7 +140,7 @@ object Geocoder {
 
             val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-            if (response.statusCode() == 200 && response.body().isNotBlank()) {
+            if (response.statusCode() == 200 && response.body().isNotBlankSafe()) {
                 val jsonNodes: List<Map<String, Any>> = mapper.readValue(response.body())
                 if (jsonNodes.isNotEmpty()) {
                     val first = jsonNodes[0]
@@ -148,7 +149,11 @@ object Geocoder {
                     val displayNameStr = first["display_name"]?.toString()
 
                     if (latStr != null && lonStr != null) {
-                        val coords = LocationCoords(latStr.toDouble(), lonStr.toDouble())
+                        val coords =
+                            LocationCoords(
+                                latStr.toDoubleOrNull().toDoubleSafe(),
+                                lonStr.toDoubleOrNull().toDoubleSafe(),
+                            )
                         val shortName =
                             displayNameStr?.split(',')?.take(2)?.joinToString(",") ?: queryString
                         return GeocodedLocation(coords, shortName.trim())

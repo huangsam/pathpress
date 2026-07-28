@@ -7,6 +7,7 @@ import com.pathpress.export.PdfExporter.sanitizeText
 import com.pathpress.model.*
 import com.pathpress.poi.*
 import com.pathpress.routing.*
+import com.pathpress.util.*
 import kotlinx.html.*
 
 internal fun FlowContent.coverPage(
@@ -31,7 +32,7 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
                 )
             }
         }
-        if (route.narrative.isNotBlank()) {
+        if (route.narrative.isNotBlankSafe()) {
             div("hero-narrative") { +"\"${sanitizeText(route.narrative)}\"" }
         }
     }
@@ -127,7 +128,7 @@ internal fun FlowContent.legCard(
             }
         }
 
-        if (!leg.legStory.isNullOrBlank()) {
+        if (leg.legStory.isNotBlankSafe()) {
             div("leg-story") { +"\"${sanitizeText(leg.legStory)}\"" }
         }
 
@@ -306,7 +307,7 @@ internal fun FlowContent.poiCard(poi: POI, index: Int, unit: DistanceUnit = Dist
                 span("dist-badge") { +distOffRoute }
             }
         }
-        if (!poi.description.isNullOrBlank()) {
+        if (poi.description.isNotBlankSafe()) {
             div("poi-card-desc") { +sanitizeText(poi.description) }
         }
     }
@@ -330,7 +331,7 @@ internal fun FlowContent.navigationAppendix(route: Route) {
 
                 div("qr-card") {
                     div("qr-card-header") { +"Day ${leg.dayNumber}: ${sanitizeText(cleanTitle)}" }
-                    if (qrDataUri.isNotBlank()) {
+                    if (qrDataUri.isNotBlankSafe()) {
                         img(
                             src = qrDataUri,
                             alt = "Leg Navigation QR Code",

@@ -3,6 +3,7 @@ package com.pathpress.llm
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.model.*
+import com.pathpress.util.*
 import java.net.http.HttpClient
 import java.time.Duration
 
@@ -102,16 +103,18 @@ abstract class HttpLlmProvider : LlmProvider {
             val themes =
                 (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
                     ?: (1..days).map { "Day $it" }
-            val narrative = map["narrative"]?.toString() ?: ""
+            val narrative = map.getOrDefault("narrative") { "" }.toString()
             val waypoints =
-                (map["waypoints"] as? List<*>)?.mapNotNull { w ->
-                    (w as? Map<*, *>)?.let {
-                        val lat = (it["lat"] as? Number)?.toDouble()
-                        val lng = (it["lng"] as? Number)?.toDouble()
-                        val name = it["name"]?.toString()
-                        if (lat != null && lng != null) LocationCoords(lat, lng, name) else null
+                (map["waypoints"] as? List<*>)
+                    ?.mapNotNull { w ->
+                        (w as? Map<*, *>)?.let {
+                            val lat = (it["lat"] as? Number)?.toDoubleSafe()
+                            val lng = (it["lng"] as? Number)?.toDoubleSafe()
+                            val name = it["name"]?.toString()
+                            if (lat != null && lng != null) LocationCoords(lat, lng, name) else null
+                        }
                     }
-                } ?: emptyList()
+                    .orEmptyList()
             TripPlanResponse(dayThemes = themes, waypoints = waypoints, narrative = narrative)
         } catch (_: Exception) {
             TripPlanResponse(
@@ -128,8 +131,10 @@ abstract class HttpLlmProvider : LlmProvider {
             val map: Map<String, Any> = mapper.readValue(cleanJson)
 
             val legStory =
-                map["legStory"]?.toString()
-                    ?: "Day ${leg.dayNumber}: Scenic drive through local landmarks."
+                map.getOrDefault("legStory") {
+                        "Day ${leg.dayNumber}: Scenic drive through local landmarks."
+                    }
+                    .toString()
             val poiDescMap =
                 (map["poiDescriptions"] as? Map<*, *>)?.entries?.associate { (k, v) ->
                     k.toString().lowercase() to v.toString()

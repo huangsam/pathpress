@@ -12,6 +12,7 @@ import com.pathpress.llm.*
 import com.pathpress.model.*
 import com.pathpress.poi.*
 import com.pathpress.routing.*
+import com.pathpress.util.*
 import org.slf4j.LoggerFactory
 
 object BuildConfig {
@@ -84,7 +85,7 @@ class PathPressCommand :
     private val logger = LoggerFactory.getLogger(PathPressCommand::class.java)
 
     override fun run() {
-        if (!prompt.isNullOrBlank() && llmProviderName.lowercase() == "none") {
+        if (prompt.isNotBlankSafe() && llmProviderName.lowercase() == "none") {
             throw com.github.ajalt.clikt.core.UsageError(
                 "A --prompt was provided, but no --llm-provider was specified. Please specify a provider (e.g., --llm-provider ollama) or remove the prompt."
             )
@@ -103,7 +104,7 @@ class PathPressCommand :
         logger.info("End Input: $endLocation")
         logger.info("Duration: $days days")
         logger.info("Profile: $profile")
-        if (!prompt.isNullOrBlank()) logger.info("Prompt: $prompt")
+        if (prompt.isNotBlankSafe()) logger.info("Prompt: $prompt")
         logger.info("LLM Provider: $llmProviderName (Model: $llmModel)")
         logger.info("Distance Unit: ${distanceUnit.name.lowercase()}")
         logger.info("Output: $outputFile")
@@ -194,7 +195,7 @@ class PathPressCommand :
                     appendLine(
                         "  Distance: ${PdfExporter.formatDistance(legDist, distanceUnit)} | Driving Time: ${formatDuration(legDur)}"
                     )
-                    if (!leg.legStory.isNullOrBlank()) {
+                    if (leg.legStory.isNotBlankSafe()) {
                         appendLine("  Story: \"${leg.legStory}\"")
                     }
                     appendLine("  Google Maps Leg Directions: ${leg.toDirectionsUrl()}")
@@ -214,7 +215,7 @@ class PathPressCommand :
                             appendLine(
                                 "    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}"
                             )
-                            if (!poi.description.isNullOrBlank()) {
+                            if (poi.description.isNotBlankSafe()) {
                                 appendLine("      Description: ${poi.description}")
                             }
                         }

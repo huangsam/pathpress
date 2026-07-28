@@ -2,6 +2,7 @@ package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.model.*
+import com.pathpress.util.*
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -51,7 +52,7 @@ class ClaudeProvider(
                 val content = root["content"] as? List<*>
                 val firstContent = content?.firstOrNull() as? Map<*, *>
                 val text = firstContent?.get("text") as? String
-                if (!text.isNullOrBlank()) {
+                if (text.isNotBlankSafe()) {
                     return parseTripPlan(text, days)
                 }
             }
@@ -89,7 +90,7 @@ class ClaudeProvider(
                 val content = root["content"] as? List<*>
                 val firstContent = content?.firstOrNull() as? Map<*, *>
                 val text = firstContent?.get("text") as? String
-                if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
+                if (text.isNotBlankSafe()) return parseCurationResponse(text, leg)
             }
         } catch (e: Exception) {
             logger.warn("Claude Curation warning: {}", e.message)

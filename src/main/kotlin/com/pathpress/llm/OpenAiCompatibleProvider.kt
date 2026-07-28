@@ -2,6 +2,7 @@ package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.model.*
+import com.pathpress.util.*
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -47,7 +48,7 @@ class OpenAiCompatibleProvider(
             val uri = URI.create(endpoint)
             val builder =
                 HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
-            if (apiKey.isNotBlank()) {
+            if (apiKey.isNotBlankSafe()) {
                 builder.header("Authorization", "Bearer $apiKey")
             }
             val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
@@ -59,7 +60,7 @@ class OpenAiCompatibleProvider(
                 val firstChoice = choices?.firstOrNull() as? Map<*, *>
                 val message = firstChoice?.get("message") as? Map<*, *>
                 val text = message?.get("content") as? String
-                if (!text.isNullOrBlank()) {
+                if (text.isNotBlankSafe()) {
                     return parseTripPlan(text, days)
                 }
             }
@@ -93,7 +94,7 @@ class OpenAiCompatibleProvider(
             val uri = URI.create(endpoint)
             val builder =
                 HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
-            if (apiKey.isNotBlank()) builder.header("Authorization", "Bearer $apiKey")
+            if (apiKey.isNotBlankSafe()) builder.header("Authorization", "Bearer $apiKey")
             val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() == 200) {
@@ -102,7 +103,7 @@ class OpenAiCompatibleProvider(
                 val firstChoice = choices?.firstOrNull() as? Map<*, *>
                 val message = firstChoice?.get("message") as? Map<*, *>
                 val text = message?.get("content") as? String
-                if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
+                if (text.isNotBlankSafe()) return parseCurationResponse(text, leg)
             }
         } catch (e: Exception) {
             logger.warn("OpenAI Curation warning: {}", e.message)

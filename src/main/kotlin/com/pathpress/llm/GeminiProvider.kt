@@ -2,6 +2,7 @@ package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.model.*
+import com.pathpress.util.*
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -54,7 +55,7 @@ class GeminiProvider(
                 val parts = content?.get("parts") as? List<*>
                 val text = (parts?.firstOrNull() as? Map<*, *>)?.get("text") as? String
 
-                if (!text.isNullOrBlank()) {
+                if (text.isNotBlankSafe()) {
                     return parseTripPlan(text, days)
                 }
             }
@@ -93,7 +94,7 @@ class GeminiProvider(
                 val content = firstCandidate?.get("content") as? Map<*, *>
                 val parts = content?.get("parts") as? List<*>
                 val text = (parts?.firstOrNull() as? Map<*, *>)?.get("text") as? String
-                if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
+                if (text.isNotBlankSafe()) return parseCurationResponse(text, leg)
             }
         } catch (e: Exception) {
             logger.warn("Gemini Curation warning: {}", e.message)

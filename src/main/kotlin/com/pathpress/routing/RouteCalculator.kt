@@ -8,13 +8,13 @@ import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
 import com.pathpress.poi.*
+import com.pathpress.util.*
 
 /** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(
     private val graphHopper: GraphHopper,
     val pbfFilePath: String = "california-latest.osm.pbf",
 ) {
-
     /**
      * Calculate a route between start and end coordinates, dividing it into daily legs with real
      * POIs.
@@ -215,14 +215,14 @@ class RouteCalculator(
 
             val endTown = townNames.getOrNull(dayIndex)
             val defaultTitle =
-                if (!endTown.isNullOrBlank()) "Drive to $endTown"
+                if (endTown.isNotBlankSafe()) "Drive to $endTown"
                 else if (dayIndex == days - 1) "Final Leg to Destination"
                 else "Day ${dayIndex + 1} Scenic Leg"
 
             val themeTitle = dayTitles.getOrNull(dayIndex)
             val finalLegTitle =
-                if (themeTitle.isNullOrBlank()) defaultTitle
-                else if (!endTown.isNullOrBlank() && themeTitle.startsWith("Day "))
+                if (!themeTitle.isNotBlankSafe()) defaultTitle
+                else if (endTown.isNotBlankSafe() && themeTitle.startsWith("Day "))
                     "Drive to $endTown"
                 else themeTitle
 
