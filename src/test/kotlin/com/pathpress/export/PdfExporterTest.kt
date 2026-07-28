@@ -98,6 +98,8 @@ class PdfExporterTest {
         assertTrue(html.contains("Merriweather"))
         assertTrue(html.contains("Inter"))
         assertTrue(html.contains("Big Sur Viewpoint"))
+        assertTrue(html.contains("display: inline; vertical-align: -0.15em;"))
+        assertTrue(!html.contains("display: inline-block; vertical-align: middle;"))
     }
 
     @Test

@@ -125,4 +125,44 @@ class LlmProviderTest {
         )
         assertTrue(curated.legStory.contains("Monterey"))
     }
+
+    @Test
+    fun `HttpLlmProvider buildCurationPrompt includes explicit accessibility instructions`() {
+        val dummyProvider =
+            object : HttpLlmProvider() {
+                public fun testCurationPrompt(leg: RouteLeg, userPrompt: String?) =
+                    buildCurationPrompt(leg, userPrompt)
+
+                override fun planTrip(
+                    startName: String,
+                    endName: String,
+                    startCoords: LocationCoords,
+                    endCoords: LocationCoords,
+                    days: Int,
+                    userPrompt: String?,
+                ): TripPlanResponse = error("Not implemented")
+
+                override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult =
+                    error("Not implemented")
+            }
+
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 1,
+                totalDays = 1,
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val prompt = dummyProvider.testCurationPrompt(leg, "Family trip with toddlers")
+        assertTrue(prompt.contains("ACCESSIBILITY & SUITABILITY"))
+        assertTrue(prompt.contains("toddlers, kids, or family"))
+        assertTrue(prompt.contains("reject any POIs requiring strenuous hiking"))
+    }
 }

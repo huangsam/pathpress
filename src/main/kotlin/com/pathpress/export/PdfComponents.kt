@@ -260,14 +260,19 @@ internal fun renderLegSvgMap(leg: RouteLeg, width: Int = 620, height: Int = 220)
         .trimIndent()
 }
 
+/**
+ * HTML component builders for PDF generation.
+ *
+ * STRICT OPENHTMLTOPDF ARCHITECTURE GUIDELINES:
+ * - Use pure inline text flow (or table layout) for headers, badges, and metadata cards.
+ * - Avoid combining `display: inline-block` with `vertical-align: middle` on SVG replacement
+ *   elements adjacent to inline text.
+ */
 internal fun FlowContent.poiSection(pois: List<POI>) {
     div("poi-section") {
         div("poi-title") {
             unsafe { raw(LucideIcon.camera("#0284c7", 16)) }
-            span {
-                style = "vertical-align: middle;"
-                +" Corridor POIs & Scenic Highlights"
-            }
+            span { +" Corridor POIs & Scenic Highlights" }
         }
         pois.forEachIndexed { idx, poi -> poiCard(poi, index = idx + 1) }
     }

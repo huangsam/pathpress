@@ -88,7 +88,7 @@ object PoiExtractor {
             "cliff",
         )
 
-    private val RELEVANT_LEISURE = setOf("park", "nature_reserve", "garden", "marina")
+    private val RELEVANT_LEISURE = setOf("park", "nature_reserve", "garden", "marina", "playground")
 
     private val RELEVANT_HISTORIC =
         setOf(
@@ -215,6 +215,44 @@ object PoiExtractor {
         return store
     }
 
+    internal fun isFamilyOrToddlerOrQuickBreak(userPrompt: String?): Boolean {
+        val prompt = userPrompt?.lowercase() ?: return false
+        return prompt.contains("toddler") ||
+            prompt.contains("toddlers") ||
+            prompt.contains("kid") ||
+            prompt.contains("kids") ||
+            prompt.contains("family") ||
+            prompt.contains("child") ||
+            prompt.contains("children") ||
+            prompt.contains("baby") ||
+            prompt.contains("highway break") ||
+            prompt.contains("quick break") ||
+            prompt.contains("rest stop")
+    }
+
+    internal fun isExcludedForPersona(
+        poi: POI,
+        shouldExcludePeaks: Boolean = false,
+        shouldExcludeIndustrial: Boolean = true,
+    ): Boolean {
+        val tags = poi.tags
+        if (shouldExcludePeaks && (tags["natural"] == "peak" || poi.type == "peak")) {
+            return true
+        }
+        if (shouldExcludeIndustrial) {
+            if (tags.containsKey("telecom") || tags["telecom"] != null) return true
+            if (tags.containsKey("power") || tags["power"] != null) return true
+            if (
+                tags.containsKey("industrial") ||
+                    tags["landuse"] == "industrial" ||
+                    tags["building"] == "industrial"
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
         pbfPath: String,
@@ -223,6 +261,8 @@ object PoiExtractor {
         limitPerLeg: Int = DEFAULT_POIS_PER_LEG,
         userPrompt: String? = null,
         includeThemeParks: Boolean = false,
+        excludePeaks: Boolean = false,
+        excludeIndustrial: Boolean = true,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
@@ -243,6 +283,9 @@ object PoiExtractor {
                         prompt.contains("roller coaster") ||
                         prompt.contains("coaster")
                 } ?: false)
+
+        val shouldExcludePeaks = excludePeaks || isFamilyOrToddlerOrQuickBreak(userPrompt)
+        val shouldExcludeIndustrial = excludeIndustrial
 
         val bufferDeg = (maxDistanceMeters / 111000.0) + 0.02
         val minLat = legPoints.minOf { it.lat } - bufferDeg
@@ -266,6 +309,7 @@ object PoiExtractor {
         for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 if (isExcludedThemeParkPoi(poi, allowsThemeParks)) continue
+                if (isExcludedForPersona(poi, shouldExcludePeaks, shouldExcludeIndustrial)) continue
                 val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
                     candidates.add(poi.copy(distanceFromRouteMeters = dist))
@@ -273,7 +317,7 @@ object PoiExtractor {
             }
         }
 
-        return rankAndSelectPois(candidates, limitPerLeg, legPoints)
+        return rankAndSelectPois(candidates, limitPerLeg, legPoints, userPrompt)
     }
 
     private fun isExcludedThemeParkPoi(poi: POI, allowsThemeParks: Boolean = false): Boolean {
@@ -396,6 +440,7 @@ object PoiExtractor {
         candidates: List<POI>,
         limit: Int,
         legPoints: List<LocationCoords> = emptyList(),
+        userPrompt: String? = null,
     ): List<POI> {
         if (candidates.isEmpty() || limit <= 0) return emptyList()
 
@@ -411,12 +456,12 @@ object PoiExtractor {
 
         // Use segment-based selection when we have route geometry
         if (legPoints.size >= 2) {
-            return selectBySegments(distinctByName, limit, legPoints)
+            return selectBySegments(distinctByName, limit, legPoints, userPrompt)
         }
 
         // Fallback: original distance-based two-pass selection
         return applyTypeDiversity(
-            distinctByName.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE },
+            distinctByName.sortedByDescending { calculatePoiQualityScore(it, userPrompt) },
             limit,
         )
     }
@@ -526,7 +571,7 @@ object PoiExtractor {
      * (e.g. Wikipedia/Wikidata entries, websites, opening hours). Known national chains receive a
      * heavy penalty.
      */
-    internal fun calculatePoiQualityScore(poi: POI): Double {
+    internal fun calculatePoiQualityScore(poi: POI, userPrompt: String? = null): Double {
         var score = 0.0
         val tags = poi.tags
         val nameLower = poi.name?.lowercase() ?: ""
@@ -559,8 +604,14 @@ object PoiExtractor {
         if (tags.containsKey("description") || tags.containsKey("note")) score += 2.0
         if (tags.containsKey("wheelchair") || tags.containsKey("outdoor_seating")) score += 1.0
 
-        // Strong bonus for tourist attractions, historic landmarks, viewpoints, parks, nature, and
-        // culture
+        // Strong bonus for tourist attractions, historic landmarks, viewpoints, parks, nature,
+        // culture, playgrounds, zoos, museums, cafes
+        val isChildOrFamilyFriendly =
+            poi.type in setOf("playground", "park", "zoo", "museum", "cafe") ||
+                tags["leisure"] in setOf("playground", "park") ||
+                tags["tourism"] in setOf("zoo", "museum") ||
+                tags["amenity"] == "cafe"
+
         if (
             poi.type in
                 setOf(
@@ -574,9 +625,19 @@ object PoiExtractor {
                     "peak",
                     "beach",
                     "artwork",
-                )
+                    "playground",
+                    "zoo",
+                    "cafe",
+                ) || isChildOrFamilyFriendly
         ) {
             score += 8.0
+        }
+
+        if (isChildOrFamilyFriendly) {
+            score += 2.0 // Additional prioritization bonus for playground, park, zoo, museum, cafe
+            if (isFamilyOrToddlerOrQuickBreak(userPrompt)) {
+                score += 5.0 // Extra persona bonus for family/toddler/quick-break trips
+            }
         }
 
         // Mild distance penalty so 1 km detour reduces score by ~1.0 point
@@ -595,6 +656,7 @@ object PoiExtractor {
         candidates: List<POI>,
         limit: Int,
         legPoints: List<LocationCoords>,
+        userPrompt: String? = null,
     ): List<POI> {
         data class Scored(val poi: POI, val progress: Double, val quality: Double)
 
@@ -604,7 +666,7 @@ object PoiExtractor {
                     Scored(
                         it,
                         routeProgress(it.lat, it.lng, legPoints),
-                        calculatePoiQualityScore(it),
+                        calculatePoiQualityScore(it, userPrompt),
                     )
                 }
                 .sortedBy { it.progress }
@@ -638,7 +700,7 @@ object PoiExtractor {
                 scored
                     .map { it.poi }
                     .filter { it !in selected }
-                    .sortedByDescending { calculatePoiQualityScore(it) }
+                    .sortedByDescending { calculatePoiQualityScore(it, userPrompt) }
             for (poi in remaining) {
                 if (selected.size >= limit) break
                 val count = typeCounts[poi.type] ?: 0

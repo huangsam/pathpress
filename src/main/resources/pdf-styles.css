@@ -1,3 +1,9 @@
+/*
+ * OPENHTMLTOPDF LAYOUT ARCHITECTURE STANDARDS:
+ * 1. Use pure inline text flow (or table layout) for headers, badges, and metadata cards.
+ * 2. Avoid combining `display: inline-block` with `vertical-align: middle` on SVG replacement elements adjacent to inline text.
+ */
+
 @page {
   size: A4 portrait;
   margin: 20mm 14mm 18mm 14mm;
@@ -117,7 +123,7 @@ h3,
   font-weight: bold;
   font-size: 14px;
   margin-top: 4px;
-  display: inline-block;
+  display: block;
 }
 .section-title {
   font-size: 18px;

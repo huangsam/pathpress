@@ -82,6 +82,7 @@ abstract class HttpLlmProvider : LlmProvider {
             2. Do NOT invent founding dates, historical facts, menu items, or any detail not present in the osm_tags above.
             3. Do NOT apply coastal, ocean, or beach imagery to landlocked locations. Use the coords to infer geography.
             4. Descriptions must be atmosphere and vibe only — not factual claims about history or specific offerings unless confirmed in osm_tags.
+            5. ACCESSIBILITY & SUITABILITY: Explicitly evaluate POI accessibility based on the user's trip prompt/vibe. If the user prompt mentions toddlers, kids, or family, reject any POIs requiring strenuous hiking, high elevation climbs, or non-child-friendly venues.
 
             Output ONLY valid raw JSON with this exact structure:
             {

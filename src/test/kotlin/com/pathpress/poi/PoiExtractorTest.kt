@@ -203,4 +203,150 @@ class PoiExtractorTest {
 
         PoiExtractor.clearInMemCache()
     }
+
+    @Test
+    fun `isRelevantPoi recognizes leisure playground`() {
+        assertTrue(PoiExtractor.isRelevantPoi(mapOf("leisure" to "playground")))
+    }
+
+    @Test
+    fun `isFamilyOrToddlerOrQuickBreak detects family and quick break keywords`() {
+        assertTrue(PoiExtractor.isFamilyOrToddlerOrQuickBreak("Road trip with toddlers and kids"))
+        assertTrue(PoiExtractor.isFamilyOrToddlerOrQuickBreak("Family vacation with a baby"))
+        assertTrue(PoiExtractor.isFamilyOrToddlerOrQuickBreak("Quick highway break along I-5"))
+        assertFalse(
+            PoiExtractor.isFamilyOrToddlerOrQuickBreak("Extreme mountain climbing expedition")
+        )
+    }
+
+    @Test
+    fun `isExcludedForPersona filters peak, industrial, telecom, and power tags`() {
+        val peakPoi =
+            POI(
+                id = "1",
+                name = "Mt Tam",
+                lat = 37.9,
+                lng = -122.5,
+                tags = mapOf("natural" to "peak"),
+                type = "peak",
+            )
+        val telecomPoi =
+            POI(
+                id = "2",
+                name = "Radio Tower",
+                lat = 37.9,
+                lng = -122.5,
+                tags = mapOf("telecom" to "tower"),
+                type = "attraction",
+            )
+        val industrialPoi =
+            POI(
+                id = "3",
+                name = "Substation",
+                lat = 37.9,
+                lng = -122.5,
+                tags = mapOf("landuse" to "industrial"),
+                type = "attraction",
+            )
+        val powerPoi =
+            POI(
+                id = "4",
+                name = "Power Plant",
+                lat = 37.9,
+                lng = -122.5,
+                tags = mapOf("power" to "plant"),
+                type = "attraction",
+            )
+        val playgroundPoi =
+            POI(
+                id = "5",
+                name = "City Park Playground",
+                lat = 37.9,
+                lng = -122.5,
+                tags = mapOf("leisure" to "playground"),
+                type = "playground",
+            )
+
+        assertTrue(
+            PoiExtractor.isExcludedForPersona(
+                peakPoi,
+                shouldExcludePeaks = true,
+                shouldExcludeIndustrial = true,
+            )
+        )
+        assertFalse(
+            PoiExtractor.isExcludedForPersona(
+                peakPoi,
+                shouldExcludePeaks = false,
+                shouldExcludeIndustrial = true,
+            )
+        )
+
+        assertTrue(
+            PoiExtractor.isExcludedForPersona(
+                telecomPoi,
+                shouldExcludePeaks = false,
+                shouldExcludeIndustrial = true,
+            )
+        )
+        assertTrue(
+            PoiExtractor.isExcludedForPersona(
+                industrialPoi,
+                shouldExcludePeaks = false,
+                shouldExcludeIndustrial = true,
+            )
+        )
+        assertTrue(
+            PoiExtractor.isExcludedForPersona(
+                powerPoi,
+                shouldExcludePeaks = false,
+                shouldExcludeIndustrial = true,
+            )
+        )
+        assertFalse(
+            PoiExtractor.isExcludedForPersona(
+                playgroundPoi,
+                shouldExcludePeaks = true,
+                shouldExcludeIndustrial = true,
+            )
+        )
+    }
+
+    @Test
+    fun `calculatePoiQualityScore prioritizes child-friendly POIs for family prompts`() {
+        val playground =
+            POI(
+                id = "1",
+                name = "Town Playground",
+                lat = 37.1,
+                lng = -122.1,
+                tags = mapOf("leisure" to "playground"),
+                type = "playground",
+            )
+        val genericSpot =
+            POI(
+                id = "2",
+                name = "Generic Spot",
+                lat = 37.1,
+                lng = -122.1,
+                tags = emptyMap(),
+                type = "attraction",
+            )
+
+        val familyScore =
+            PoiExtractor.calculatePoiQualityScore(
+                playground,
+                userPrompt = "Trip with kids and toddlers",
+            )
+        val defaultScore =
+            PoiExtractor.calculatePoiQualityScore(
+                genericSpot,
+                userPrompt = "Trip with kids and toddlers",
+            )
+
+        assertTrue(
+            familyScore > defaultScore + 5.0,
+            "Expected playground score ($familyScore) to be significantly higher than generic spot ($defaultScore)",
+        )
+    }
 }
