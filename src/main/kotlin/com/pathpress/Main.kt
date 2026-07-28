@@ -72,6 +72,13 @@ class PathPressCommand :
                 help = "Print detailed POI corridor breakdown and metrics to terminal",
             )
             .flag(default = false)
+    val distanceUnitStr by
+        option(
+                "--distance-unit",
+                "--units",
+                help = "Distance units for display & PDF: 'imperial' (mi/ft) or 'metric' (km/m)",
+            )
+            .default("metric")
 
     private val logger = LoggerFactory.getLogger(PathPressCommand::class.java)
 
@@ -82,6 +89,13 @@ class PathPressCommand :
             )
         }
 
+        val distanceUnit =
+            if (distanceUnitStr.lowercase() in listOf("imperial", "mi", "miles", "feet", "ft")) {
+                DistanceUnit.IMPERIAL
+            } else {
+                DistanceUnit.METRIC
+            }
+
         logger.info("PathPress v${BuildConfig.VERSION}")
         logger.info("=".repeat(50))
         logger.info("Start Input: $startLocation")
@@ -90,6 +104,7 @@ class PathPressCommand :
         logger.info("Profile: $profile")
         if (!prompt.isNullOrBlank()) logger.info("Prompt: $prompt")
         logger.info("LLM Provider: $llmProviderName (Model: $llmModel)")
+        logger.info("Distance Unit: ${distanceUnit.name.lowercase()}")
         logger.info("Output: $outputFile")
         logger.info("Verbose Mode: ${if (verbose) "ENABLED" else "DISABLED"}")
 
@@ -158,7 +173,9 @@ class PathPressCommand :
         val route = Route(curatedLegs, totalDistance, totalDuration, narrative = tripPlan.narrative)
 
         logger.info("Route calculated successfully!")
-        logger.info("  Total distance: ${formatDistance(route.totalDistanceMeters)}")
+        logger.info(
+            "  Total distance: ${PdfExporter.formatDistance(route.totalDistanceMeters, distanceUnit)}"
+        )
         logger.info("  Estimated duration: ${formatDuration(route.totalDurationSeconds)}")
 
         // 6. Print Verbose Detailed POI Breakdown to Terminal if requested
@@ -174,7 +191,7 @@ class PathPressCommand :
                 val legLog = buildString {
                     appendLine("Day ${leg.dayNumber}: ${leg.dayTitle}$overnightStr")
                     appendLine(
-                        "  Distance: ${formatDistance(legDist)} | Driving Time: ${formatDuration(legDur)}"
+                        "  Distance: ${PdfExporter.formatDistance(legDist, distanceUnit)} | Driving Time: ${formatDuration(legDur)}"
                     )
                     if (!leg.legStory.isNullOrBlank()) {
                         appendLine("  Story: \"${leg.legStory}\"")
@@ -188,7 +205,10 @@ class PathPressCommand :
                         for (poi in leg.pois) {
                             val poiName = poi.name ?: "Unnamed POI"
                             val distOffStr =
-                                PdfExporter.formatOffRouteDistance(poi.distanceFromRouteMeters)
+                                PdfExporter.formatOffRouteDistance(
+                                        poi.distanceFromRouteMeters,
+                                        distanceUnit,
+                                    )
                                     ?.let { " ($it)" } ?: ""
                             appendLine(
                                 "    • $poiName [${poi.type}]$distOffStr @ ${poi.lat}, ${poi.lng}"
@@ -206,7 +226,13 @@ class PathPressCommand :
 
         // 7. Render HTML & Export to PDF
         logger.info("Exporting itinerary to PDF ($outputFile)...")
-        val htmlContent = PdfExporter.generateHtml(route, startGeo.displayName, endGeo.displayName)
+        val htmlContent =
+            PdfExporter.generateHtml(
+                route,
+                startGeo.displayName,
+                endGeo.displayName,
+                unit = distanceUnit,
+            )
         PdfExporter.exportToPdf(htmlContent, outputFile)
 
         logger.info("✓ PDF exported successfully to: $outputFile")
@@ -223,7 +249,7 @@ class PathPressCommand :
                         .ifBlank { "Scenic Leg" }
                 val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
                 appendLine(
-                    "  Day ${leg.dayNumber}: $cleanTitle$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})"
+                    "  Day ${leg.dayNumber}: $cleanTitle$endTown - ${PdfExporter.formatDistance(legDist, distanceUnit)} (${formatDuration(legDur)})"
                 )
             }
         }
@@ -232,14 +258,6 @@ class PathPressCommand :
 }
 
 fun main(args: Array<String>) = PathPressCommand().main(args)
-
-private fun formatDistance(meters: Double): String {
-    return if (meters >= 1000) {
-        "${String.format("%.1f", meters / 1000)} km"
-    } else {
-        "${String.format("%.0f", meters)} m"
-    }
-}
 
 private fun formatDuration(seconds: Double): String {
     val hours = seconds.toInt() / 3600

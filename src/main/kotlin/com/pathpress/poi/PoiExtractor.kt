@@ -285,7 +285,6 @@ object PoiExtractor {
                 } ?: false)
 
         val shouldExcludePeaks = excludePeaks || isFamilyOrToddlerOrQuickBreak(userPrompt)
-        val shouldExcludeIndustrial = excludeIndustrial
 
         val bufferDeg = (maxDistanceMeters / 111000.0) + 0.02
         val minLat = legPoints.minOf { it.lat } - bufferDeg
@@ -309,7 +308,7 @@ object PoiExtractor {
         for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 if (isExcludedThemeParkPoi(poi, allowsThemeParks)) continue
-                if (isExcludedForPersona(poi, shouldExcludePeaks, shouldExcludeIndustrial)) continue
+                if (isExcludedForPersona(poi, shouldExcludePeaks, excludeIndustrial)) continue
                 val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
                     candidates.add(poi.copy(distanceFromRouteMeters = dist))
