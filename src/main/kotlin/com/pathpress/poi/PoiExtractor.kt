@@ -47,7 +47,7 @@ data class PoiCacheStore(
  * file, backed by a fast JSON cache (`pois_cache.json`).
  */
 object PoiExtractor {
-    const val DEFAULT_POIS_PER_LEG = 12
+    const val DEFAULT_POIS_PER_LEG = 10
 
     private val logger = LoggerFactory.getLogger(PoiExtractor::class.java)
     private val mapper = ObjectMapper().registerKotlinModule()

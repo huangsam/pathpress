@@ -1,0 +1,112 @@
+package com.pathpress.llm
+
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.pathpress.model.*
+import java.net.URI
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import org.slf4j.LoggerFactory
+
+private val logger = LoggerFactory.getLogger(OllamaProvider::class.java)
+
+class OllamaProvider(
+    private val endpoint: String,
+    val modelName: String = LlmProvider.DEFAULT_OLLAMA_MODEL,
+) : HttpLlmProvider() {
+    override fun planTrip(
+        startName: String,
+        endName: String,
+        startCoords: LocationCoords,
+        endCoords: LocationCoords,
+        days: Int,
+        userPrompt: String?,
+    ): TripPlanResponse {
+        try {
+            val promptText = buildPrompt(startName, endName, days, userPrompt)
+            val requestBody =
+                mapper.writeValueAsString(
+                    mapOf(
+                        "model" to modelName,
+                        "messages" to
+                            listOf(
+                                mapOf(
+                                    "role" to "system",
+                                    "content" to
+                                        "You are a helpful travel planner that outputs JSON.",
+                                ),
+                                mapOf("role" to "user", "content" to promptText),
+                            ),
+                        "stream" to false,
+                        "format" to "json",
+                        "options" to mapOf("temperature" to 0.2),
+                    )
+                )
+
+            val uri = URI.create(endpoint)
+            val request =
+                HttpRequest.newBuilder()
+                    .uri(uri)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() == 200) {
+                val root: Map<String, Any> = mapper.readValue(response.body())
+                val message = root["message"] as? Map<*, *>
+                val responseText = message?.get("content") as? String
+                if (!responseText.isNullOrBlank()) {
+                    return parseTripPlan(responseText, days)
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Ollama Provider warning: {}", e.message)
+        }
+        return NoOpFallbackProvider()
+            .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
+    }
+
+    override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
+        try {
+            val promptText = buildCurationPrompt(leg, userPrompt)
+            val requestBody =
+                mapper.writeValueAsString(
+                    mapOf(
+                        "model" to modelName,
+                        "messages" to
+                            listOf(
+                                mapOf(
+                                    "role" to "system",
+                                    "content" to
+                                        "You are a local travel guide that outputs raw JSON.",
+                                ),
+                                mapOf("role" to "user", "content" to promptText),
+                            ),
+                        "stream" to false,
+                        "format" to "json",
+                        "options" to mapOf("temperature" to 0.2),
+                    )
+                )
+            val uri = URI.create(endpoint)
+            val request =
+                HttpRequest.newBuilder()
+                    .uri(uri)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() == 200) {
+                val root: Map<String, Any> = mapper.readValue(response.body())
+                val message = root["message"] as? Map<*, *>
+                val responseText = message?.get("content") as? String
+                if (!responseText.isNullOrBlank()) {
+                    return parseCurationResponse(responseText, leg)
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Ollama Curation warning: {}", e.message)
+        }
+        return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
+    }
+}

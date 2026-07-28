@@ -1,9 +1,6 @@
 package com.pathpress.llm
 
-import com.pathpress.export.*
 import com.pathpress.model.*
-import com.pathpress.poi.*
-import com.pathpress.routing.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -15,6 +12,48 @@ class LlmProviderTest {
     fun `LlmProvider factory creates NoOpFallbackProvider for unknown provider`() {
         val provider = LlmProvider.create("unknown", null, null)
         assertIs<NoOpFallbackProvider>(provider)
+    }
+
+    @Test
+    fun `LlmProvider factory configures default and custom models for providers`() {
+        val defaultGemini = LlmProvider.create("gemini", apiKey = "test-key", apiUrl = null)
+        assertIs<GeminiProvider>(defaultGemini)
+        assertEquals(LlmProvider.DEFAULT_GEMINI_MODEL, defaultGemini.modelName)
+
+        val customGemini =
+            LlmProvider.create(
+                "gemini",
+                apiKey = "test-key",
+                apiUrl = null,
+                modelName = "gemini-2.0-flash",
+            )
+        assertIs<GeminiProvider>(customGemini)
+        assertEquals("gemini-2.0-flash", customGemini.modelName)
+
+        val customClaude =
+            LlmProvider.create(
+                "claude",
+                apiKey = "test-key",
+                apiUrl = null,
+                modelName = "claude-3-5-sonnet",
+            )
+        assertIs<ClaudeProvider>(customClaude)
+        assertEquals("claude-3-5-sonnet", customClaude.modelName)
+
+        val customOpenAi =
+            LlmProvider.create("openai", apiKey = "test-key", apiUrl = null, modelName = "gpt-4o")
+        assertIs<OpenAiCompatibleProvider>(customOpenAi)
+        assertEquals("gpt-4o", customOpenAi.modelName)
+
+        val customOllama =
+            LlmProvider.create(
+                "ollama",
+                apiKey = null,
+                apiUrl = "http://localhost:11434/api/chat",
+                modelName = "llama3:8b",
+            )
+        assertIs<OllamaProvider>(customOllama)
+        assertEquals("llama3:8b", customOllama.modelName)
     }
 
     @Test
