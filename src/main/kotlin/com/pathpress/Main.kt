@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.int
 import com.pathpress.export.*
+import com.pathpress.export.PdfExporter.formatDuration
 import com.pathpress.llm.*
 import com.pathpress.model.*
 import com.pathpress.poi.*
@@ -258,13 +259,3 @@ class PathPressCommand :
 }
 
 fun main(args: Array<String>) = PathPressCommand().main(args)
-
-private fun formatDuration(seconds: Double): String {
-    val hours = seconds.toInt() / 3600
-    val minutes = (seconds.toInt() % 3600) / 60
-    return if (hours > 0) {
-        "${hours}h ${minutes}m"
-    } else {
-        "${minutes}m"
-    }
-}

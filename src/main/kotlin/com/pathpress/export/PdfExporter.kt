@@ -141,7 +141,7 @@ object PdfExporter {
         }
     }
 
-    internal fun formatDuration(seconds: Double): String {
+    fun formatDuration(seconds: Double): String {
         val hours = seconds.toInt() / 3600
         val minutes = (seconds.toInt() % 3600) / 60
         return if (hours > 0) {
