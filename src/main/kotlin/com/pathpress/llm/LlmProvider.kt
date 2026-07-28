@@ -43,6 +43,8 @@ interface LlmProvider {
     fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult
 
     companion object {
+        const val DEFAULT_OLLAMA_MODEL = "gemma4:12b-mlx"
+
         fun create(
             providerName: String,
             apiKey: String?,
@@ -61,7 +63,7 @@ interface LlmProvider {
                 "ollama" ->
                     OllamaProvider(
                         endpoint = apiUrl ?: "http://localhost:11434/api/chat",
-                        modelName = modelName ?: "qwen3.6:35b-mlx",
+                        modelName = modelName ?: DEFAULT_OLLAMA_MODEL,
                     )
                 else -> NoOpFallbackProvider()
             }
@@ -602,7 +604,7 @@ class OpenAiCompatibleProvider(private val apiKey: String, private val endpoint:
 
 class OllamaProvider(
     private val endpoint: String,
-    private val modelName: String = "qwen3.6:35b-mlx",
+    private val modelName: String = LlmProvider.DEFAULT_OLLAMA_MODEL,
 ) : HttpLlmProvider() {
     override fun planTrip(
         startName: String,

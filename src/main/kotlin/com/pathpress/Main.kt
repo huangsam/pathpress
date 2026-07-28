@@ -47,8 +47,11 @@ class PathPressCommand :
         option("--llm-provider", help = "LLM provider: gemini, claude, openai, ollama, or none")
             .default("none")
     val llmModel by
-        option("--llm-model", help = "Model name for LLM (e.g. 'qwen3.6:35b-mlx')")
-            .default("qwen3.6:35b-mlx")
+        option(
+                "--llm-model",
+                help = "Model name for LLM (e.g. '${LlmProvider.DEFAULT_OLLAMA_MODEL}')",
+            )
+            .default(LlmProvider.DEFAULT_OLLAMA_MODEL)
     val llmKey by option("--llm-key", help = "API Key for the chosen LLM provider")
     val llmUrl by
         option("--llm-url", help = "Endpoint URL for LLM (e.g. for Ollama or custom server)")
