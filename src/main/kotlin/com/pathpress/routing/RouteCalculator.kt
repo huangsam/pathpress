@@ -9,7 +9,6 @@ import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
 import com.pathpress.poi.*
-import com.pathpress.util.*
 
 /** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(
@@ -216,14 +215,14 @@ class RouteCalculator(
 
             val endTown = townNames.getOrNull(dayIndex)
             val defaultTitle =
-                if (endTown.isNotBlankSafe()) "Drive to $endTown"
+                if (!endTown.isNullOrBlank()) "Drive to $endTown"
                 else if (dayIndex == days - 1) "Final Leg to Destination"
                 else "Day ${dayIndex + 1} Scenic Leg"
 
             val themeTitle = dayTitles.getOrNull(dayIndex)
             val finalLegTitle =
-                if (!themeTitle.isNotBlankSafe()) defaultTitle
-                else if (endTown.isNotBlankSafe() && themeTitle.startsWith("Day "))
+                if (themeTitle.isNullOrBlank()) defaultTitle
+                else if (!endTown.isNullOrBlank() && themeTitle.startsWith("Day "))
                     "Drive to $endTown"
                 else themeTitle
 

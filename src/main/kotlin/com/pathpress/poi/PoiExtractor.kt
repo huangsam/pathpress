@@ -10,7 +10,6 @@ import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
 import com.pathpress.routing.*
-import com.pathpress.util.*
 import java.io.File
 import kotlin.math.*
 import org.slf4j.LoggerFactory
@@ -169,7 +168,7 @@ object PoiExtractor {
                     val node = elem as ReaderNode
                     val tags = extractTags(node)
                     val name = tags["name"]
-                    if (name.isNotBlankSafe()) {
+                    if (!name.isNullOrBlank()) {
                         if (isRelevantPoi(tags)) {
                             val poi =
                                 POI.fromOsm(
@@ -682,14 +681,14 @@ object PoiExtractor {
             val pick =
                 inBucket
                     .sortedByDescending { it.quality }
-                    .firstOrNull { (typeCounts.getOrDefault(it.poi.type) { 0 }) < 1 }
+                    .firstOrNull { typeCounts.getOrDefault(it.poi.type, 0) < 1 }
                     ?: inBucket
                         .sortedByDescending { it.quality }
-                        .firstOrNull { (typeCounts.getOrDefault(it.poi.type) { 0 }) < 2 }
+                        .firstOrNull { typeCounts.getOrDefault(it.poi.type, 0) < 2 }
 
             if (pick != null) {
                 selected.add(pick.poi)
-                typeCounts[pick.poi.type] = (typeCounts.getOrDefault(pick.poi.type) { 0 }) + 1
+                typeCounts[pick.poi.type] = typeCounts.getOrDefault(pick.poi.type, 0) + 1
             }
         }
 
@@ -702,7 +701,7 @@ object PoiExtractor {
                     .sortedByDescending { calculatePoiQualityScore(it, userPrompt) }
             for (poi in remaining) {
                 if (selected.size >= limit) break
-                val count = typeCounts.getOrDefault(poi.type) { 0 }
+                val count = typeCounts.getOrDefault(poi.type, 0)
                 if (count < 2) {
                     selected.add(poi)
                     typeCounts[poi.type] = count + 1
@@ -711,7 +710,7 @@ object PoiExtractor {
         }
 
         val progressMap = scored.associate { it.poi.id to it.progress }
-        return selected.sortedBy { progressMap.getOrDefault(it.id) { 0.0 } }
+        return selected.sortedBy { progressMap.getOrDefault(it.id, 0.0) }
     }
 
     /** Two-pass type-diverse selection sorted by proximity to route (no spatial spread). */
@@ -720,7 +719,7 @@ object PoiExtractor {
         val selected = mutableListOf<POI>()
 
         for (poi in sortedCandidates) {
-            val count = typeCounts.getOrDefault(poi.type) { 0 }
+            val count = typeCounts.getOrDefault(poi.type, 0)
             if (count < 1) {
                 selected.add(poi)
                 typeCounts[poi.type] = count + 1
@@ -731,7 +730,7 @@ object PoiExtractor {
         if (selected.size < limit) {
             for (poi in sortedCandidates) {
                 if (poi !in selected) {
-                    val count = typeCounts.getOrDefault(poi.type) { 0 }
+                    val count = typeCounts.getOrDefault(poi.type, 0)
                     if (count < 2) {
                         selected.add(poi)
                         typeCounts[poi.type] = count + 1

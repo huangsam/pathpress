@@ -3,7 +3,6 @@ package com.pathpress.llm
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
 import com.pathpress.model.*
-import com.pathpress.util.*
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -58,7 +57,7 @@ class OllamaProvider(
                 val root: Map<String, Any> = mapper.readValue(response.body())
                 val message = root["message"] as? Map<*, *>
                 val responseText = message?.get("content") as? String
-                if (responseText.isNotBlankSafe()) {
+                if (!responseText.isNullOrBlank()) {
                     return parseTripPlan(responseText, days)
                 }
             }
@@ -103,7 +102,7 @@ class OllamaProvider(
                 val root: Map<String, Any> = mapper.readValue(response.body())
                 val message = root["message"] as? Map<*, *>
                 val responseText = message?.get("content") as? String
-                if (responseText.isNotBlankSafe()) {
+                if (!responseText.isNullOrBlank()) {
                     return parseCurationResponse(responseText, leg)
                 }
             }

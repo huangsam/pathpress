@@ -4,14 +4,13 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
 import com.pathpress.model.*
-import com.pathpress.util.*
 import java.net.http.HttpClient
 
 fun String?.validateApiKey(type: LlmProviderType): String {
     val resolvedKey =
-        if (this.isNotBlankSafe()) this else type.envVarName?.let { System.getenv(it) }
+        if (!this.isNullOrBlank()) this else type.envVarName?.let { System.getenv(it) }
 
-    require(resolvedKey.isNotBlankSafe()) {
+    require(!resolvedKey.isNullOrBlank()) {
         "API key missing for ${type.id}. Set ${type.envVarName} or pass --llm-key"
     }
     return resolvedKey
@@ -116,18 +115,18 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             val themes =
                 (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
                     ?: (1..days).map { "Day $it" }
-            val narrative = map.getOrDefault("narrative") { "" }.toString()
+            val narrative = map.getOrDefault("narrative", "").toString()
             val waypoints =
                 (map["waypoints"] as? List<*>)
                     ?.mapNotNull { w ->
                         (w as? Map<*, *>)?.let {
-                            val lat = (it["lat"] as? Number)?.toDoubleSafe()
-                            val lng = (it["lng"] as? Number)?.toDoubleSafe()
+                            val lat = (it["lat"] as? Number)?.toDouble()
+                            val lng = (it["lng"] as? Number)?.toDouble()
                             val name = it["name"]?.toString()
                             if (lat != null && lng != null) LocationCoords(lat, lng, name) else null
                         }
                     }
-                    .orEmptyList()
+                    .orEmpty()
             TripPlanResponse(dayThemes = themes, waypoints = waypoints, narrative = narrative)
         } catch (_: Exception) {
             TripPlanResponse(
@@ -144,7 +143,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             val map: Map<String, Any> = mapper.readValue(cleanJson)
 
             val legStory =
-                map.getOrDefault("legStory") {
+                map.getOrElse("legStory") {
                         "Day ${leg.dayNumber}: Scenic drive through local landmarks."
                     }
                     .toString()
