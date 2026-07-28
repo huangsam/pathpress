@@ -129,7 +129,7 @@ class PdfExporterTest {
     }
 
     @Test
-    fun `generate pdf for inspection`() {
+    fun `generate pdf and png renders for inspection`() {
         val poi1 =
             POI(
                 id = "1",
@@ -165,6 +165,22 @@ class PdfExporterTest {
                 narrative = "Test Narrative",
             )
         val html = PdfExporter.generateHtml(route, "San Jose", "Bakersfield", DistanceUnit.IMPERIAL)
-        PdfExporter.exportToPdf(html, "/tmp/test_itinerary.pdf")
+        val snapshotsDir = java.io.File("build/snapshots")
+        snapshotsDir.mkdirs()
+
+        val pdfFile = java.io.File(snapshotsDir, "test_itinerary.pdf")
+        PdfExporter.exportToPdf(html, pdfFile.absolutePath)
+        assertTrue(pdfFile.exists() && pdfFile.length() > 0)
+
+        // Render PDF pages as PNG images for visual inspection
+        org.apache.pdfbox.pdmodel.PDDocument.load(pdfFile).use { document ->
+            val renderer = org.apache.pdfbox.rendering.PDFRenderer(document)
+            for (i in 0 until document.numberOfPages) {
+                val pageImage = renderer.renderImageWithDPI(i, 150f)
+                val pngFile = java.io.File(snapshotsDir, "test_itinerary_page_${i + 1}.png")
+                javax.imageio.ImageIO.write(pageImage, "PNG", pngFile)
+                assertTrue(pngFile.exists() && pngFile.length() > 0)
+            }
+        }
     }
 }
