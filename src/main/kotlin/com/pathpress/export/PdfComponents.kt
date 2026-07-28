@@ -90,7 +90,9 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
     val duration = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
     val directionsUrl = leg.toDirectionsUrl()
 
-    div("leg") {
+    val legClasses = if (leg.dayNumber > 1) "leg leg-page-break" else "leg"
+
+    div(legClasses) {
         div("leg-header") {
             div("day-badge") { +"Day ${leg.dayNumber} of ${leg.totalDays}" }
             div("leg-title editorial-heading") { +sanitizeText(cleanTitle) }
