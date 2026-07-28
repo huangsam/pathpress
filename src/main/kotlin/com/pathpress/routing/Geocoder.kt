@@ -14,6 +14,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.abs
 
 data class GeocodedLocation(val coords: LocationCoords, val displayName: String)
 
@@ -161,7 +162,7 @@ object Geocoder {
     }
 
     private fun fallbackLocation(location: String): GeocodedLocation {
-        val hash = Math.abs(location.lowercase().hashCode())
+        val hash = abs(location.lowercase().hashCode())
         val latBase = 33.5 + (hash % 80) * 0.08
         val lngBase = -121.5 + (hash % 60) * 0.08
         val capitalized = location.replaceFirstChar { it.uppercase() }

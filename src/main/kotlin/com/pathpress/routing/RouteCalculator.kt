@@ -79,9 +79,8 @@ class RouteCalculator(
             (0 until pointsList.size()).map {
                 LocationCoords(pointsList.getLat(it), pointsList.getLon(it))
             }
-        val totalDays = days
 
-        if (totalDays == 1) {
+        if (days == 1) {
             val realPois =
                 PoiExtractor.extractPoisForLeg(
                         pbfFilePath,
@@ -105,7 +104,7 @@ class RouteCalculator(
                     endLat = pointsList.getLat(pointsList.size() - 1),
                     endLng = pointsList.getLon(pointsList.size() - 1),
                     dayNumber = 1,
-                    totalDays = totalDays,
+                    totalDays = days,
                     distanceMeters = path.distance,
                     durationSeconds = path.time / 1000.0,
                     dayTitle = dayTitles.getOrNull(0) ?: "Day 1 Scenic Drive",
@@ -122,8 +121,8 @@ class RouteCalculator(
         val townNames = mutableListOf<String?>()
 
         val totalDistance = path.distance
-        for (dayIndex in 1 until totalDays) {
-            val targetDistance = (dayIndex.toDouble() / totalDays) * totalDistance
+        for (dayIndex in 1 until days) {
+            val targetDistance = (dayIndex.toDouble() / days) * totalDistance
 
             var cumDist = 0.0
             var targetLat = pointsList.getLat(0)
@@ -179,7 +178,7 @@ class RouteCalculator(
 
         val legs = mutableListOf<RouteLeg>()
 
-        for (dayIndex in 0 until totalDays) {
+        for (dayIndex in 0 until days) {
             val legStart = legWaypoints[dayIndex]
             val legEnd = legWaypoints[dayIndex + 1]
 
@@ -195,11 +194,7 @@ class RouteCalculator(
                     Triple(legRes.best.distance, legRes.best.time / 1000.0, coords)
                 } else {
                     val fallbackCoords = listOf(legStart, legEnd)
-                    Triple(
-                        path.distance / totalDays,
-                        (path.time / 1000.0) / totalDays,
-                        fallbackCoords,
-                    )
+                    Triple(path.distance / days, (path.time / 1000.0) / days, fallbackCoords)
                 }
 
             val realPois =
@@ -221,7 +216,7 @@ class RouteCalculator(
             val endTown = townNames.getOrNull(dayIndex)
             val defaultTitle =
                 if (!endTown.isNullOrBlank()) "Drive to $endTown"
-                else if (dayIndex == totalDays - 1) "Final Leg to Destination"
+                else if (dayIndex == days - 1) "Final Leg to Destination"
                 else "Day ${dayIndex + 1} Scenic Leg"
 
             val themeTitle = dayTitles.getOrNull(dayIndex)
@@ -238,7 +233,7 @@ class RouteCalculator(
                     endLat = legEnd.lat,
                     endLng = legEnd.lng,
                     dayNumber = dayIndex + 1,
-                    totalDays = totalDays,
+                    totalDays = days,
                     distanceMeters = dist,
                     durationSeconds = dur,
                     dayTitle = finalLegTitle,
