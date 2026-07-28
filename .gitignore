@@ -29,3 +29,5 @@ out/
 dist/
 .gradle-home/
 .kotlin/
+pois_cache.json
+.pois_cache/

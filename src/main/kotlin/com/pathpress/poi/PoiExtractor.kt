@@ -1,5 +1,7 @@
 package com.pathpress.poi
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.graphhopper.reader.ReaderElement
 import com.graphhopper.reader.ReaderNode
 import com.graphhopper.reader.osm.OSMInputFile
@@ -13,13 +15,22 @@ import org.slf4j.LoggerFactory
 
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
 
+data class PoiCacheStore(
+    val pois: List<POI> = emptyList(),
+    val towns: List<TownInfo> = emptyList(),
+)
+
 /**
  * Utility for querying real points of interest (POIs) and towns directly from an OpenStreetMap PBF
- * file.
+ * file, backed by a fast JSON cache (`pois_cache.json`).
  */
 object PoiExtractor {
 
     private val logger = LoggerFactory.getLogger(PoiExtractor::class.java)
+    private val mapper = ObjectMapper().registerKotlinModule()
+
+    @Volatile private var cachedStore: PoiCacheStore? = null
+    private var cachedPbfPath: String? = null
 
     private val RELEVANT_AMENITIES =
         setOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court")
@@ -69,6 +80,118 @@ object PoiExtractor {
 
     private val RELEVANT_PLACES = setOf("city", "town", "village", "hamlet")
 
+    /** Clear in-memory cache reference (useful for testing). */
+    fun clearInMemCache() {
+        synchronized(this) {
+            cachedStore = null
+            cachedPbfPath = null
+        }
+    }
+
+    /**
+     * Retrieve or build the [PoiCacheStore].
+     *
+     * If `.pois_cache/pois_cache.json` exists and is up to date, it is loaded into memory (~15ms).
+     * Otherwise, a one-time single-pass scan over the PBF file is executed to generate it.
+     */
+    @Synchronized
+    fun getOrBuildCache(
+        pbfPath: String = "california-latest.osm.pbf",
+        cacheFilePath: String = ".pois_cache/pois_cache.json",
+    ): PoiCacheStore {
+        if (cachedStore != null && cachedPbfPath == pbfPath) {
+            return cachedStore!!
+        }
+
+        val cacheFile = File(cacheFilePath)
+        val pbfFile = File(pbfPath)
+
+        if (
+            cacheFile.exists() &&
+                (!pbfFile.exists() || cacheFile.lastModified() >= pbfFile.lastModified())
+        ) {
+            try {
+                val store = mapper.readValue(cacheFile, PoiCacheStore::class.java)
+                cachedStore = store
+                cachedPbfPath = pbfPath
+                logger.info(
+                    "Loaded POI cache from {} ({} POIs, {} towns)",
+                    cacheFilePath,
+                    store.pois.size,
+                    store.towns.size,
+                )
+                return store
+            } catch (e: Exception) {
+                logger.warn(
+                    "Failed to load POI cache from {}: {}. Rebuilding...",
+                    cacheFilePath,
+                    e.message,
+                )
+            }
+        }
+
+        if (!pbfFile.exists()) {
+            return PoiCacheStore()
+        }
+
+        logger.info("Building POI cache from {}...", pbfPath)
+        val startTime = System.currentTimeMillis()
+        val pois = mutableListOf<POI>()
+        val towns = mutableListOf<TownInfo>()
+
+        try {
+            val osmInput = OSMInputFile(pbfFile).open()
+            while (true) {
+                val elem = osmInput.getNext() ?: break
+                if (elem.type == ReaderElement.Type.NODE) {
+                    val node = elem as ReaderNode
+                    val tags = extractTags(node)
+                    val name = tags["name"]
+                    if (!name.isNullOrBlank()) {
+                        if (isRelevantPoi(tags)) {
+                            val poi =
+                                POI.fromOsm(
+                                    id = node.id,
+                                    lat = node.lat,
+                                    lng = node.lon,
+                                    tags = tags,
+                                    distanceFromRouteMeters = null,
+                                )
+                            pois.add(poi)
+                        }
+                        val placeType = tags["place"]
+                        if (placeType in RELEVANT_PLACES) {
+                            towns.add(TownInfo(name, node.lat, node.lon, placeType!!))
+                        }
+                    }
+                }
+            }
+            osmInput.close()
+        } catch (e: Exception) {
+            logger.warn("Error reading OSM PBF for cache creation: {}", e.message)
+        }
+
+        val store = PoiCacheStore(pois = pois, towns = towns)
+        try {
+            cacheFile.parentFile?.mkdirs()
+            mapper.writeValue(cacheFile, store)
+            val elapsed = System.currentTimeMillis() - startTime
+            logger.info(
+                "Saved POI cache to {} with {} POIs and {} towns in {} ms",
+                cacheFilePath,
+                pois.size,
+                towns.size,
+                elapsed,
+            )
+        } catch (e: Exception) {
+            logger.warn("Failed to write POI cache to {}: {}", cacheFilePath, e.message)
+        }
+
+        cachedStore = store
+        cachedPbfPath = pbfPath
+        return store
+    }
+
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
         pbfPath: String,
@@ -76,8 +199,12 @@ object PoiExtractor {
         maxDistanceMeters: Double = 5000.0,
         limitPerLeg: Int = 6,
     ): List<POI> {
-        val file = File(pbfPath)
-        if (!file.exists() || legPoints.isEmpty()) {
+        if (legPoints.isEmpty()) {
+            return emptyList()
+        }
+
+        val cacheStore = getOrBuildCache(pbfPath)
+        if (cacheStore.pois.isEmpty()) {
             return emptyList()
         }
 
@@ -88,41 +215,13 @@ object PoiExtractor {
         val maxLng = legPoints.maxOf { it.lng } + bufferDeg
 
         val candidates = mutableListOf<POI>()
-
-        try {
-            val osmInput = OSMInputFile(file).open()
-
-            while (true) {
-                val elem = osmInput.getNext() ?: break
-                if (elem.type == ReaderElement.Type.NODE) {
-                    val node = elem as ReaderNode
-                    if (node.lat in minLat..maxLat && node.lon in minLng..maxLng) {
-                        val tags = extractTags(node)
-                        val name = tags["name"]
-                        if (!name.isNullOrBlank()) {
-                            val isMatch = isRelevantPoi(tags)
-                            if (isMatch) {
-                                val dist = minDistanceToPolyline(node.lat, node.lon, legPoints)
-                                if (dist <= maxDistanceMeters) {
-                                    val poi =
-                                        POI.fromOsm(
-                                            id = node.id,
-                                            lat = node.lat,
-                                            lng = node.lon,
-                                            tags = tags,
-                                            distanceFromRouteMeters = dist,
-                                        )
-                                    candidates.add(poi)
-                                }
-                            }
-                        }
-                    }
+        for (poi in cacheStore.pois) {
+            if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
+                val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
+                if (dist <= maxDistanceMeters) {
+                    candidates.add(poi.copy(distanceFromRouteMeters = dist))
                 }
             }
-            osmInput.close()
-        } catch (e: Exception) {
-            logger.warn("Error reading OSM PBF for POI extraction: {}", e.message)
-            return emptyList()
         }
 
         return rankAndSelectPois(candidates, limitPerLeg, legPoints)
@@ -138,8 +237,8 @@ object PoiExtractor {
         targetLng: Double,
         maxDistanceMeters: Double = 35000.0,
     ): List<TownInfo> {
-        val file = File(pbfPath)
-        if (!file.exists()) return emptyList()
+        val cacheStore = getOrBuildCache(pbfPath)
+        if (cacheStore.towns.isEmpty()) return emptyList()
 
         val bufferDeg = (maxDistanceMeters / 111000.0)
         val minLat = targetLat - bufferDeg
@@ -147,35 +246,18 @@ object PoiExtractor {
         val minLng = targetLng - bufferDeg
         val maxLng = targetLng + bufferDeg
 
-        val towns = mutableListOf<TownInfo>()
-
-        try {
-            val osmInput = OSMInputFile(file).open()
-
-            while (true) {
-                val elem = osmInput.getNext() ?: break
-                if (elem.type == ReaderElement.Type.NODE) {
-                    val node = elem as ReaderNode
-                    if (node.lat in minLat..maxLat && node.lon in minLng..maxLng) {
-                        val tags = extractTags(node)
-                        val name = tags["name"]
-                        val placeType = tags["place"]
-                        if (!name.isNullOrBlank() && placeType in RELEVANT_PLACES) {
-                            val dist = haversineMeters(targetLat, targetLng, node.lat, node.lon)
-                            if (dist <= maxDistanceMeters) {
-                                towns.add(TownInfo(name, node.lat, node.lon, placeType!!))
-                            }
-                        }
-                    }
+        val matches = mutableListOf<TownInfo>()
+        for (town in cacheStore.towns) {
+            if (town.lat in minLat..maxLat && town.lng in minLng..maxLng) {
+                val dist = haversineMeters(targetLat, targetLng, town.lat, town.lng)
+                if (dist <= maxDistanceMeters) {
+                    matches.add(town)
                 }
             }
-            osmInput.close()
-        } catch (e: Exception) {
-            logger.warn("Error searching for towns: {}", e.message)
         }
 
         val placePriority = mapOf("city" to 1, "town" to 2, "village" to 3, "hamlet" to 4)
-        return towns.sortedWith(
+        return matches.sortedWith(
             compareBy(
                 { placePriority[it.type] ?: 5 },
                 { haversineMeters(targetLat, targetLng, it.lat, it.lng) },

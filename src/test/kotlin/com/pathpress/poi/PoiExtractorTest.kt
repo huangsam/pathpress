@@ -184,4 +184,23 @@ class PoiExtractorTest {
             "Expected rich POI ($richScore) to score higher than basic POI ($basicScore)",
         )
     }
+
+    @Test
+    fun `getOrBuildCache creates and loads JSON cache file`() {
+        PoiExtractor.clearInMemCache()
+        val tempCacheFile = java.io.File.createTempFile("test_pois_cache", ".json")
+        tempCacheFile.deleteOnExit()
+
+        // Call getOrBuildCache with non-existent pbfPath so it creates empty PoiCacheStore if no
+        // pbf
+        val store =
+            PoiExtractor.getOrBuildCache(
+                pbfPath = "non_existent.pbf",
+                cacheFilePath = tempCacheFile.absolutePath,
+            )
+        assertEquals(0, store.pois.size)
+        assertEquals(0, store.towns.size)
+
+        PoiExtractor.clearInMemCache()
+    }
 }
