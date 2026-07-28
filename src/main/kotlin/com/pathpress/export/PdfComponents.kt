@@ -82,7 +82,10 @@ internal fun FlowContent.dailySchedule(route: Route) {
 
 internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
     val rawTitle = leg.dayTitle ?: "Scenic Drive"
-    val cleanTitle = rawTitle.replace(Regex("^Day\\s+\\d+:\\s*", RegexOption.IGNORE_CASE), "")
+    val cleanTitle =
+        rawTitle.replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "").ifBlank {
+            "Scenic Drive"
+        }
     val distance = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
     val duration = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
     val directionsUrl = leg.toDirectionsUrl()
@@ -223,7 +226,9 @@ internal fun FlowContent.navigationAppendix(route: Route) {
             for (leg in route.legs) {
                 val rawTitle = leg.dayTitle ?: "Scenic Drive"
                 val cleanTitle =
-                    rawTitle.replace(Regex("^Day\\s+\\d+:\\s*", RegexOption.IGNORE_CASE), "")
+                    rawTitle
+                        .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
+                        .ifBlank { leg.endTownName?.let { "Drive to $it" } ?: "Scenic Drive" }
                 val directionsUrl = leg.toDirectionsUrl()
                 val qrDataUri = QrCodeGenerator.generateQrCodeDataUri(directionsUrl, 180, 180)
 

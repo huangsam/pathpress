@@ -222,9 +222,14 @@ class PathPressCommand :
             for (leg in route.legs) {
                 val legDist = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
                 val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
+                val rawTitle = leg.dayTitle ?: "Scenic Leg"
+                val cleanTitle =
+                    rawTitle
+                        .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
+                        .ifBlank { "Scenic Leg" }
                 val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
                 appendLine(
-                    "  Day ${leg.dayNumber}: ${leg.dayTitle}$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})"
+                    "  Day ${leg.dayNumber}: $cleanTitle$endTown - ${formatDistance(legDist)} (${formatDuration(legDur)})"
                 )
             }
         }

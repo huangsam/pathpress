@@ -82,7 +82,13 @@ class NoOpFallbackProvider : LlmProvider {
         userPrompt: String?,
     ): TripPlanResponse {
         val themes =
-            (1..days).map { day -> "Day $day: Scenic Drive leg from $startName towards $endName" }
+            (1..days).map { day ->
+                when (day) {
+                    1 -> "Day 1: Drive from $startName"
+                    days -> "Day $day: Drive to $endName"
+                    else -> "Day $day: Scenic Drive"
+                }
+            }
         return TripPlanResponse(
             dayThemes = themes,
             waypoints = emptyList(),

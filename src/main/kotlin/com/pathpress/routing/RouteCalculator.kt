@@ -172,7 +172,15 @@ class RouteCalculator(
             val endTown = townNames.getOrNull(dayIndex)
             val defaultTitle =
                 if (!endTown.isNullOrBlank()) "Drive to $endTown"
+                else if (dayIndex == totalDays - 1) "Final Leg to Destination"
                 else "Day ${dayIndex + 1} Scenic Leg"
+
+            val themeTitle = dayTitles.getOrNull(dayIndex)
+            val finalLegTitle =
+                if (themeTitle.isNullOrBlank()) defaultTitle
+                else if (!endTown.isNullOrBlank() && themeTitle.startsWith("Day "))
+                    "Drive to $endTown"
+                else themeTitle
 
             legs.add(
                 RouteLeg(
@@ -184,7 +192,7 @@ class RouteCalculator(
                     totalDays = totalDays,
                     distanceMeters = dist,
                     durationSeconds = dur,
-                    dayTitle = dayTitles.getOrNull(dayIndex) ?: defaultTitle,
+                    dayTitle = finalLegTitle,
                     pois = realPois,
                     endTownName = endTown,
                 )
