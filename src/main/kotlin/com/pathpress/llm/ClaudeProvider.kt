@@ -12,10 +12,12 @@ import org.slf4j.LoggerFactory
 private val logger = LoggerFactory.getLogger(ClaudeProvider::class.java)
 
 class ClaudeProvider(
-    private val apiKey: String,
+    apiKey: String,
     config: Config = Config.current,
     val modelName: String = config.defaultClaudeModel,
 ) : HttpLlmProvider(config) {
+    private val apiKey: String = apiKey.validateApiKey("claude")
+
     override fun planTrip(
         startName: String,
         endName: String,
@@ -24,9 +26,6 @@ class ClaudeProvider(
         days: Int,
         userPrompt: String?,
     ): TripPlanResponse {
-        if (apiKey.isBlank())
-            return NoOpFallbackProvider()
-                .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
         try {
             val promptText = buildPrompt(startName, endName, days, userPrompt)
             val requestBody =
@@ -66,7 +65,6 @@ class ClaudeProvider(
     }
 
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
-        if (apiKey.isBlank()) return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
         try {
             val promptText = buildCurationPrompt(leg, userPrompt)
             val requestBody =

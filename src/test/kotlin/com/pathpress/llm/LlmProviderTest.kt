@@ -4,6 +4,7 @@ import com.pathpress.config.Config
 import com.pathpress.model.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -165,5 +166,51 @@ class LlmProviderTest {
         assertTrue(prompt.contains("ACCESSIBILITY & SUITABILITY"))
         assertTrue(prompt.contains("toddlers, kids, or family"))
         assertTrue(prompt.contains("reject any POIs requiring strenuous hiking"))
+    }
+
+    @Test
+    fun `validateApiKey throws IllegalArgumentException when API key is blank`() {
+        val exception = assertFailsWith<IllegalArgumentException> { "".validateApiKey("gemini") }
+        assertTrue(exception.message!!.contains("API key missing for gemini"))
+        assertTrue(
+            exception.message!!.contains(
+                "Set GEMINI_API_KEY/ANTHROPIC_API_KEY/OPENAI_API_KEY or pass --llm-key"
+            )
+        )
+    }
+
+    @Test
+    fun `validateApiKey returns valid key`() {
+        assertEquals("valid-key", "valid-key".validateApiKey("gemini"))
+    }
+
+    @Test
+    fun `GeminiProvider constructor throws IllegalArgumentException on blank API key`() {
+        assertFailsWith<IllegalArgumentException> { GeminiProvider(apiKey = "") }
+    }
+
+    @Test
+    fun `ClaudeProvider constructor throws IllegalArgumentException on blank API key`() {
+        assertFailsWith<IllegalArgumentException> { ClaudeProvider(apiKey = "") }
+    }
+
+    @Test
+    fun `OpenAiCompatibleProvider constructor throws IllegalArgumentException on blank API key when not localhost`() {
+        assertFailsWith<IllegalArgumentException> {
+            OpenAiCompatibleProvider(
+                apiKey = "",
+                endpoint = "https://api.openai.com/v1/chat/completions",
+            )
+        }
+    }
+
+    @Test
+    fun `OpenAiCompatibleProvider constructor succeeds on blank API key when endpoint is localhost`() {
+        val provider =
+            OpenAiCompatibleProvider(
+                apiKey = "",
+                endpoint = "http://localhost:11434/v1/chat/completions",
+            )
+        assertIs<OpenAiCompatibleProvider>(provider)
     }
 }

@@ -12,11 +12,14 @@ import org.slf4j.LoggerFactory
 private val logger = LoggerFactory.getLogger(OpenAiCompatibleProvider::class.java)
 
 class OpenAiCompatibleProvider(
-    private val apiKey: String,
+    apiKey: String,
     private val endpoint: String,
     config: Config = Config.current,
     val modelName: String = config.defaultOpenAiModel,
 ) : HttpLlmProvider(config) {
+    private val apiKey: String =
+        if (endpoint.contains("localhost")) apiKey else apiKey.validateApiKey("openai")
+
     override fun planTrip(
         startName: String,
         endName: String,
@@ -25,10 +28,6 @@ class OpenAiCompatibleProvider(
         days: Int,
         userPrompt: String?,
     ): TripPlanResponse {
-        if (apiKey.isBlank() && !endpoint.contains("localhost")) {
-            return NoOpFallbackProvider()
-                .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
-        }
         try {
             val promptText = buildPrompt(startName, endName, days, userPrompt)
             val requestBody =
@@ -74,8 +73,6 @@ class OpenAiCompatibleProvider(
     }
 
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
-        if (apiKey.isBlank() && !endpoint.contains("localhost"))
-            return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
         try {
             val promptText = buildCurationPrompt(leg, userPrompt)
             val requestBody =

@@ -12,10 +12,12 @@ import org.slf4j.LoggerFactory
 private val logger = LoggerFactory.getLogger(GeminiProvider::class.java)
 
 class GeminiProvider(
-    private val apiKey: String,
+    apiKey: String,
     config: Config = Config.current,
     val modelName: String = config.defaultGeminiModel,
 ) : HttpLlmProvider(config) {
+    private val apiKey: String = apiKey.validateApiKey("gemini")
+
     override fun planTrip(
         startName: String,
         endName: String,
@@ -24,9 +26,6 @@ class GeminiProvider(
         days: Int,
         userPrompt: String?,
     ): TripPlanResponse {
-        if (apiKey.isBlank())
-            return NoOpFallbackProvider()
-                .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
 
         try {
             val promptText = buildPrompt(startName, endName, days, userPrompt)
@@ -69,7 +68,6 @@ class GeminiProvider(
     }
 
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
-        if (apiKey.isBlank()) return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
         try {
             val promptText = buildCurationPrompt(leg, userPrompt)
             val requestBody =
