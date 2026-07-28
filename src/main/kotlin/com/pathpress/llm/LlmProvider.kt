@@ -179,32 +179,64 @@ abstract class HttpLlmProvider : LlmProvider {
                     poi.distanceFromRouteMeters?.let {
                         " (${String.format("%.1f", it / 1000.0)} km off route)"
                     } ?: ""
-                "- ${poi.name} (type: ${poi.type}, tags: ${poi.tags})$distStr"
+                // Include coordinates and all OSM tags so the LLM has real grounding
+                val relevantTags =
+                    poi.tags.filterKeys { key ->
+                        key in
+                            listOf(
+                                "amenity",
+                                "tourism",
+                                "natural",
+                                "historic",
+                                "leisure",
+                                "cuisine",
+                                "opening_hours",
+                                "addr:city",
+                                "addr:street",
+                                "addr:housenumber",
+                                "website",
+                                "phone",
+                                "description",
+                                "operator",
+                                "brand",
+                                "wheelchair",
+                                "outdoor_seating",
+                            )
+                    }
+                "- ${poi.name} | type: ${poi.type} | coords: (${poi.lat}, ${poi.lng})$distStr | osm_tags: $relevantTags"
             }
         val theme = userPrompt ?: "scenic road trip with local highlights"
+        val legRegion = leg.endTownName ?: "the destination"
 
         return """
-            You are an expert local tour guide and storyteller.
-            Curate Day ${leg.dayNumber} of a road trip.
+            You are an expert local tour guide writing copy for a real road trip itinerary.
+            Curate Day ${leg.dayNumber} of a road trip ending near $legRegion.
             User vibe/preference: $theme.
-            Leg destination/town: ${leg.endTownName ?: "scenic leg destination"}.
 
-            Real extracted OSM POIs:
+            REAL OSM-VERIFIED POINTS OF INTEREST (do NOT replace these with other places):
             $poiDetails
+
+            STRICT GROUNDING RULES — violations will confuse real travelers:
+            1. Write ONLY about the exact POIs listed above. Do not suggest or invent other places.
+            2. Do NOT invent founding dates, historical facts, menu items, or any detail not present in the osm_tags above.
+            3. Do NOT apply coastal, ocean, or beach imagery to landlocked locations. Use the coords to infer geography.
+            4. Descriptions must be atmosphere and vibe only — not factual claims about history or specific offerings unless confirmed in osm_tags.
+            5. Food recommendations must reference only the food/drink POIs in the list above.
+            6. insiderTips must be practical driving/timing tips for this specific leg — not generic travel advice.
 
             Output ONLY valid raw JSON with this exact structure:
             {
-              "legStory": "1-2 sentence engaging description of driving this leg.",
+              "legStory": "1-2 sentence engaging description of driving this leg toward $legRegion.",
               "poiDescriptions": {
-                 "<POI Name>": "1-2 sentence engaging description and story for this spot."
+                 "<POI Name>": "1-2 sentence atmosphere/vibe description. No invented facts."
               },
               "foodRecommendations": [
-                 "Coffee/food recommendation line 1",
-                 "Coffee/food recommendation line 2"
+                 "Specific recommendation referencing a real food POI from the list above.",
+                 "Second recommendation referencing another real food POI if available."
               ],
               "insiderTips": [
-                 "Practical tip 1",
-                 "Practical tip 2"
+                 "Practical driving or timing tip specific to this corridor.",
+                 "Second practical tip."
               ]
             }
         """
