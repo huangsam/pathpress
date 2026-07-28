@@ -22,14 +22,14 @@ dependencies {
     implementation("com.openhtmltopdf:openhtmltopdf-svg-support:1.0.10")
 
     // HTML DSL
-    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
 
     // QR Code generation
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
 
     // JSON processing
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.22.0")
 
     // CLI argument parsing
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
@@ -39,7 +39,7 @@ dependencies {
 
     // Unit testing
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.1")
 }
 
 kotlin { jvmToolchain(21) }
