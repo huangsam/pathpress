@@ -115,7 +115,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             val themes =
                 (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
                     ?: (1..days).map { "Day $it" }
-            val narrative = map.getOrDefault("narrative", "").toString()
+            val narrative = map["narrative"]?.toString().takeValidText() ?: ""
             val waypoints =
                 (map["waypoints"] as? List<*>)
                     ?.mapNotNull { w ->

@@ -31,8 +31,8 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
                 )
             }
         }
-        if (!route.narrative.isNullOrBlank()) {
-            div("hero-narrative") { +"\"${sanitizeText(route.narrative)}\"" }
+        div("hero-narrative") {
+            +"\"${sanitizeText(route.getNarrativeOrDefault(startLocation, endLocation))}\""
         }
     }
 }

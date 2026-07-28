@@ -20,11 +20,14 @@ class NoOpFallbackProvider : LlmProvider {
                     else -> "Day $day: Scenic Drive"
                 }
             }
-        return TripPlanResponse(
-            dayThemes = themes,
-            waypoints = emptyList(),
-            narrative = "A custom road trip experience designed with PathPress.",
-        )
+        val cleanPrompt = userPrompt.takeValidText()
+        val narrative =
+            if (cleanPrompt != null) {
+                "A $days-day road trip experience from $startName to $endName tailored for: $cleanPrompt."
+            } else {
+                "A custom $days-day road trip experience from $startName to $endName designed with PathPress."
+            }
+        return TripPlanResponse(dayThemes = themes, waypoints = emptyList(), narrative = narrative)
     }
 
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {

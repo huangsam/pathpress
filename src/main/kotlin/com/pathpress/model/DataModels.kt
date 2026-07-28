@@ -94,13 +94,21 @@ data class RouteLeg(
         MapUrlFormatter.formatMapUrl(lat = (startLat + endLat) / 2, lng = (startLng + endLng) / 2)
 }
 
+/** Extension helper to filter out null, blank, or "null" literal strings. */
+fun String?.takeValidText(): String? =
+    this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+
 /** Represents the complete calculated route. */
 data class Route(
     val legs: List<RouteLeg>,
     val totalDistanceMeters: Double,
     val totalDurationSeconds: Double,
     val narrative: String = "",
-)
+) {
+    fun getNarrativeOrDefault(startLocation: String, endLocation: String): String =
+        narrative.takeValidText()
+            ?: "A custom road trip experience from $startLocation to $endLocation."
+}
 
 /** Convert a single leg to a complete route with one leg. */
 fun RouteLeg.toRoute(): Route {
