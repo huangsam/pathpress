@@ -151,4 +151,37 @@ class PoiExtractorTest {
         assertEquals(2, result.size)
         assertEquals(listOf("1", "2"), result.map { it.id })
     }
+
+    @Test
+    fun `calculatePoiQualityScore ranks POIs with wikipedia and website higher than untagged POIs`() {
+        val richPoi =
+            POI(
+                id = "1",
+                name = "Famous Landmark",
+                lat = 37.1,
+                lng = -122.1,
+                tags =
+                    mapOf("wikipedia" to "en:Famous_Landmark", "website" to "https://example.com"),
+                type = "attraction",
+                distanceFromRouteMeters = 500.0,
+            )
+        val basicPoi =
+            POI(
+                id = "2",
+                name = "Obscure Spot",
+                lat = 37.1,
+                lng = -122.1,
+                tags = emptyMap(),
+                type = "cafe",
+                distanceFromRouteMeters = 100.0,
+            )
+
+        val richScore = PoiExtractor.calculatePoiQualityScore(richPoi)
+        val basicScore = PoiExtractor.calculatePoiQualityScore(basicPoi)
+
+        assertTrue(
+            richScore > basicScore,
+            "Expected rich POI ($richScore) to score higher than basic POI ($basicScore)",
+        )
+    }
 }

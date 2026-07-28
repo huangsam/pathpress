@@ -301,37 +301,82 @@ object PoiExtractor {
     }
 
     /**
-     * Divides the route into [limit] equal progress buckets and picks the closest-to-route,
+     * Calculates a popularity & metadata completeness score for a POI using OSM tag signals.
+     *
+     * Higher scores indicate notable landmarks, established businesses, or well-documented spots
+     * (e.g. Wikipedia/Wikidata entries, websites, opening hours, brand tags).
+     */
+    internal fun calculatePoiQualityScore(poi: POI): Double {
+        var score = 0.0
+        val tags = poi.tags
+
+        // Major popularity / notability signals
+        if (tags.containsKey("wikipedia") || tags.containsKey("wikidata")) score += 10.0
+        if (
+            tags.containsKey("website") ||
+                tags.containsKey("url") ||
+                tags.containsKey("contact:website")
+        )
+            score += 5.0
+        if (tags.containsKey("brand") || tags.containsKey("operator")) score += 3.0
+        if (tags.containsKey("opening_hours")) score += 3.0
+        if (tags.containsKey("phone") || tags.containsKey("contact:phone")) score += 2.0
+        if (tags.containsKey("cuisine")) score += 2.0
+        if (tags.containsKey("description") || tags.containsKey("note")) score += 1.5
+        if (tags.containsKey("wheelchair") || tags.containsKey("outdoor_seating")) score += 1.0
+
+        // Bonus for tourist attractions / historic landmarks / parks
+        if (
+            poi.type in setOf("viewpoint", "attraction", "museum", "park", "historic", "monument")
+        ) {
+            score += 2.0
+        }
+
+        // Mild distance penalty so 1 km detour reduces score by ~1.0 point
+        val distKm = (poi.distanceFromRouteMeters ?: 0.0) / 1000.0
+        score -= distKm
+
+        return score
+    }
+
+    /**
+     * Divides the route into [limit] equal progress buckets and picks the highest quality,
      * type-diverse POI from each bucket. Any unfilled bucket slots are backfilled from the global
-     * pool sorted by distance.
+     * pool sorted by quality score.
      */
     private fun selectBySegments(
         candidates: List<POI>,
         limit: Int,
         legPoints: List<LocationCoords>,
     ): List<POI> {
-        data class Scored(val poi: POI, val progress: Double)
+        data class Scored(val poi: POI, val progress: Double, val quality: Double)
 
         val scored =
             candidates
-                .map { Scored(it, routeProgress(it.lat, it.lng, legPoints)) }
+                .map {
+                    Scored(
+                        it,
+                        routeProgress(it.lat, it.lng, legPoints),
+                        calculatePoiQualityScore(it),
+                    )
+                }
                 .sortedBy { it.progress }
 
         val selected = mutableListOf<POI>()
         val typeCounts = mutableMapOf<String, Int>()
         val bucketSize = 1.0 / limit
 
-        // Pass 1: one best POI per progress bucket
+        // Pass 1: one best POI per progress bucket (highest quality score first)
         for (bucket in 0 until limit) {
             val lo = bucket * bucketSize
             val hi = (bucket + 1) * bucketSize
             val inBucket = scored.filter { it.progress in lo..hi }
             val pick =
                 inBucket
-                    .sortedBy { it.poi.distanceFromRouteMeters ?: Double.MAX_VALUE }
+                    .sortedByDescending { it.quality }
                     .firstOrNull { (typeCounts[it.poi.type] ?: 0) < 1 }
                     ?: inBucket
-                        .sortedBy { it.poi.distanceFromRouteMeters ?: Double.MAX_VALUE }
+                        .sortedByDescending { it.quality }
                         .firstOrNull { (typeCounts[it.poi.type] ?: 0) < 2 }
 
             if (pick != null) {
@@ -340,13 +385,13 @@ object PoiExtractor {
             }
         }
 
-        // Pass 2: backfill empty buckets from global pool (closest first)
+        // Pass 2: backfill empty buckets from global pool (highest quality first)
         if (selected.size < limit) {
             val remaining =
                 scored
                     .map { it.poi }
                     .filter { it !in selected }
-                    .sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
+                    .sortedByDescending { calculatePoiQualityScore(it) }
             for (poi in remaining) {
                 if (selected.size >= limit) break
                 val count = typeCounts[poi.type] ?: 0
