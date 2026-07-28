@@ -16,7 +16,7 @@ class GeminiProvider(
     config: Config = Config.current,
     val modelName: String = config.defaultGeminiModel,
 ) : HttpLlmProvider(config) {
-    private val apiKey: String = apiKey.validateApiKey("gemini")
+    private val apiKey: String = apiKey.validateApiKey(LlmProviderType.GEMINI)
 
     override fun planTrip(
         startName: String,

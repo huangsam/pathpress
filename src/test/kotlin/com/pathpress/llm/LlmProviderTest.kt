@@ -132,7 +132,7 @@ class LlmProviderTest {
     fun `HttpLlmProvider buildCurationPrompt includes explicit accessibility instructions`() {
         val dummyProvider =
             object : HttpLlmProvider() {
-                public fun testCurationPrompt(leg: RouteLeg, userPrompt: String?) =
+                fun testCurationPrompt(leg: RouteLeg, userPrompt: String?) =
                     buildCurationPrompt(leg, userPrompt)
 
                 override fun planTrip(
@@ -172,11 +172,7 @@ class LlmProviderTest {
     fun `validateApiKey throws IllegalArgumentException when API key is blank`() {
         val exception = assertFailsWith<IllegalArgumentException> { "".validateApiKey("gemini") }
         assertTrue(exception.message!!.contains("API key missing for gemini"))
-        assertTrue(
-            exception.message!!.contains(
-                "Set GEMINI_API_KEY/ANTHROPIC_API_KEY/OPENAI_API_KEY or pass --llm-key"
-            )
-        )
+        assertTrue(exception.message!!.contains("Set GEMINI_API_KEY or pass --llm-key"))
     }
 
     @Test
@@ -212,5 +208,16 @@ class LlmProviderTest {
                 endpoint = "http://localhost:11434/v1/chat/completions",
             )
         assertIs<OpenAiCompatibleProvider>(provider)
+    }
+
+    @Test
+    fun `LlmProviderType fromId resolves provider types correctly including aliases`() {
+        assertEquals(LlmProviderType.GEMINI, LlmProviderType.fromId("gemini"))
+        assertEquals(LlmProviderType.CLAUDE, LlmProviderType.fromId("claude"))
+        assertEquals(LlmProviderType.CLAUDE, LlmProviderType.fromId("anthropic"))
+        assertEquals(LlmProviderType.OPENAI, LlmProviderType.fromId("openai"))
+        assertEquals(LlmProviderType.OLLAMA, LlmProviderType.fromId("ollama"))
+        assertEquals(LlmProviderType.NONE, LlmProviderType.fromId("unknown"))
+        assertEquals(LlmProviderType.NONE, LlmProviderType.fromId(null))
     }
 }

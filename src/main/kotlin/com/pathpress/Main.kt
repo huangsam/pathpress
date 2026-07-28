@@ -124,11 +124,6 @@ class PathPressCommand :
 
         // 2. Initialize LLM Provider & Plan Trip Concept
         logger.info("Initializing AI Trip Planner ($llmProviderName)...")
-        if (llmProviderName.lowercase() in listOf("gemini", "claude", "anthropic", "openai")) {
-            if (llmProviderName.lowercase() != "openai" || llmUrl?.contains("localhost") != true) {
-                llmKey.validateApiKey(llmProviderName)
-            }
-        }
         val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl, llmModel)
         val tripPlan =
             llm.planTrip(

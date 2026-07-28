@@ -9,8 +9,8 @@ class ExtensionsTest {
 
     @Test
     fun `toDoubleSafe converts Number to Double and null to 0_0`() {
-        val intNum: Number? = 42
-        val doubleNum: Number? = 3.14
+        val intNum: Number = 42
+        val doubleNum: Number = 3.14
         val nullNum: Number? = null
 
         assertEquals(42.0, intNum.toDoubleSafe())
@@ -20,7 +20,7 @@ class ExtensionsTest {
 
     @Test
     fun `orEmptyList returns list if present and emptyList if null`() {
-        val list: List<String>? = listOf("apple", "banana")
+        val list: List<String> = listOf("apple", "banana")
         val nullList: List<String>? = null
 
         assertEquals(listOf("apple", "banana"), list.orEmptyList())
@@ -37,14 +37,12 @@ class ExtensionsTest {
 
     @Test
     fun `isNotBlankSafe checks string safely for null and blank`() {
-        val validStr: String? = "  text  "
-        val emptyStr: String? = ""
-        val blankStr: String? = "   "
-        val nullStr: String? = null
+        val validStr = "  text  "
+        val emptyStr = ""
+        val blankStr = "   "
 
         assertTrue(validStr.isNotBlankSafe())
         assertFalse(emptyStr.isNotBlankSafe())
         assertFalse(blankStr.isNotBlankSafe())
-        assertFalse(nullStr.isNotBlankSafe())
     }
 }

@@ -16,7 +16,7 @@ class ClaudeProvider(
     config: Config = Config.current,
     val modelName: String = config.defaultClaudeModel,
 ) : HttpLlmProvider(config) {
-    private val apiKey: String = apiKey.validateApiKey("claude")
+    private val apiKey: String = apiKey.validateApiKey(LlmProviderType.CLAUDE)
 
     override fun planTrip(
         startName: String,

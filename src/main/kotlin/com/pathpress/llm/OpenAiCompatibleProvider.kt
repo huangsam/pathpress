@@ -18,7 +18,8 @@ class OpenAiCompatibleProvider(
     val modelName: String = config.defaultOpenAiModel,
 ) : HttpLlmProvider(config) {
     private val apiKey: String =
-        if (endpoint.contains("localhost")) apiKey else apiKey.validateApiKey("openai")
+        if (endpoint.contains("localhost")) apiKey
+        else apiKey.validateApiKey(LlmProviderType.OPENAI)
 
     override fun planTrip(
         startName: String,

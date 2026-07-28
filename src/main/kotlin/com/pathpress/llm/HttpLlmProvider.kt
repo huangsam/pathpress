@@ -7,22 +7,18 @@ import com.pathpress.model.*
 import com.pathpress.util.*
 import java.net.http.HttpClient
 
-fun String?.validateApiKey(provider: String): String {
+fun String?.validateApiKey(type: LlmProviderType): String {
     val resolvedKey =
-        if (this.isNotBlankSafe()) this
-        else
-            when (provider.lowercase()) {
-                "gemini" -> System.getenv("GEMINI_API_KEY")
-                "claude",
-                "anthropic" -> System.getenv("ANTHROPIC_API_KEY")
-                "openai" -> System.getenv("OPENAI_API_KEY")
-                else -> null
-            }
+        if (this.isNotBlankSafe()) this else type.envVarName?.let { System.getenv(it) }
+
     require(resolvedKey.isNotBlankSafe()) {
-        "API key missing for $provider. Set GEMINI_API_KEY/ANTHROPIC_API_KEY/OPENAI_API_KEY or pass --llm-key"
+        "API key missing for ${type.id}. Set ${type.envVarName} or pass --llm-key"
     }
     return resolvedKey
 }
+
+fun String?.validateApiKey(provider: String): String =
+    this.validateApiKey(LlmProviderType.fromId(provider))
 
 abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvider {
     protected val client: HttpClient =
