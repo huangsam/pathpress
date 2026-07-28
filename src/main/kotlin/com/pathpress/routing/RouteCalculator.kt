@@ -28,6 +28,8 @@ class RouteCalculator(
         dayTitles: List<String> = emptyList(),
         profile: String = "car",
         limitPerLeg: Int = PoiExtractor.DEFAULT_POIS_PER_LEG,
+        userPrompt: String? = null,
+        includeThemeParks: Boolean = false,
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
 
@@ -41,10 +43,26 @@ class RouteCalculator(
             if (fallbackRes.hasErrors()) {
                 throw IllegalStateException("Route calculation failed: ${response.errors}")
             }
-            return extractLegsFromResponse(fallbackRes.best, days, dayTitles, profile, limitPerLeg)
+            return extractLegsFromResponse(
+                fallbackRes.best,
+                days,
+                dayTitles,
+                profile,
+                limitPerLeg,
+                userPrompt,
+                includeThemeParks,
+            )
         }
 
-        return extractLegsFromResponse(response.best, days, dayTitles, profile, limitPerLeg)
+        return extractLegsFromResponse(
+            response.best,
+            days,
+            dayTitles,
+            profile,
+            limitPerLeg,
+            userPrompt,
+            includeThemeParks,
+        )
     }
 
     private fun extractLegsFromResponse(
@@ -53,6 +71,8 @@ class RouteCalculator(
         dayTitles: List<String>,
         profile: String,
         limitPerLeg: Int,
+        userPrompt: String? = null,
+        includeThemeParks: Boolean = false,
     ): List<RouteLeg> {
         val pointsList = path.points
         val allCoords =
@@ -68,6 +88,8 @@ class RouteCalculator(
                         allCoords,
                         maxDistanceMeters = 8000.0,
                         limitPerLeg = limitPerLeg,
+                        userPrompt = userPrompt,
+                        includeThemeParks = includeThemeParks,
                     )
                     .ifEmpty {
                         filterNearbyPois(
@@ -186,6 +208,8 @@ class RouteCalculator(
                         legPoints,
                         maxDistanceMeters = 8000.0,
                         limitPerLeg = limitPerLeg,
+                        userPrompt = userPrompt,
+                        includeThemeParks = includeThemeParks,
                     )
                     .ifEmpty {
                         filterNearbyPois(

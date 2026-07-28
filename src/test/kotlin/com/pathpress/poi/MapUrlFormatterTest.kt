@@ -20,6 +20,16 @@ class MapUrlFormatterTest {
     }
 
     @Test
+    fun `formatDirectionsUrl includes intermediate waypoints`() {
+        val waypoints =
+            listOf(LocationCoords(37.3382, -121.8863), LocationCoords(36.6002, -121.8947))
+        val url =
+            MapUrlFormatter.formatDirectionsUrl(37.7749, -122.4194, 36.9741, -122.0308, waypoints)
+        assertTrue(url.contains("&waypoints="))
+        assertTrue(url.contains("37.3382"))
+    }
+
+    @Test
     fun `formatMapSearchUrl generates correct search link`() {
         val url = MapUrlFormatter.formatMapSearchUrl(34.0522, -118.2437)
         assertEquals("https://www.google.com/maps/search/?api=1&query=34.0522,-118.2437", url)

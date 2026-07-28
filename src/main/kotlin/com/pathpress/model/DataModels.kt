@@ -86,6 +86,7 @@ data class RouteLeg(
             startLng = startLng,
             endLat = endLat,
             endLng = endLng,
+            waypoints = pois.map { LocationCoords(it.lat, it.lng) },
         )
 
     /** Generate a Google Maps URL for viewing the route on a map. */

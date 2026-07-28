@@ -59,6 +59,12 @@ class PathPressCommand :
         option("--pois-per-leg", help = "Maximum POIs to extract per day/leg")
             .int()
             .default(PoiExtractor.DEFAULT_POIS_PER_LEG)
+    val includeThemeParks by
+        option(
+                "--include-theme-parks",
+                help = "Include ticketed theme park rides (e.g. roller coasters, monorails)",
+            )
+            .flag(default = false)
     val verbose by
         option(
                 "-v",
@@ -135,6 +141,8 @@ class PathPressCommand :
                 dayTitles = tripPlan.dayThemes,
                 profile = if (profile.lowercase() == "scenic") "car" else profile,
                 limitPerLeg = poisPerLeg,
+                userPrompt = prompt,
+                includeThemeParks = includeThemeParks,
             )
 
         // 5. Curate POIs & Generate Leg Storytelling with LLM

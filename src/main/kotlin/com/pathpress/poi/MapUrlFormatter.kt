@@ -8,6 +8,9 @@ import com.pathpress.routing.*
 /** Formatter for generating Google Maps URLs with zero external dependencies. */
 object MapUrlFormatter {
 
+    private fun roundCoord(value: Double): String =
+        String.format(java.util.Locale.US, "%.4f", value)
+
     /**
      * Generate a directions URL for Google Maps.
      *
@@ -22,11 +25,19 @@ object MapUrlFormatter {
         startLng: Double,
         endLat: Double,
         endLng: Double,
+        waypoints: List<LocationCoords> = emptyList(),
     ): String {
         return buildString {
             append("https://www.google.com/maps/dir/?api=1")
-            append("&origin=${startLat},${startLng}")
-            append("&destination=${endLat},${endLng}")
+            append("&origin=${roundCoord(startLat)},${roundCoord(startLng)}")
+            append("&destination=${roundCoord(endLat)},${roundCoord(endLng)}")
+            if (waypoints.isNotEmpty()) {
+                val wpStr =
+                    waypoints.take(9).joinToString("|") {
+                        "${roundCoord(it.lat)},${roundCoord(it.lng)}"
+                    }
+                append("&waypoints=${java.net.URLEncoder.encode(wpStr, "UTF-8")}")
+            }
             append("&travelmode=driving")
         }
     }

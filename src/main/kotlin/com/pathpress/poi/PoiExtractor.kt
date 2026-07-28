@@ -221,6 +221,8 @@ object PoiExtractor {
         legPoints: List<LocationCoords>,
         maxDistanceMeters: Double = 5000.0,
         limitPerLeg: Int = DEFAULT_POIS_PER_LEG,
+        userPrompt: String? = null,
+        includeThemeParks: Boolean = false,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
@@ -230,6 +232,17 @@ object PoiExtractor {
         if (cacheStore.pois.isEmpty()) {
             return emptyList()
         }
+
+        val allowsThemeParks =
+            includeThemeParks ||
+                (userPrompt?.lowercase()?.let { prompt ->
+                    prompt.contains("theme park") ||
+                        prompt.contains("disney") ||
+                        prompt.contains("six flags") ||
+                        prompt.contains("amusement") ||
+                        prompt.contains("roller coaster") ||
+                        prompt.contains("coaster")
+                } ?: false)
 
         val bufferDeg = (maxDistanceMeters / 111000.0) + 0.02
         val minLat = legPoints.minOf { it.lat } - bufferDeg
@@ -252,6 +265,7 @@ object PoiExtractor {
         val candidates = mutableListOf<POI>()
         for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
+                if (isExcludedThemeParkPoi(poi, allowsThemeParks)) continue
                 val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
                     candidates.add(poi.copy(distanceFromRouteMeters = dist))
@@ -260,6 +274,40 @@ object PoiExtractor {
         }
 
         return rankAndSelectPois(candidates, limitPerLeg, legPoints)
+    }
+
+    private fun isExcludedThemeParkPoi(poi: POI, allowsThemeParks: Boolean = false): Boolean {
+        if (allowsThemeParks) return false
+        val attractionType = poi.tags["attraction"]
+        if (
+            attractionType in setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
+        ) {
+            return true
+        }
+        val website = (poi.tags["website"] ?: "").lowercase()
+        if (
+            website.contains("sixflags.com") ||
+                website.contains("disney.go.com") ||
+                website.contains("seaworld.com") ||
+                website.contains("knotts.com") ||
+                website.contains("universalstudios.com")
+        ) {
+            return true
+        }
+        val operator = (poi.tags["operator"] ?: "").lowercase()
+        if (
+            operator.contains("six flags") ||
+                operator.contains("disney") ||
+                operator.contains("seaworld") ||
+                operator.contains("cedar fair")
+        ) {
+            return true
+        }
+        val name = (poi.name ?: "").lowercase()
+        if (name.contains("monorail station") || name.contains("roller coaster")) {
+            return true
+        }
+        return false
     }
 
     /**
@@ -604,7 +652,8 @@ object PoiExtractor {
             }
         }
 
-        return selected.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
+        val progressMap = scored.associate { it.poi.id to it.progress }
+        return selected.sortedBy { progressMap[it.id] ?: 0.0 }
     }
 
     /** Two-pass type-diverse selection sorted by proximity to route (no spatial spread). */
@@ -660,10 +709,9 @@ object PoiExtractor {
         if (polyline.size == 1) return haversineMeters(lat, lng, polyline[0].lat, polyline[0].lng)
 
         var minDist = Double.MAX_VALUE
-        val step = maxOf(1, polyline.size / 80)
-        for (i in 0 until polyline.size - 1 step step) {
+        for (i in 0 until polyline.size - 1) {
             val p1 = polyline[i]
-            val p2 = polyline[minOf(i + step, polyline.size - 1)]
+            val p2 = polyline[i + 1]
             val d = pointToSegmentDistanceMeters(lat, lng, p1.lat, p1.lng, p2.lat, p2.lng)
             if (d < minDist) minDist = d
         }
