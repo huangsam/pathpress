@@ -35,7 +35,7 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:4.2.2")
 
     // Logging
-    implementation("org.slf4j:slf4j-simple:2.0.13")
+    implementation("org.slf4j:slf4j-simple:2.0.18")
 
     // Unit testing
     testImplementation(kotlin("test"))
