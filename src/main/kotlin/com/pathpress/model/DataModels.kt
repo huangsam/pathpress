@@ -6,7 +6,7 @@ import com.pathpress.poi.*
 import com.pathpress.routing.*
 
 /** Represents coordinates for a location. */
-data class LocationCoords(val lat: Double, val lng: Double)
+data class LocationCoords(val lat: Double, val lng: Double, val name: String? = null)
 
 /** Represents a Point of Interest (POI) from OpenStreetMap data. */
 data class POI(

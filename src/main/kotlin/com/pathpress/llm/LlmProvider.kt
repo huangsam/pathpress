@@ -60,7 +60,7 @@ interface LlmProvider {
                     )
                 "ollama" ->
                     OllamaProvider(
-                        endpoint = apiUrl ?: "http://localhost:11434/api/generate",
+                        endpoint = apiUrl ?: "http://localhost:11434/api/chat",
                         modelName = modelName ?: "qwen3.6:35b-mlx",
                     )
                 else -> NoOpFallbackProvider()
@@ -164,6 +164,7 @@ abstract class HttpLlmProvider : LlmProvider {
             Provide a JSON response with:
             {
               "dayThemes": ["Day 1 title", "Day 2 title", ...],
+              "waypoints": [{"lat": 40.7128, "lng": -74.0060, "name": "New York"}],
               "narrative": "A short summary paragraph of the trip vibe."
             }
             Return ONLY valid raw JSON.
@@ -210,6 +211,33 @@ abstract class HttpLlmProvider : LlmProvider {
             .trimIndent()
     }
 
+    protected fun parseTripPlan(jsonText: String, days: Int): TripPlanResponse {
+        val cleanJson = jsonText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
+        return try {
+            val map: Map<String, Any> = mapper.readValue(cleanJson)
+            val themes =
+                (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
+                    ?: (1..days).map { "Day $it" }
+            val narrative = map["narrative"]?.toString() ?: ""
+            val waypoints =
+                (map["waypoints"] as? List<*>)?.mapNotNull { w ->
+                    (w as? Map<*, *>)?.let {
+                        val lat = (it["lat"] as? Number)?.toDouble()
+                        val lng = (it["lng"] as? Number)?.toDouble()
+                        val name = it["name"]?.toString()
+                        if (lat != null && lng != null) LocationCoords(lat, lng, name) else null
+                    }
+                } ?: emptyList()
+            TripPlanResponse(dayThemes = themes, waypoints = waypoints, narrative = narrative)
+        } catch (_: Exception) {
+            TripPlanResponse(
+                dayThemes = (1..days).map { "Day $it" },
+                waypoints = emptyList(),
+                narrative = "",
+            )
+        }
+    }
+
     protected fun parseCurationResponse(jsonText: String, leg: RouteLeg): CuratedLegResult {
         return try {
             val cleanJson = jsonText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
@@ -232,10 +260,15 @@ abstract class HttpLlmProvider : LlmProvider {
 
             val updatedPois =
                 leg.pois.map { poi ->
-                    val nameKey = poi.name?.lowercase() ?: ""
+                    val nameKey = poi.name?.lowercase()?.trim() ?: ""
                     val customDesc =
                         poiDescMap[nameKey]
-                            ?: poiDescMap.entries.firstOrNull { nameKey.contains(it.key) }?.value
+                            ?: poiDescMap.entries
+                                .firstOrNull { k ->
+                                    val keyStr = k.key.trim()
+                                    nameKey.contains(keyStr) || keyStr.contains(nameKey)
+                                }
+                                ?.value
                     val desc =
                         customDesc
                             ?: fallbackResult.curatedPois
@@ -303,7 +336,7 @@ class GeminiProvider(private val apiKey: String) : HttpLlmProvider() {
                 val text = (parts?.firstOrNull() as? Map<*, *>)?.get("text") as? String
 
                 if (!text.isNullOrBlank()) {
-                    return parseJsonResponse(text, days)
+                    return parseTripPlan(text, days)
                 }
             }
         } catch (e: Exception) {
@@ -348,24 +381,6 @@ class GeminiProvider(private val apiKey: String) : HttpLlmProvider() {
         }
         return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
-
-    private fun parseJsonResponse(rawText: String, days: Int): TripPlanResponse {
-        val cleanJson = rawText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
-        return try {
-            val map: Map<String, Any> = mapper.readValue(cleanJson)
-            val themes =
-                (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
-                    ?: (1..days).map { "Day $it" }
-            val narrative = map["narrative"]?.toString() ?: ""
-            TripPlanResponse(dayThemes = themes, waypoints = emptyList(), narrative = narrative)
-        } catch (_: Exception) {
-            TripPlanResponse(
-                dayThemes = (1..days).map { "Day $it" },
-                waypoints = emptyList(),
-                narrative = "",
-            )
-        }
-    }
 }
 
 class ClaudeProvider(private val apiKey: String) : HttpLlmProvider() {
@@ -408,18 +423,7 @@ class ClaudeProvider(private val apiKey: String) : HttpLlmProvider() {
                 val firstContent = content?.firstOrNull() as? Map<*, *>
                 val text = firstContent?.get("text") as? String
                 if (!text.isNullOrBlank()) {
-                    val cleanJson =
-                        text.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
-                    val map: Map<String, Any> = mapper.readValue(cleanJson)
-                    val themes =
-                        (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
-                            ?: (1..days).map { "Day $it" }
-                    val narrative = map["narrative"]?.toString() ?: ""
-                    return TripPlanResponse(
-                        dayThemes = themes,
-                        waypoints = emptyList(),
-                        narrative = narrative,
-                    )
+                    return parseTripPlan(text, days)
                 }
             }
         } catch (e: Exception) {
@@ -513,18 +517,7 @@ class OpenAiCompatibleProvider(private val apiKey: String, private val endpoint:
                 val message = firstChoice?.get("message") as? Map<*, *>
                 val text = message?.get("content") as? String
                 if (!text.isNullOrBlank()) {
-                    val cleanJson =
-                        text.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
-                    val map: Map<String, Any> = mapper.readValue(cleanJson)
-                    val themes =
-                        (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
-                            ?: (1..days).map { "Day $it" }
-                    val narrative = map["narrative"]?.toString() ?: ""
-                    return TripPlanResponse(
-                        dayThemes = themes,
-                        waypoints = emptyList(),
-                        narrative = narrative,
-                    )
+                    return parseTripPlan(text, days)
                 }
             }
         } catch (e: Exception) {
@@ -591,7 +584,21 @@ class OllamaProvider(
             val promptText = buildPrompt(startName, endName, days, userPrompt)
             val requestBody =
                 mapper.writeValueAsString(
-                    mapOf("model" to modelName, "prompt" to promptText, "stream" to false)
+                    mapOf(
+                        "model" to modelName,
+                        "messages" to
+                            listOf(
+                                mapOf(
+                                    "role" to "system",
+                                    "content" to
+                                        "You are a helpful travel planner that outputs JSON.",
+                                ),
+                                mapOf("role" to "user", "content" to promptText),
+                            ),
+                        "stream" to false,
+                        "format" to "json",
+                        "options" to mapOf("temperature" to 0.2),
+                    )
                 )
 
             val uri = URI.create(endpoint)
@@ -605,20 +612,10 @@ class OllamaProvider(
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() == 200) {
                 val root: Map<String, Any> = mapper.readValue(response.body())
-                val responseText = root["response"]?.toString()
+                val message = root["message"] as? Map<*, *>
+                val responseText = message?.get("content") as? String
                 if (!responseText.isNullOrBlank()) {
-                    val cleanJson =
-                        responseText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
-                    val map: Map<String, Any> = mapper.readValue(cleanJson)
-                    val themes =
-                        (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
-                            ?: (1..days).map { "Day $it" }
-                    val narrative = map["narrative"]?.toString() ?: ""
-                    return TripPlanResponse(
-                        dayThemes = themes,
-                        waypoints = emptyList(),
-                        narrative = narrative,
-                    )
+                    return parseTripPlan(responseText, days)
                 }
             }
         } catch (e: Exception) {
@@ -633,7 +630,21 @@ class OllamaProvider(
             val promptText = buildCurationPrompt(leg, userPrompt)
             val requestBody =
                 mapper.writeValueAsString(
-                    mapOf("model" to modelName, "prompt" to promptText, "stream" to false)
+                    mapOf(
+                        "model" to modelName,
+                        "messages" to
+                            listOf(
+                                mapOf(
+                                    "role" to "system",
+                                    "content" to
+                                        "You are a local travel guide that outputs raw JSON.",
+                                ),
+                                mapOf("role" to "user", "content" to promptText),
+                            ),
+                        "stream" to false,
+                        "format" to "json",
+                        "options" to mapOf("temperature" to 0.2),
+                    )
                 )
             val uri = URI.create(endpoint)
             val request =
@@ -646,7 +657,8 @@ class OllamaProvider(
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() == 200) {
                 val root: Map<String, Any> = mapper.readValue(response.body())
-                val responseText = root["response"]?.toString()
+                val message = root["message"] as? Map<*, *>
+                val responseText = message?.get("content") as? String
                 if (!responseText.isNullOrBlank()) {
                     return parseCurationResponse(responseText, leg)
                 }
