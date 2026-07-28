@@ -56,7 +56,7 @@ class PathPressCommand :
     val llmUrl by
         option("--llm-url", help = "Endpoint URL for LLM (e.g. for Ollama or custom server)")
     val poisPerLeg by
-        option("--pois-per-leg", help = "Maximum POIs to extract per day/leg").int().default(10)
+        option("--pois-per-leg", help = "Maximum POIs to extract per day/leg").int().default(12)
     val verbose by
         option(
                 "-v",

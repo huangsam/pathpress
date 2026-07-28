@@ -27,7 +27,7 @@ class RouteCalculator(
         days: Int,
         dayTitles: List<String> = emptyList(),
         profile: String = "car",
-        limitPerLeg: Int = 10,
+        limitPerLeg: Int = 12,
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
 

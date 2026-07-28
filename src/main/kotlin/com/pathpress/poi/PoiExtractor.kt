@@ -197,7 +197,7 @@ object PoiExtractor {
         pbfPath: String,
         legPoints: List<LocationCoords>,
         maxDistanceMeters: Double = 5000.0,
-        limitPerLeg: Int = 10,
+        limitPerLeg: Int = 12,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
