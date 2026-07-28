@@ -86,46 +86,29 @@ internal fun FlowContent.legCard(leg: RouteLeg, route: Route) {
     val distance = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
     val duration = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
     val directionsUrl = leg.toDirectionsUrl()
-    val qrDataUri = QrCodeGenerator.generateQrCodeDataUri(directionsUrl, 160, 160)
 
     div("leg") {
-        table("leg-top-grid") {
-            tr {
-                td {
-                    style = "vertical-align: top;"
-                    div("day-badge") { +"Day ${leg.dayNumber} of ${leg.totalDays}" }
-                    div("leg-title editorial-heading") { +sanitizeText(cleanTitle) }
-                    div("meta-pills") {
-                        span("meta-badge") {
-                            unsafe { raw(LucideIcon.route("#334155", 12)) }
-                            +" ${formatDistance(distance)}"
-                        }
-                        span("meta-badge") {
-                            unsafe { raw(LucideIcon.clock("#334155", 12)) }
-                            +" ${formatDuration(duration)}"
-                        }
-                        if (leg.endTownName != null) {
-                            span("meta-badge-overnight") {
-                                unsafe { raw(LucideIcon.mapPin("#276749", 12)) }
-                                +" Overnight in ${sanitizeText(leg.endTownName)}"
-                            }
-                        }
+        div("leg-header") {
+            div("day-badge") { +"Day ${leg.dayNumber} of ${leg.totalDays}" }
+            div("leg-title editorial-heading") { +sanitizeText(cleanTitle) }
+            div("meta-pills") {
+                span("meta-badge") {
+                    unsafe { raw(LucideIcon.route("#334155", 12)) }
+                    +" ${formatDistance(distance)}"
+                }
+                span("meta-badge") {
+                    unsafe { raw(LucideIcon.clock("#334155", 12)) }
+                    +" ${formatDuration(duration)}"
+                }
+                if (leg.endTownName != null) {
+                    span("meta-badge-overnight") {
+                        unsafe { raw(LucideIcon.mapPin("#276749", 12)) }
+                        +" Overnight in ${sanitizeText(leg.endTownName)}"
                     }
                 }
-                if (qrDataUri.isNotBlank()) {
-                    td {
-                        style = "width: 125px; vertical-align: top; text-align: right;"
-                        div("nav-action-box") {
-                            img(src = qrDataUri, alt = "QR Code", classes = "qr-img") {
-                                width = "70"
-                                height = "70"
-                            }
-                            a(href = directionsUrl, classes = "maps-btn-sm") {
-                                unsafe { raw(LucideIcon.navigation("#ffffff", 11)) }
-                                +" Directions"
-                            }
-                        }
-                    }
+                a(href = directionsUrl, classes = "meta-badge-nav") {
+                    unsafe { raw(LucideIcon.navigation("#0284c7", 12)) }
+                    +" Directions"
                 }
             }
         }
@@ -225,6 +208,41 @@ internal fun FlowContent.infoCard(
             div("info-card-item") {
                 style = "color: $textColor;"
                 +"\u2022 ${sanitizeText(item)}"
+            }
+        }
+    }
+}
+
+internal fun FlowContent.navigationAppendix(route: Route) {
+    div("appendix-page") {
+        div("section-title editorial-heading") { +"Mobile Navigation Cheat Sheet" }
+        div("appendix-intro") {
+            +"Scan any QR code below with your phone camera to instantly launch turn-by-turn directions for that day in Google Maps."
+        }
+        div("qr-grid") {
+            for (leg in route.legs) {
+                val rawTitle = leg.dayTitle ?: "Scenic Drive"
+                val cleanTitle =
+                    rawTitle.replace(Regex("^Day\\s+\\d+:\\s*", RegexOption.IGNORE_CASE), "")
+                val directionsUrl = leg.toDirectionsUrl()
+                val qrDataUri = QrCodeGenerator.generateQrCodeDataUri(directionsUrl, 180, 180)
+
+                div("qr-card") {
+                    div("qr-card-header") { +"Day ${leg.dayNumber}: ${sanitizeText(cleanTitle)}" }
+                    if (qrDataUri.isNotBlank()) {
+                        img(
+                            src = qrDataUri,
+                            alt = "Leg Navigation QR Code",
+                            classes = "appendix-qr-img",
+                        )
+                    }
+                    div("qr-card-footer") {
+                        a(href = directionsUrl, classes = "appendix-link") {
+                            unsafe { raw(LucideIcon.navigation("#0284c7", 12)) }
+                            +" Open in Maps"
+                        }
+                    }
+                }
             }
         }
     }

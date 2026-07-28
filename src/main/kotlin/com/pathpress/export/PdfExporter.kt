@@ -54,6 +54,7 @@ object PdfExporter {
                 body {
                     coverPage(route, safeStart, safeEnd)
                     dailySchedule(route)
+                    navigationAppendix(route)
                 }
             }
         }

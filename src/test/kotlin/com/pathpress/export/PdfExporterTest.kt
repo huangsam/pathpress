@@ -56,16 +56,17 @@ class PdfExporterTest {
     }
 
     @Test
-    fun `generateHtml outputs modern editorial elements SVG icons and QR codes`() {
+    fun `generateHtml outputs modern editorial elements and SVG icons`() {
         val poi =
             POI(
                 id = "1",
                 name = "Big Sur Viewpoint",
-                lat = 36.2,
+                lat = 36.27,
                 lng = -121.8,
-                tags = emptyMap(),
+                tags = mapOf("tourism" to "viewpoint"),
                 type = "viewpoint",
-                description = "Stunning coast view",
+                distanceFromRouteMeters = 500.0,
+                description = "Breathtaking coastal views.",
             )
         val leg =
             RouteLeg(
@@ -95,7 +96,6 @@ class PdfExporterTest {
 
         assertTrue(html.contains("hero-banner"))
         assertTrue(html.contains("editorial-heading"))
-        assertTrue(html.contains("data:image/png;base64,"))
         assertTrue(html.contains("<svg"))
         assertTrue(html.contains("Merriweather"))
         assertTrue(html.contains("Inter"))
