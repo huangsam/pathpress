@@ -147,25 +147,4 @@ class PdfExporterTest {
         val html = PdfExporter.generateHtml(route, "San Jose", "San Diego")
         PdfExporter.exportToPdf(html, "/tmp/test_itinerary.pdf")
     }
-
-    @Test
-    fun `render generated pdf pages to png`() {
-        val pdfFile = java.io.File("itinerary.pdf")
-        if (!pdfFile.exists()) return
-        val doc = org.apache.pdfbox.pdmodel.PDDocument.load(pdfFile)
-        val renderer = org.apache.pdfbox.rendering.PDFRenderer(doc)
-        val stripper = org.apache.pdfbox.text.PDFTextStripper()
-        println("Generated PDF page count: ${doc.numberOfPages}")
-        for (i in 0 until doc.numberOfPages) {
-            stripper.startPage = i + 1
-            stripper.endPage = i + 1
-            val text = stripper.getText(doc).trim()
-            println("--- PAGE ${i + 1} ---")
-            println(text.take(300))
-            val image = renderer.renderImageWithDPI(i, 150f)
-            val outFile = java.io.File("itinerary_page_${i + 1}.png")
-            javax.imageio.ImageIO.write(image, "PNG", outFile)
-        }
-        doc.close()
-    }
 }

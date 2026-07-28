@@ -25,6 +25,7 @@ data class PoiCacheStore(
  * file, backed by a fast JSON cache (`pois_cache.json`).
  */
 object PoiExtractor {
+    const val DEFAULT_POIS_PER_LEG = 12
 
     private val logger = LoggerFactory.getLogger(PoiExtractor::class.java)
     private val mapper = ObjectMapper().registerKotlinModule()
@@ -197,7 +198,7 @@ object PoiExtractor {
         pbfPath: String,
         legPoints: List<LocationCoords>,
         maxDistanceMeters: Double = 5000.0,
-        limitPerLeg: Int = 12,
+        limitPerLeg: Int = DEFAULT_POIS_PER_LEG,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
