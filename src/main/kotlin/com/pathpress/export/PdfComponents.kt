@@ -282,17 +282,13 @@ internal fun FlowContent.poiCard(poi: POI, index: Int) {
 
     div("poi-card") {
         div("poi-card-header") {
-            span("poi-index-badge") {
-                style =
-                    "display: inline-block; background-color: #0284c7; color: #ffffff; font-size: 10px; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; text-align: center; line-height: 16px; margin-right: 6px; vertical-align: middle;"
-                +"$index"
-            }
-            a(href = poiSearchUrl) {
-                style = "color: #0284c7; text-decoration: none; vertical-align: middle;"
-                +sanitizeText(poiName)
-            }
+            span("poi-number") { +"$index." }
+            +" "
+            a(href = poiSearchUrl, classes = "poi-name-link") { +sanitizeText(poiName) }
+            +"  "
             span("tag-badge") { +poiType }
             if (distOffRoute != null) {
+                +" "
                 span("dist-badge") { +distOffRoute }
             }
         }

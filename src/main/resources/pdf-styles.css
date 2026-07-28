@@ -244,8 +244,19 @@ h3,
 .poi-card-header {
   font-size: 13px;
   font-weight: bold;
-  color: #0284c7;
+  color: #334155;
   margin-bottom: 6px;
+  line-height: 1.5;
+}
+.poi-name-link {
+  color: #0284c7;
+  text-decoration: none;
+  font-weight: bold;
+}
+.poi-number {
+  color: #1e293b;
+  font-weight: bold;
+  font-size: 13px;
 }
 .poi-card-desc {
   color: #475569;
