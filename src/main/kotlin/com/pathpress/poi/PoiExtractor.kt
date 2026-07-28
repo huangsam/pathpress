@@ -304,10 +304,7 @@ object PoiExtractor {
             return true
         }
         val name = (poi.name ?: "").lowercase()
-        if (name.contains("monorail station") || name.contains("roller coaster")) {
-            return true
-        }
-        return false
+        return name.contains("monorail station") || name.contains("roller coaster")
     }
 
     /**
