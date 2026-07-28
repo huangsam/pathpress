@@ -30,7 +30,7 @@ data class Config(
         const val DEFAULT_GEMINI_MODEL: String = "gemini-1.5-flash"
         const val DEFAULT_CLAUDE_MODEL: String = "claude-3-haiku-20240307"
         const val DEFAULT_OPENAI_MODEL: String = "gpt-4o-mini"
-        const val DEFAULT_OLLAMA_MODEL: String = "gemma4:12b-mlx"
+        const val DEFAULT_OLLAMA_MODEL: String = "gemma4:31b-mlx"
         const val DEFAULT_HTTP_LLM_TIMEOUT_SECONDS: Long = 15L
         const val DEFAULT_GEOCODER_TIMEOUT_SECONDS: Long = 10L
 

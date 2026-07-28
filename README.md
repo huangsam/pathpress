@@ -38,8 +38,8 @@ A robust, hybrid AI road trip planner using OpenStreetMap data and GraphHopper. 
 ### 3. Run PathPress Examples
 
 ```bash
-# Example 1: Multi-day trip with Ollama (gemma4:12b-mlx), town-centric pacing & verbose POI breakdown
-./gradlew run --args="--start 'San Francisco, CA' --end 'San Luis Obispo, CA' --days 2 --llm-provider ollama --llm-model 'gemma4:12b-mlx' --prompt 'scenic coastal highlights' --verbose"
+# Example 1: Multi-day trip with Ollama (gemma4:31b-mlx), town-centric pacing & verbose POI breakdown
+./gradlew run --args="--start 'San Francisco, CA' --end 'San Luis Obispo, CA' --days 2 --llm-provider ollama --llm-model 'gemma4:31b-mlx' --prompt 'scenic coastal highlights' --verbose"
 
 # Example 2: 1-Day trip with coastal scenic prompt & terminal breakdown
 ./gradlew run --args="--start 'San Jose, CA' --end 'Monterey, CA' --days 1 --prompt 'coastal scenic bakeries' --verbose"
@@ -60,7 +60,7 @@ Options:
   --prompt=<text>        Natural language trip themes, vibe, or preferences
   --profile=<text>       Routing profile ('scenic' or 'car') (default: scenic)
   --llm-provider=<text>  LLM provider: gemini, claude, openai, ollama, or none (default: none)
-  --llm-model=<text>     Model name for LLM (default: gemma4:12b-mlx)
+  --llm-model=<text>     Model name for LLM (default: gemma4:31b-mlx)
   --llm-key=<text>       API Key for the chosen LLM provider
   --llm-url=<text>       Endpoint URL for LLM (e.g. http://localhost:11434/api/generate)
   -v, --verbose          Print detailed real POI corridor breakdown, distances & storytelling to terminal
