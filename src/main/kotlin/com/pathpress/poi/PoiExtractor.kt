@@ -15,10 +15,32 @@ import org.slf4j.LoggerFactory
 
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
 
+const val GRID_CELL_SIZE_DEG = 0.05 // ~5.5 km per cell
+
+data class GridCell(val latIndex: Int, val lngIndex: Int) {
+    companion object {
+        fun fromCoords(lat: Double, lng: Double): GridCell =
+            GridCell(
+                floor(lat / GRID_CELL_SIZE_DEG).toInt(),
+                floor(lng / GRID_CELL_SIZE_DEG).toInt(),
+            )
+    }
+}
+
 data class PoiCacheStore(
     val pois: List<POI> = emptyList(),
     val towns: List<TownInfo> = emptyList(),
-)
+) {
+    @get:com.fasterxml.jackson.annotation.JsonIgnore
+    val spatialIndex: Map<GridCell, List<POI>> by lazy {
+        pois.groupBy { GridCell.fromCoords(it.lat, it.lng) }
+    }
+
+    @get:com.fasterxml.jackson.annotation.JsonIgnore
+    val townSpatialIndex: Map<GridCell, List<TownInfo>> by lazy {
+        towns.groupBy { GridCell.fromCoords(it.lat, it.lng) }
+    }
+}
 
 /**
  * Utility for querying real points of interest (POIs) and towns directly from an OpenStreetMap PBF
@@ -215,8 +237,20 @@ object PoiExtractor {
         val minLng = legPoints.minOf { it.lng } - bufferDeg
         val maxLng = legPoints.maxOf { it.lng } + bufferDeg
 
+        val minLatCell = floor(minLat / GRID_CELL_SIZE_DEG).toInt()
+        val maxLatCell = floor(maxLat / GRID_CELL_SIZE_DEG).toInt()
+        val minLngCell = floor(minLng / GRID_CELL_SIZE_DEG).toInt()
+        val maxLngCell = floor(maxLng / GRID_CELL_SIZE_DEG).toInt()
+
+        val candidatePois = mutableSetOf<POI>()
+        for (latIdx in minLatCell..maxLatCell) {
+            for (lngIdx in minLngCell..maxLngCell) {
+                cacheStore.spatialIndex[GridCell(latIdx, lngIdx)]?.let { candidatePois.addAll(it) }
+            }
+        }
+
         val candidates = mutableListOf<POI>()
-        for (poi in cacheStore.pois) {
+        for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
@@ -247,8 +281,22 @@ object PoiExtractor {
         val minLng = targetLng - bufferDeg
         val maxLng = targetLng + bufferDeg
 
+        val minLatCell = floor(minLat / GRID_CELL_SIZE_DEG).toInt()
+        val maxLatCell = floor(maxLat / GRID_CELL_SIZE_DEG).toInt()
+        val minLngCell = floor(minLng / GRID_CELL_SIZE_DEG).toInt()
+        val maxLngCell = floor(maxLng / GRID_CELL_SIZE_DEG).toInt()
+
+        val candidateTowns = mutableSetOf<TownInfo>()
+        for (latIdx in minLatCell..maxLatCell) {
+            for (lngIdx in minLngCell..maxLngCell) {
+                cacheStore.townSpatialIndex[GridCell(latIdx, lngIdx)]?.let {
+                    candidateTowns.addAll(it)
+                }
+            }
+        }
+
         val matches = mutableListOf<TownInfo>()
-        for (town in cacheStore.towns) {
+        for (town in candidateTowns) {
             if (town.lat in minLat..maxLat && town.lng in minLng..maxLng) {
                 val dist = haversineMeters(targetLat, targetLng, town.lat, town.lng)
                 if (dist <= maxDistanceMeters) {

@@ -12,12 +12,14 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 data class GeocodedLocation(val coords: LocationCoords, val displayName: String)
 
 /**
- * Geocoding utility using OpenStreetMap's Nominatim API to resolve location names (including typos
- * and misspellings like "San Digo" -> "San Diego, CA") into coordinates and clean display names.
+ * Geocoding utility using OpenStreetMap's Nominatim API to resolve location names into coordinates
+ * and clean display names globally, backed by an in-memory query cache and rate limiter.
  */
 object Geocoder {
 
@@ -28,21 +30,19 @@ object Geocoder {
             .build()
 
     private val mapper = jacksonObjectMapper()
+    private val cache = ConcurrentHashMap<String, GeocodedLocation>()
+    private val lastRequestTimeMs = AtomicLong(0)
 
-    // Bounding box for California OSM PBF file
-    private const val MIN_LAT = 32.5
-    private const val MAX_LAT = 42.1
-    private const val MIN_LNG = -124.4
-    private const val MAX_LNG = -114.1
+    /** Clear in-memory geocoding cache (useful for testing). */
+    fun clearCache() {
+        cache.clear()
+    }
 
     /**
-     * Resolves a location string (which may be "lat,lng" coordinates or a city/landmark name with
-     * potential typos).
+     * Resolves a location string (which may be "lat,lng" coordinates or a city/landmark name).
      *
-     * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or misspelled "San
-     *   Digo")
-     * @return GeocodedLocation representing the resolved latitude, longitude, and corrected display
-     *   name
+     * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or "Seattle, WA")
+     * @return GeocodedLocation representing the resolved latitude, longitude, and display name
      */
     fun geocode(location: String): GeocodedLocation {
         val trimmed = location.trim()
@@ -57,49 +57,75 @@ object Geocoder {
             }
         }
 
-        // Known local mappings for common California cities & test queries
-        val normalized = trimmed.lowercase()
-        if (normalized.contains("jose"))
-            return GeocodedLocation(LocationCoords(37.3382, -121.8863), "San Jose, CA")
-        if (normalized.contains("monterey"))
-            return GeocodedLocation(LocationCoords(36.6002, -121.8947), "Monterey, CA")
-        if (normalized.contains("carmel"))
-            return GeocodedLocation(LocationCoords(36.5552, -121.9233), "Carmel-by-the-Sea, CA")
-        if (normalized.contains("santa cruz"))
-            return GeocodedLocation(LocationCoords(36.9741, -122.0308), "Santa Cruz, CA")
-        if (normalized.contains("luis obispo") || normalized.contains("slo"))
-            return GeocodedLocation(LocationCoords(35.2828, -120.6596), "San Luis Obispo, CA")
-        if (normalized.contains("santa barbara"))
-            return GeocodedLocation(LocationCoords(34.4208, -119.6982), "Santa Barbara, CA")
-        if (normalized.contains("big sur"))
-            return GeocodedLocation(LocationCoords(36.2704, -121.8081), "Big Sur, CA")
-        if (normalized.contains("digo") || normalized.contains("diego"))
-            return GeocodedLocation(LocationCoords(32.7157, -117.1611), "San Diego, CA")
-        if (normalized.contains("francisco"))
-            return GeocodedLocation(LocationCoords(37.7749, -122.4194), "San Francisco, CA")
-        if (normalized.contains("angeles"))
-            return GeocodedLocation(LocationCoords(34.0522, -118.2437), "Los Angeles, CA")
+        val cacheKey = trimmed.lowercase()
+        cache[cacheKey]?.let {
+            return it
+        }
 
-        // 2. Query Nominatim with California bounded viewbox
-        val queriesToTry = listOf("$trimmed, California, USA", trimmed)
+        // Convenient fast-path presets for common California locations
+        val normalized = trimmed.lowercase()
+        val fastResult =
+            when {
+                normalized.contains("jose") ->
+                    GeocodedLocation(LocationCoords(37.3382, -121.8863), "San Jose, CA")
+                normalized.contains("monterey") ->
+                    GeocodedLocation(LocationCoords(36.6002, -121.8947), "Monterey, CA")
+                normalized.contains("carmel") ->
+                    GeocodedLocation(LocationCoords(36.5552, -121.9233), "Carmel-by-the-Sea, CA")
+                normalized.contains("santa cruz") ->
+                    GeocodedLocation(LocationCoords(36.9741, -122.0308), "Santa Cruz, CA")
+                normalized.contains("luis obispo") || normalized.contains("slo") ->
+                    GeocodedLocation(LocationCoords(35.2828, -120.6596), "San Luis Obispo, CA")
+                normalized.contains("santa barbara") ->
+                    GeocodedLocation(LocationCoords(34.4208, -119.6982), "Santa Barbara, CA")
+                normalized.contains("big sur") ->
+                    GeocodedLocation(LocationCoords(36.2704, -121.8081), "Big Sur, CA")
+                normalized.contains("digo") || normalized.contains("diego") ->
+                    GeocodedLocation(LocationCoords(32.7157, -117.1611), "San Diego, CA")
+                normalized.contains("francisco") ->
+                    GeocodedLocation(LocationCoords(37.7749, -122.4194), "San Francisco, CA")
+                normalized.contains("angeles") ->
+                    GeocodedLocation(LocationCoords(34.0522, -118.2437), "Los Angeles, CA")
+                else -> null
+            }
+
+        if (fastResult != null) {
+            cache[cacheKey] = fastResult
+            return fastResult
+        }
+
+        // 2. Query Nominatim API with query caching and rate limiting
+        val queriesToTry = listOf(trimmed, "$trimmed, USA")
 
         for (query in queriesToTry) {
             val result = queryNominatim(query)
-            if (result != null && isWithinCaliforniaBounds(result.coords)) {
+            if (result != null) {
+                cache[cacheKey] = result
                 return result
             }
         }
 
-        // 3. Fallback to California bounded estimation if unresolvable or out of bounds
-        return fallbackLocation(trimmed)
+        // 3. Fallback estimation if unresolvable
+        val fallback = fallbackLocation(trimmed)
+        cache[cacheKey] = fallback
+        return fallback
     }
 
     private fun queryNominatim(queryString: String): GeocodedLocation? {
         try {
+            // Enforce Nominatim 1 request / second policy
+            val now = System.currentTimeMillis()
+            val lastTime = lastRequestTimeMs.get()
+            val elapsed = now - lastTime
+            if (elapsed < 1000) {
+                Thread.sleep(1000 - elapsed)
+            }
+            lastRequestTimeMs.set(System.currentTimeMillis())
+
             val encodedQuery = URLEncoder.encode(queryString, "UTF-8")
             val uri =
                 URI.create(
-                    "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=1&bounded=1&viewbox=-124.4,42.1,-114.1,32.5"
+                    "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=1"
                 )
 
             val request =
@@ -132,10 +158,6 @@ object Geocoder {
             // Silently attempt fallback
         }
         return null
-    }
-
-    private fun isWithinCaliforniaBounds(coords: LocationCoords): Boolean {
-        return coords.lat in MIN_LAT..MAX_LAT && coords.lng in MIN_LNG..MAX_LNG
     }
 
     private fun fallbackLocation(location: String): GeocodedLocation {

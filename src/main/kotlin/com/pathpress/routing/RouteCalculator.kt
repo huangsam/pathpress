@@ -99,12 +99,35 @@ class RouteCalculator(
 
         val townNames = mutableListOf<String?>()
 
+        val totalDistance = path.distance
         for (dayIndex in 1 until totalDays) {
-            val fraction = dayIndex.toDouble() / totalDays
-            val targetIdx =
-                (pointsList.size() * fraction).toInt().coerceIn(0, pointsList.size() - 1)
-            val targetLat = pointsList.getLat(targetIdx)
-            val targetLng = pointsList.getLon(targetIdx)
+            val targetDistance = (dayIndex.toDouble() / totalDays) * totalDistance
+
+            var cumDist = 0.0
+            var targetLat = pointsList.getLat(0)
+            var targetLng = pointsList.getLon(0)
+
+            for (i in 0 until pointsList.size() - 1) {
+                val segDist =
+                    PoiExtractor.haversineMeters(
+                        pointsList.getLat(i),
+                        pointsList.getLon(i),
+                        pointsList.getLat(i + 1),
+                        pointsList.getLon(i + 1),
+                    )
+                if (cumDist + segDist >= targetDistance) {
+                    val remain = targetDistance - cumDist
+                    val fraction = if (segDist > 0) remain / segDist else 0.0
+                    targetLat =
+                        pointsList.getLat(i) +
+                            fraction * (pointsList.getLat(i + 1) - pointsList.getLat(i))
+                    targetLng =
+                        pointsList.getLon(i) +
+                            fraction * (pointsList.getLon(i + 1) - pointsList.getLon(i))
+                    break
+                }
+                cumDist += segDist
+            }
 
             // Search for candidate towns near target milestone
             val candidateTowns =
