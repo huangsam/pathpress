@@ -32,7 +32,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.22.0")
 
     // CLI argument parsing
-    implementation("com.github.ajalt.clikt:clikt:4.2.2")
+    implementation("com.github.ajalt.clikt:clikt:5.1.0")
 
     // Logging
     implementation("org.slf4j:slf4j-simple:2.0.18")
