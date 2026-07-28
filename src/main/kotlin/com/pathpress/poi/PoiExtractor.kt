@@ -125,7 +125,7 @@ object PoiExtractor {
             return emptyList()
         }
 
-        return rankAndSelectPois(candidates, limitPerLeg)
+        return rankAndSelectPois(candidates, limitPerLeg, legPoints)
     }
 
     /**
@@ -206,7 +206,21 @@ object PoiExtractor {
             leisure in RELEVANT_LEISURE
     }
 
-    internal fun rankAndSelectPois(candidates: List<POI>, limit: Int): List<POI> {
+    /**
+     * Rank and select up to [limit] POIs from [candidates].
+     *
+     * When [legPoints] is provided the selection is **segment-based**: the route is divided into
+     * [limit] equal progress buckets (0.0 → 1.0) and the best POI is chosen from each bucket. This
+     * prevents start-city POIs from dominating simply because they are near the route origin.
+     *
+     * Without [legPoints] the original distance-only two-pass logic is used (keeps backwards
+     * compatibility with tests and single-point callers).
+     */
+    internal fun rankAndSelectPois(
+        candidates: List<POI>,
+        limit: Int,
+        legPoints: List<LocationCoords> = emptyList(),
+    ): List<POI> {
         if (candidates.isEmpty() || limit <= 0) return emptyList()
 
         // Deduplicate by name (keeping the closest instance)
@@ -219,14 +233,138 @@ object PoiExtractor {
                 .values
                 .toList()
 
-        val sortedCandidates =
-            distinctByName.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
+        // Use segment-based selection when we have route geometry
+        if (legPoints.size >= 2) {
+            return selectBySegments(distinctByName, limit, legPoints)
+        }
 
+        // Fallback: original distance-based two-pass selection
+        return applyTypeDiversity(
+            distinctByName.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE },
+            limit,
+        )
+    }
+
+    /**
+     * Computes a POI's normalised progress along [legPoints] (0.0 = start, 1.0 = end).
+     *
+     * Uses the same ~80-point subsampling as [minDistanceToPolyline] to stay fast.
+     */
+    private fun routeProgress(
+        poiLat: Double,
+        poiLng: Double,
+        legPoints: List<LocationCoords>,
+    ): Double {
+        if (legPoints.size < 2) return 0.0
+        val step = maxOf(1, legPoints.size / 80)
+        val sampled = (legPoints.indices step step).map { legPoints[it] }
+
+        // Pre-compute per-segment lengths and total length
+        val segLengths =
+            (0 until sampled.size - 1).map { i ->
+                haversineMeters(
+                    sampled[i].lat,
+                    sampled[i].lng,
+                    sampled[i + 1].lat,
+                    sampled[i + 1].lng,
+                )
+            }
+        val totalLen = segLengths.sum().coerceAtLeast(1.0)
+
+        var minDist = Double.MAX_VALUE
+        var bestProgress = 0.0
+        var cumLen = 0.0
+
+        for (i in 0 until sampled.size - 1) {
+            val p1 = sampled[i]
+            val p2 = sampled[i + 1]
+            val segLen = segLengths[i]
+
+            val dx = p2.lat - p1.lat
+            val dy = p2.lng - p1.lng
+            val l2 = dx * dx + dy * dy
+            val t =
+                if (l2 == 0.0) 0.0
+                else ((poiLat - p1.lat) * dx + (poiLng - p1.lng) * dy).div(l2).coerceIn(0.0, 1.0)
+
+            val projLat = p1.lat + t * dx
+            val projLng = p1.lng + t * dy
+            val dist = haversineMeters(poiLat, poiLng, projLat, projLng)
+
+            if (dist < minDist) {
+                minDist = dist
+                bestProgress = (cumLen + t * segLen) / totalLen
+            }
+            cumLen += segLen
+        }
+        return bestProgress
+    }
+
+    /**
+     * Divides the route into [limit] equal progress buckets and picks the closest-to-route,
+     * type-diverse POI from each bucket. Any unfilled bucket slots are backfilled from the global
+     * pool sorted by distance.
+     */
+    private fun selectBySegments(
+        candidates: List<POI>,
+        limit: Int,
+        legPoints: List<LocationCoords>,
+    ): List<POI> {
+        data class Scored(val poi: POI, val progress: Double)
+
+        val scored =
+            candidates
+                .map { Scored(it, routeProgress(it.lat, it.lng, legPoints)) }
+                .sortedBy { it.progress }
+
+        val selected = mutableListOf<POI>()
+        val typeCounts = mutableMapOf<String, Int>()
+        val bucketSize = 1.0 / limit
+
+        // Pass 1: one best POI per progress bucket
+        for (bucket in 0 until limit) {
+            val lo = bucket * bucketSize
+            val hi = (bucket + 1) * bucketSize
+            val inBucket = scored.filter { it.progress in lo..hi }
+            val pick =
+                inBucket
+                    .sortedBy { it.poi.distanceFromRouteMeters ?: Double.MAX_VALUE }
+                    .firstOrNull { (typeCounts[it.poi.type] ?: 0) < 1 }
+                    ?: inBucket
+                        .sortedBy { it.poi.distanceFromRouteMeters ?: Double.MAX_VALUE }
+                        .firstOrNull { (typeCounts[it.poi.type] ?: 0) < 2 }
+
+            if (pick != null) {
+                selected.add(pick.poi)
+                typeCounts[pick.poi.type] = (typeCounts[pick.poi.type] ?: 0) + 1
+            }
+        }
+
+        // Pass 2: backfill empty buckets from global pool (closest first)
+        if (selected.size < limit) {
+            val remaining =
+                scored
+                    .map { it.poi }
+                    .filter { it !in selected }
+                    .sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
+            for (poi in remaining) {
+                if (selected.size >= limit) break
+                val count = typeCounts[poi.type] ?: 0
+                if (count < 2) {
+                    selected.add(poi)
+                    typeCounts[poi.type] = count + 1
+                }
+            }
+        }
+
+        return selected.sortedBy { it.distanceFromRouteMeters ?: Double.MAX_VALUE }
+    }
+
+    /** Two-pass type-diverse selection sorted by proximity to route (no spatial spread). */
+    private fun applyTypeDiversity(sortedCandidates: List<POI>, limit: Int): List<POI> {
         val typeCounts = mutableMapOf<String, Int>()
         val selected = mutableListOf<POI>()
 
-        // 1. Pass 1: Select diverse POIs enforcing max 1 per type (e.g. 1 cafe, 1 restaurant, 1
-        // viewpoint, 1 park, 1 historic, 1 artwork)
         for (poi in sortedCandidates) {
             val count = typeCounts.getOrDefault(poi.type, 0)
             if (count < 1) {
@@ -236,7 +374,6 @@ object PoiExtractor {
             if (selected.size >= limit) break
         }
 
-        // 2. Pass 2: If we still need more POIs to fill the limit, relax the cap to max 2 per type
         if (selected.size < limit) {
             for (poi in sortedCandidates) {
                 if (poi !in selected) {
