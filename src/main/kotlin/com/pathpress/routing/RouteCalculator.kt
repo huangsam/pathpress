@@ -11,12 +11,28 @@ import com.pathpress.model.POI
 import com.pathpress.model.Route
 import com.pathpress.model.RouteLeg
 import com.pathpress.poi.PoiExtractor
+import org.slf4j.LoggerFactory
+
+/**
+ * Result of snapping a coordinate to the nearest routable road network edge.
+ *
+ * @property coords The snapped coordinates on the road network.
+ * @property snapDistanceMeters Distance the point was moved during snapping.
+ * @property snappedToTown Name of the town used for fallback snapping, or null if direct snap.
+ */
+data class SnapResult(
+    val coords: LocationCoords,
+    val snapDistanceMeters: Double = 0.0,
+    val snappedToTown: String? = null,
+)
 
 /** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(
     private val graphHopper: GraphHopper,
     val pbfFilePath: String = "california-latest.osm.pbf",
 ) {
+    private val logger = LoggerFactory.getLogger(RouteCalculator::class.java)
+
     /**
      * Calculate a route between start and end coordinates, dividing it into daily legs with real
      * POIs.
@@ -37,22 +53,76 @@ class RouteCalculator(
 
         val validWaypoints = waypoints.filter { it.lat != 0.0 || it.lng != 0.0 }
 
+        val startSnap = snapToRoadNetwork(startLat, startLng)
+        val endSnap = snapToRoadNetwork(endLat, endLng)
+        val snappedStart = startSnap.coords
+        val snappedEnd = endSnap.coords
+
+        if (startSnap.snapDistanceMeters > 1000) {
+            val townInfo =
+                if (startSnap.snappedToTown != null) " (nearest town: ${startSnap.snappedToTown})"
+                else ""
+            logger.warn(
+                "Start point snapped %.1f km to nearest road$townInfo"
+                    .format(startSnap.snapDistanceMeters / 1000.0)
+            )
+        }
+        if (endSnap.snapDistanceMeters > 1000) {
+            val townInfo =
+                if (endSnap.snappedToTown != null) " (nearest town: ${endSnap.snappedToTown})"
+                else ""
+            logger.warn(
+                "End point snapped %.1f km to nearest road$townInfo"
+                    .format(endSnap.snapDistanceMeters / 1000.0)
+            )
+        }
+
         fun createGHRequest(p: String): GHRequest {
             val request = GHRequest().setProfile(p)
-            request.addPoint(GHPoint(startLat, startLng))
+            request.addPoint(GHPoint(snappedStart.lat, snappedStart.lng))
             validWaypoints.forEach { wp -> request.addPoint(GHPoint(wp.lat, wp.lng)) }
-            request.addPoint(GHPoint(endLat, endLng))
+            request.addPoint(GHPoint(snappedEnd.lat, snappedEnd.lng))
             return request
         }
 
         val req = createGHRequest(profile)
-        val response = graphHopper.route(req)
+        val response =
+            try {
+                graphHopper.route(req)
+            } catch (e: Exception) {
+                logger.warn(
+                    "Primary route request failed (${e.message}). Retrying with direct start/end route..."
+                )
+                val directReq =
+                    GHRequest(snappedStart.lat, snappedStart.lng, snappedEnd.lat, snappedEnd.lng)
+                        .setProfile("car")
+                try {
+                    graphHopper.route(directReq)
+                } catch (e2: Exception) {
+                    throw IllegalStateException("Route calculation failed: ${e2.message}", e2)
+                }
+            }
 
         if (response.hasErrors()) {
             val fallbackReq = createGHRequest("car")
-            val fallbackRes = graphHopper.route(fallbackReq)
+            val fallbackRes =
+                try {
+                    graphHopper.route(fallbackReq)
+                } catch (e: Exception) {
+                    val directReq =
+                        GHRequest(
+                                snappedStart.lat,
+                                snappedStart.lng,
+                                snappedEnd.lat,
+                                snappedEnd.lng,
+                            )
+                            .setProfile("car")
+                    graphHopper.route(directReq)
+                }
             if (fallbackRes.hasErrors() && validWaypoints.isNotEmpty()) {
-                val directReq = GHRequest(startLat, startLng, endLat, endLng).setProfile("car")
+                val directReq =
+                    GHRequest(snappedStart.lat, snappedStart.lng, snappedEnd.lat, snappedEnd.lng)
+                        .setProfile("car")
                 val directRes = graphHopper.route(directReq)
                 if (directRes.hasErrors()) {
                     throw IllegalStateException("Route calculation failed: ${response.errors}")
@@ -311,6 +381,64 @@ class RouteCalculator(
                 isFoodOrCoffee = true,
             ),
         )
+    }
+
+    private val snapFilter: com.graphhopper.routing.util.EdgeFilter by lazy {
+        try {
+            val profile = graphHopper.getProfile("car")
+            val weighting = graphHopper.createWeighting(profile, com.graphhopper.util.PMap())
+            val carAccess = graphHopper.encodingManager.getBooleanEncodedValue("car_access")
+            com.graphhopper.routing.util.DefaultSnapFilter(weighting, carAccess)
+        } catch (e: Exception) {
+            com.graphhopper.routing.util.EdgeFilter.ALL_EDGES
+        }
+    }
+
+    /**
+     * Snaps a coordinate to the nearest routable road network edge. If the direct snap fails (e.g.
+     * the point is in a lake or wilderness), falls back to the nearest known town within 30 km.
+     */
+    private fun snapToRoadNetwork(lat: Double, lng: Double): SnapResult {
+        return try {
+            val qr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
+            if (qr.isValid && qr.snappedPoint != null) {
+                val snapDist =
+                    PoiExtractor.haversineMeters(lat, lng, qr.snappedPoint.lat, qr.snappedPoint.lon)
+                SnapResult(
+                    coords = LocationCoords(qr.snappedPoint.lat, qr.snappedPoint.lon),
+                    snapDistanceMeters = snapDist,
+                )
+            } else {
+                val nearbyTown =
+                    PoiExtractor.findNearbyTowns(pbfFilePath, lat, lng, maxDistanceMeters = 30000.0)
+                        .firstOrNull()
+                if (nearbyTown != null) {
+                    val townQr =
+                        graphHopper.locationIndex.findClosest(
+                            nearbyTown.lat,
+                            nearbyTown.lng,
+                            snapFilter,
+                        )
+                    val snapCoords =
+                        if (townQr.isValid && townQr.snappedPoint != null) {
+                            LocationCoords(townQr.snappedPoint.lat, townQr.snappedPoint.lon)
+                        } else {
+                            LocationCoords(nearbyTown.lat, nearbyTown.lng)
+                        }
+                    val snapDist =
+                        PoiExtractor.haversineMeters(lat, lng, snapCoords.lat, snapCoords.lng)
+                    SnapResult(
+                        coords = snapCoords,
+                        snapDistanceMeters = snapDist,
+                        snappedToTown = nearbyTown.name,
+                    )
+                } else {
+                    SnapResult(coords = LocationCoords(lat, lng))
+                }
+            }
+        } catch (e: Exception) {
+            SnapResult(coords = LocationCoords(lat, lng))
+        }
     }
 
     fun calculateRoute(startLat: Double, startLng: Double, endLat: Double, endLng: Double): Route {

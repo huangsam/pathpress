@@ -92,7 +92,7 @@ object Geocoder {
             val encodedQuery = URLEncoder.encode(queryString, "UTF-8")
             val uri =
                 URI.create(
-                    "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=1"
+                    "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=5"
                 )
 
             val request =
@@ -108,10 +108,22 @@ object Geocoder {
             if (response.statusCode() == 200 && !response.body().isNullOrBlank()) {
                 val jsonNodes: List<Map<String, Any>> = mapper.readValue(response.body())
                 if (jsonNodes.isNotEmpty()) {
-                    val first = jsonNodes[0]
-                    val latStr = first["lat"]?.toString()
-                    val lonStr = first["lon"]?.toString()
-                    val displayNameStr = first["display_name"]?.toString()
+                    val placeTypes =
+                        setOf("city", "town", "village", "hamlet", "municipality", "locality")
+                    val selected =
+                        jsonNodes.firstOrNull { node ->
+                            val clazz = node["class"]?.toString()?.lowercase()
+                            val type = node["type"]?.toString()?.lowercase()
+                            val addresstype = node["addresstype"]?.toString()?.lowercase()
+                            val displayName = node["display_name"]?.toString()?.lowercase() ?: ""
+
+                            (clazz == "place" || type in placeTypes || addresstype in placeTypes) &&
+                                !displayName.startsWith("county")
+                        } ?: jsonNodes[0]
+
+                    val latStr = selected["lat"]?.toString()
+                    val lonStr = selected["lon"]?.toString()
+                    val displayNameStr = selected["display_name"]?.toString()
 
                     if (latStr != null && lonStr != null) {
                         val coords =

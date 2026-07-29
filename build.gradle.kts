@@ -3,8 +3,8 @@ import java.util.Properties
 
 plugins {
     kotlin("jvm") version "2.4.10"
-    application
     id("com.ncorti.ktfmt.gradle") version "0.26.0"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 group = "com.pathpress"
@@ -55,8 +55,23 @@ dependencies {
 
 kotlin { jvmToolchain(21) }
 
-application { mainClass.set("com.pathpress.MainKt") }
+tasks.register<JavaExec>("run") {
+    mainClass.set("com.pathpress.MainKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
 
 ktfmt { kotlinLangStyle() }
 
 tasks.test { useJUnitPlatform() }
+
+tasks.shadowJar {
+    archiveBaseName.set("pathpress")
+    archiveClassifier.set("standalone")
+    archiveVersion.set(project.version.toString())
+
+    manifest { attributes["Main-Class"] = "com.pathpress.MainKt" }
+
+    mergeServiceFiles()
+}
+
+tasks.build { dependsOn(tasks.shadowJar) }
