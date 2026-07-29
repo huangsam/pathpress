@@ -1,7 +1,9 @@
 package com.pathpress.llm
 
 import com.pathpress.config.Config
-import com.pathpress.model.*
+import com.pathpress.model.LocationCoords
+import com.pathpress.model.POI
+import com.pathpress.model.RouteLeg
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

@@ -3,10 +3,7 @@ package com.pathpress.routing
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
-import com.pathpress.export.*
-import com.pathpress.llm.*
-import com.pathpress.model.*
-import com.pathpress.poi.*
+import com.pathpress.model.LocationCoords
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient

@@ -1,9 +1,7 @@
 package com.pathpress.poi
 
-import com.pathpress.export.*
-import com.pathpress.llm.*
-import com.pathpress.model.*
-import com.pathpress.routing.*
+import com.pathpress.model.LocationCoords
+import com.pathpress.model.POI
 
 /** Formatter for generating Google Maps URLs with zero external dependencies. */
 object MapUrlFormatter {

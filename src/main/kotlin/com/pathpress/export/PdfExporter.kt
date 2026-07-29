@@ -2,10 +2,8 @@ package com.pathpress.export
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import com.openhtmltopdf.svgsupport.BatikSVGDrawer
-import com.pathpress.llm.*
-import com.pathpress.model.*
-import com.pathpress.poi.*
-import com.pathpress.routing.*
+import com.pathpress.model.DistanceUnit
+import com.pathpress.model.Route
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 

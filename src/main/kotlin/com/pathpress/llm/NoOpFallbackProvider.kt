@@ -1,6 +1,10 @@
 package com.pathpress.llm
 
-import com.pathpress.model.*
+import com.pathpress.model.LocationCoords
+import com.pathpress.model.POI
+import com.pathpress.model.RouteLeg
+import com.pathpress.model.sanitizePoiType
+import com.pathpress.model.takeValidText
 
 /** Fallback provider when no LLM is specified or available. */
 class NoOpFallbackProvider : LlmProvider {

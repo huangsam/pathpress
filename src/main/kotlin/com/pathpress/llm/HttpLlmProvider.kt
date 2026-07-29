@@ -3,7 +3,9 @@ package com.pathpress.llm
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
-import com.pathpress.model.*
+import com.pathpress.model.LocationCoords
+import com.pathpress.model.RouteLeg
+import com.pathpress.model.takeValidText
 import java.net.http.HttpClient
 
 fun String?.validateApiKey(type: LlmProviderType): String {

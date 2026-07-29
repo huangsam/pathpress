@@ -1,9 +1,6 @@
 package com.pathpress.model
 
-import com.pathpress.export.*
-import com.pathpress.llm.*
-import com.pathpress.poi.*
-import com.pathpress.routing.*
+import com.pathpress.poi.MapUrlFormatter
 
 /** Represents coordinates for a location. */
 data class LocationCoords(val lat: Double, val lng: Double, val name: String? = null)

@@ -1,9 +1,5 @@
 package com.pathpress.model
 
-import com.pathpress.export.*
-import com.pathpress.llm.*
-import com.pathpress.poi.*
-import com.pathpress.routing.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
