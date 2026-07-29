@@ -21,10 +21,10 @@ class GeocoderTest {
     }
 
     @Test
-    fun `test preset city geocoding and caching`() {
+    fun `test city geocoding and caching`() {
         val first = Geocoder.geocode("San Jose, CA")
         assertNotNull(first)
-        assertEquals("San Jose, CA", first.displayName)
+        assertNotNull(first.displayName)
 
         // Second call should return instantly from cache
         val second = Geocoder.geocode("San Jose, CA")
@@ -39,5 +39,15 @@ class GeocoderTest {
         assertNotNull(result.coords.lat)
         assertNotNull(result.coords.lng)
         assertEquals("Unknown Test Village 12345", result.displayName)
+    }
+
+    @Test
+    fun `test non-California locations resolve without fastResult collision`() {
+        val result = Geocoder.geocode("Port Angeles, WA")
+        assertNotNull(result)
+        // Ensure Port Angeles does NOT incorrectly resolve to Los Angeles, CA
+        assert(!result.displayName.lowercase().contains("los angeles")) {
+            "Port Angeles, WA should not resolve to Los Angeles!"
+        }
     }
 }

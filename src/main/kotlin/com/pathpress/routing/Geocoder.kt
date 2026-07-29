@@ -64,38 +64,6 @@ object Geocoder {
             return it
         }
 
-        // Convenient fast-path presets for common California locations
-        val normalized = trimmed.lowercase()
-        val fastResult =
-            when {
-                normalized.contains("jose") ->
-                    GeocodedLocation(LocationCoords(37.3382, -121.8863), "San Jose, CA")
-                normalized.contains("monterey") ->
-                    GeocodedLocation(LocationCoords(36.6002, -121.8947), "Monterey, CA")
-                normalized.contains("carmel") ->
-                    GeocodedLocation(LocationCoords(36.5552, -121.9233), "Carmel-by-the-Sea, CA")
-                normalized.contains("santa cruz") ->
-                    GeocodedLocation(LocationCoords(36.9741, -122.0308), "Santa Cruz, CA")
-                normalized.contains("luis obispo") || normalized.contains("slo") ->
-                    GeocodedLocation(LocationCoords(35.2828, -120.6596), "San Luis Obispo, CA")
-                normalized.contains("santa barbara") ->
-                    GeocodedLocation(LocationCoords(34.4208, -119.6982), "Santa Barbara, CA")
-                normalized.contains("big sur") ->
-                    GeocodedLocation(LocationCoords(36.2704, -121.8081), "Big Sur, CA")
-                normalized.contains("digo") || normalized.contains("diego") ->
-                    GeocodedLocation(LocationCoords(32.7157, -117.1611), "San Diego, CA")
-                normalized.contains("francisco") ->
-                    GeocodedLocation(LocationCoords(37.7749, -122.4194), "San Francisco, CA")
-                normalized.contains("angeles") ->
-                    GeocodedLocation(LocationCoords(34.0522, -118.2437), "Los Angeles, CA")
-                else -> null
-            }
-
-        if (fastResult != null) {
-            cache[cacheKey] = fastResult
-            return fastResult
-        }
-
         // 2. Query Nominatim API with query caching and rate limiting
         val queriesToTry = listOf(trimmed, "$trimmed, USA")
 
