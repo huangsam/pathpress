@@ -172,12 +172,11 @@ internal fun renderLegSvgMap(leg: RouteLeg, width: Int = 620, height: Int = 220)
         var renderY: Double,
     )
 
-    val svgPois =
-        sortedPois.map { poi ->
-            val px = toSvgX(poi.lng)
-            val py = toSvgY(poi.lat)
-            SvgPoint(px, py, px, py)
-        }
+    val svgPois = sortedPois.map { poi ->
+        val px = toSvgX(poi.lng)
+        val py = toSvgY(poi.lat)
+        SvgPoint(px, py, px, py)
+    }
 
     // Pass 1: Ensure minimum horizontal separation between consecutive POIs
     val minSep = 18.0

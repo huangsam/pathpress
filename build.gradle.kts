@@ -1,7 +1,7 @@
 plugins {
     kotlin("jvm") version "2.4.10"
     application
-    id("com.ncorti.ktfmt.gradle") version "0.22.0"
+    id("com.ncorti.ktfmt.gradle") version "0.26.0"
 }
 
 group = "com.pathpress"

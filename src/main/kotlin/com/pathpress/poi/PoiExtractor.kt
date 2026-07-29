@@ -576,12 +576,9 @@ object PoiExtractor {
         val brandLower = tags["brand"]?.lowercase() ?: ""
         val operatorLower = tags["operator"]?.lowercase() ?: ""
 
-        val isChain =
-            KNOWN_CHAINS.any { chain ->
-                nameLower.contains(chain) ||
-                    brandLower.contains(chain) ||
-                    operatorLower.contains(chain)
-            }
+        val isChain = KNOWN_CHAINS.any { chain ->
+            nameLower.contains(chain) || brandLower.contains(chain) || operatorLower.contains(chain)
+        }
 
         if (isChain) {
             score -= 15.0 // Heavy penalty for corporate fast food, motels, and gas station chains
