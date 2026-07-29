@@ -2,7 +2,9 @@
 
 A robust, hybrid AI road trip planner using OpenStreetMap data and GraphHopper. Calculates dynamic multi-day driving legs, extracts real POI corridors, supports natural language trip themes with pluggable LLMs (Gemini, Claude, OpenAI, Ollama), fuzzy geocodes locations, and renders publication-ready PDF itineraries.
 
-<img src="images/roadtrip.png" alt="PathPress Sample Itinerary" width="400" />
+<img src="images/roadtrip.png" alt="PathPress Sample Itinerary" width="600" />
+
+<sub>*Sample itinerary cover page presenting a trip overview before diving into day-by-day legs.*</sub>
 
 ## Motivation
 
