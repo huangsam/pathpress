@@ -31,23 +31,4 @@ Pure LLM travel planners frequently suffer from "spatial amnesia"—hallucinatin
 ./gradlew run --args="--start 'San Jose, CA' --end 'San Diego, CA' --days 2 --llm-provider ollama --prompt 'toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay' --units imperial"
 ```
 
-## CLI Usage
-
-```bash
-pathpress [OPTIONS]
-
-Options:
-  --start=<text>         Starting location name or lat,lng coordinates (required)
-  --end=<text>           Destination location name or lat,lng coordinates (required)
-  --days=<int>           Number of days to spread the trip across (default: 1)
-  --prompt=<text>        Natural language trip themes, vibe, or preferences
-  --units=<text>         Distance units for display & PDF: 'imperial' or 'metric' (default: metric)
-  --profile=<text>       Routing profile ('scenic' or 'car') (default: scenic)
-  --llm-provider=<text>  LLM provider: gemini, claude, openai, ollama, or none (default: none)
-  --llm-model=<text>     Model name for LLM (default: gemma4:31b-mlx)
-  --llm-key=<text>       API Key for the chosen LLM provider
-  --llm-url=<text>       Endpoint URL for LLM (e.g. http://localhost:11434/api/generate)
-  -v, --verbose          Print detailed real POI corridor breakdown & metrics to terminal
-  --output=<text>        Output PDF file path (default: itinerary.pdf)
-  --pbf=<text>           Path to OSM PBF file (default: california-latest.osm.pbf)
-```
+> 💡 **Tip**: Run `./gradlew run --args="--help"` to view all available CLI flags, default values, and usage options.
