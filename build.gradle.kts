@@ -4,7 +4,7 @@ import java.util.Properties
 plugins {
     kotlin("jvm") version "2.4.10"
     id("com.ncorti.ktfmt.gradle") version "0.26.0"
-    id("com.gradleup.shadow") version "9.4.3"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = "com.pathpress"
@@ -68,6 +68,10 @@ tasks.shadowJar {
     archiveBaseName.set("pathpress")
     archiveClassifier.set("standalone")
     archiveVersion.set(project.version.toString())
+
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    exclude("META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/DEPENDENCIES", "license/*")
 
     manifest { attributes["Main-Class"] = "com.pathpress.MainKt" }
 
