@@ -415,4 +415,51 @@ class PoiExtractorTest {
             )
         assertTrue(result.isEmpty())
     }
+
+    @Test
+    fun `extractPoisForLeg excludes POIs specified in excludePoiIds set`() {
+        val poi1 =
+            POI(
+                id = "100",
+                name = "Historic Museum",
+                lat = 37.77,
+                lng = -122.41,
+                tags = mapOf("tourism" to "museum"),
+                type = "museum",
+            )
+        val poi2 =
+            POI(
+                id = "101",
+                name = "Art Gallery",
+                lat = 37.78,
+                lng = -122.42,
+                tags = mapOf("tourism" to "gallery"),
+                type = "gallery",
+            )
+
+        // Inject dummy cache store into PoiExtractor cache
+        PoiExtractor.clearInMemCache()
+        val dummyStore = PoiCacheStore(pois = listOf(poi1, poi2))
+        val field = PoiExtractor::class.java.getDeclaredField("cachedStore")
+        field.isAccessible = true
+        field.set(PoiExtractor, dummyStore)
+
+        val pathField = PoiExtractor::class.java.getDeclaredField("cachedPbfPath")
+        pathField.isAccessible = true
+        pathField.set(PoiExtractor, "dummy.pbf")
+
+        val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
+
+        val resultWithExclusion =
+            PoiExtractor.extractPoisForLeg(
+                pbfPath = "dummy.pbf",
+                legPoints = routePoints,
+                excludePoiIds = setOf("100"),
+            )
+
+        assertEquals(1, resultWithExclusion.size)
+        assertEquals("101", resultWithExclusion[0].id)
+
+        PoiExtractor.clearInMemCache()
+    }
 }

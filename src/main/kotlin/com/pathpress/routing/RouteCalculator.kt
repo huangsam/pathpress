@@ -213,6 +213,7 @@ class RouteCalculator(
         townNames.add(null)
 
         val legs = mutableListOf<RouteLeg>()
+        val usedPoiIds = mutableSetOf<String>()
 
         for (dayIndex in 0 until days) {
             val legStart = legWaypoints[dayIndex]
@@ -241,6 +242,7 @@ class RouteCalculator(
                         limitPerLeg = limitPerLeg,
                         userPrompt = userPrompt,
                         includeThemeParks = includeThemeParks,
+                        excludePoiIds = usedPoiIds,
                     )
                     .ifEmpty {
                         filterNearbyPois(
@@ -248,6 +250,8 @@ class RouteCalculator(
                             (legStart.lng + legEnd.lng) / 2,
                         )
                     }
+
+            usedPoiIds.addAll(realPois.map { it.id })
 
             val endTown = townNames.getOrNull(dayIndex)
             val defaultTitle =

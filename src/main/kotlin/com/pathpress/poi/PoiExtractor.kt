@@ -227,6 +227,7 @@ object PoiExtractor {
         excludeIndustrial: Boolean = true,
         config: Config = Config.current,
         rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+        excludePoiIds: Set<String> = emptySet(),
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
@@ -265,6 +266,7 @@ object PoiExtractor {
 
         val candidates = mutableListOf<POI>()
         for (poi in candidatePois) {
+            if (poi.id in excludePoiIds) continue
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 if (rulesEngine.isExcluded(poi, evalContext)) continue
                 val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)

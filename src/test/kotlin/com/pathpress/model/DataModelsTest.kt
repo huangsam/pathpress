@@ -55,14 +55,14 @@ class DataModelsTest {
         val tags = mapOf("highway" to "milestone")
         val poi = POI.fromOsm(id = 1004L, lat = 36.5, lng = -121.9, tags = tags)
         assertNull(poi.name)
-        assertEquals("poi", poi.type)
+        assertEquals("landmark", poi.type)
     }
 
     @Test
     fun `POI fromOsm handles empty tags map`() {
         val poi = POI.fromOsm(id = 1005L, lat = 0.0, lng = 0.0, tags = emptyMap())
         assertNull(poi.name)
-        assertEquals("poi", poi.type)
+        assertEquals("landmark", poi.type)
         assertFalse(poi.isFoodOrCoffee)
     }
 
@@ -106,14 +106,20 @@ class DataModelsTest {
     }
 
     @Test
-    fun `sanitizePoiType resolves boolean string values to meaningful category`() {
+    fun `sanitizePoiType resolves boolean and generic string values to meaningful category`() {
         assertEquals("historic", sanitizePoiType("yes", mapOf("historic" to "yes")))
         assertEquals("attraction", sanitizePoiType("yes", mapOf("tourism" to "attraction")))
         assertEquals(
             "jail",
             sanitizePoiType("yes", mapOf("historic" to "yes", "building" to "jail")),
         )
-        assertEquals("poi", sanitizePoiType("yes", emptyMap()))
+        assertEquals("landmark", sanitizePoiType("yes", emptyMap()))
+        assertEquals("landmark", sanitizePoiType("building", emptyMap()))
+        assertEquals("landmark", sanitizePoiType("point", emptyMap()))
+        assertEquals("landmark", sanitizePoiType("node", emptyMap()))
         assertEquals("cafe", sanitizePoiType("cafe", mapOf("amenity" to "cafe")))
+        assertEquals("memorial", sanitizePoiType("memorial_hall", emptyMap()))
+        assertEquals("bakery", sanitizePoiType("confectionery", emptyMap()))
+        assertEquals("scenic viewpoint", sanitizePoiType("scenic_viewpoint", emptyMap()))
     }
 }

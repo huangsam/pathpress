@@ -80,33 +80,55 @@ data class POI(
 }
 
 /**
- * Sanitize POI category type to avoid generic boolean strings like "yes", "no", "true", "false".
+ * Sanitize POI category type to avoid generic boolean/raw strings like "yes", "no", "true",
+ * "false", "building", "point", "node". Normalizes specific raw categories to clean human-readable
+ * terms and converts underscores to spaces.
  */
-fun sanitizePoiType(type: String, tags: Map<String, String>): String {
+fun sanitizePoiType(type: String?, tags: Map<String, String> = emptyMap()): String {
+    if (type.isNullOrBlank()) return "landmark"
+
     val invalidValues = setOf("yes", "no", "true", "false", "null", "")
-    if (type.lowercase() !in invalidValues) return type
+    val genericTypes = setOf("yes", "building", "point", "node", "null", "true", "false", "poi")
+    val trimmed = type.lowercase().trim()
 
-    val primaryKeys =
-        listOf("amenity", "tourism", "natural", "historic", "leisure", "shop", "place")
-    val secondaryKeys = listOf("building", "attraction", "craft", "man_made", "historic:type")
+    val resolved =
+        if (trimmed in genericTypes) {
+            val primaryKeys =
+                listOf("amenity", "tourism", "natural", "historic", "leisure", "shop", "place")
+            val secondaryKeys =
+                listOf("building", "attraction", "craft", "man_made", "historic:type")
 
-    val primaryVal =
-        tags.entries
-            .firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() !in invalidValues }
-            ?.value
-    if (primaryVal != null) return primaryVal
+            val primaryVal =
+                tags.entries
+                    .firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() !in invalidValues }
+                    ?.value
+            val secondaryVal =
+                tags.entries
+                    .firstOrNull { (k, v) -> k in secondaryKeys && v.lowercase() !in invalidValues }
+                    ?.value
+            val fallbackKey =
+                tags.entries
+                    .firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() != "no" }
+                    ?.key
 
-    val secondaryVal =
-        tags.entries
-            .firstOrNull { (k, v) -> k in secondaryKeys && v.lowercase() !in invalidValues }
-            ?.value
-    if (secondaryVal != null) return secondaryVal
+            primaryVal ?: secondaryVal ?: fallbackKey ?: "landmark"
+        } else {
+            type
+        }
 
-    val fallbackKey =
-        tags.entries.firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() != "no" }?.key
-    if (fallbackKey != null) return fallbackKey
-
-    return "poi"
+    return when (val lower = resolved.lowercase().trim()) {
+        "yes",
+        "building",
+        "point",
+        "node",
+        "null",
+        "true",
+        "false",
+        "poi" -> "landmark"
+        "memorial_hall" -> "memorial"
+        "confectionery" -> "bakery"
+        else -> lower.replace("_", " ")
+    }
 }
 
 /** Represents a daily segment of a route. */
