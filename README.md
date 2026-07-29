@@ -1,27 +1,22 @@
 # PathPress
 
-A robust, hybrid AI road trip planner using OpenStreetMap data and GraphHopper. Calculates dynamic multi-day driving legs, extracts POIs, supports natural language prompts with pluggable LLMs (Gemini, Claude, OpenAI, Ollama), fuzzy geocodes location names, and renders modern PDF itineraries.
+A robust, hybrid AI road trip planner using OpenStreetMap data and GraphHopper. Calculates dynamic multi-day driving legs, extracts real POI corridors, supports natural language trip themes with pluggable LLMs (Gemini, Claude, OpenAI, Ollama), fuzzy geocodes locations, and renders publication-ready PDF itineraries.
 
-## Features
+## Motivation
 
-- **Hybrid Routing Pipeline**: GraphHopper spatial engine + pluggable AI trip themes
-- **Fuzzy Geocoding**: Resolves location names and typos (e.g. `"San Josee"` -> `"San Jose, CA"`)
-- **Scenic Profiles**: Custom weighting for scenic drives and coastal views
-- **Multi-Day Legs**: Automatically divides routes into daily segments based on pacing
-- **Pluggable LLM Support**: Works with Gemini, Claude, OpenAI, Ollama, or pure offline fallback
-- **PDF Generation**: Creates modern visual PDF itineraries using openhtmltopdf (JVM-native)
-- **Google Maps Integration**: Generates zero-dependency navigation URLs
+Pure LLM travel planners frequently suffer from "spatial amnesia"—hallucinating closed businesses, incorrect driving times, and geography that doesn't exist. Conversely, standard navigation apps provide turn-by-turn directions without contextual storytelling, custom trip vibes, or easy offline export.
 
-## Dependencies
+**PathPress** bridges this gap by decoupling spatial routing from narrative curation:
+1. **Spatial Grounding**: Real OpenStreetMap PBF spatial indexing and GraphHopper routing guarantee 100% physical accuracy for roads, drive times, and POI corridors.
+2. **AI Narrative Curation**: Pluggable LLM providers (Ollama, Gemini, Claude, OpenAI) enrich verified real-world points of interest with personalized trip themes.
+3. **Publication-Ready Offline Guides**: Generates self-contained, beautifully styled PDF itineraries complete with QR navigation links for turn-by-turn routing on the road.
 
-| Library | Purpose |
-|---------|---------|
-| `com.graphhopper:graphhopper-core:11.0` | Spatial routing engine |
-| `com.github.ajalt.clikt:clikt:4.2.2` | CLI argument parsing |
-| `com.openhtmltopdf:openhtmltopdf-core:1.0.10` | HTML to PDF conversion |
-| `com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10` | PDF Box renderer |
-| `com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2` | JSON parsing |
-| `com.gradleup.shadow:8.3.6` | Standalone Fat-JAR builder |
+## Key Features
+
+- 🗺️ **Deterministic Spatial Engine**: Real OpenStreetMap corridor filtering and GraphHopper multi-day leg splitting with zero geographic hallucinations.
+- 🧠 **Pluggable LLM Architecture**: Native support for Gemini, Claude, OpenAI, local Ollama (`gemma4:31b-mlx`), or pure offline fallback mode.
+- 📄 **Offline Visual PDF Export**: Renders modern itineraries using OpenHTMLtoPDF, custom CSS, vector icons, and interactive QR navigation appendices.
+- 🚘 **Fuzzy Geocoding & Scenic Profiles**: Resolves location names/typos automatically and applies custom weighting for scenic and coastal drives.
 
 ## Quick Start
 
@@ -68,7 +63,3 @@ Options:
   --pbf=<text>           Path to OSM PBF file (default: california-latest.osm.pbf)
   --graph=<text>         GraphHopper graph storage directory (default: .graphhopper)
 ```
-
-## License
-
-MIT
