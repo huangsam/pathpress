@@ -2,6 +2,12 @@ package com.pathpress.poi.rules
 
 import com.pathpress.model.POI
 
+/**
+ * Filters out abandoned, disused, closed, or private access POIs.
+ *
+ * **Rationale**: Directing travelers to permanently closed businesses or private property causes
+ * frustrating detours and potential trespassing issues.
+ */
 object DisusedAndClosedFilterRule : PoiFilterRule {
     override fun isExcluded(poi: POI, context: PoiEvaluationContext): Boolean {
         val tags = poi.tags
@@ -20,6 +26,13 @@ object DisusedAndClosedFilterRule : PoiFilterRule {
     }
 }
 
+/**
+ * Filters out theme park rides and sub-attractions unless explicitly requested in the user prompt.
+ *
+ * **Rationale**: Individual theme park rides (roller coasters, monorails, water slides) pollute POI
+ * search results with hundreds of sub-nodes inside ticketed theme parks, obscuring real road trip
+ * destinations unless specifically requested.
+ */
 object ThemeParkFilterRule : PoiFilterRule {
     override fun isExcluded(poi: POI, context: PoiEvaluationContext): Boolean {
         if (context.allowsThemeParksFromPrompt) return false
@@ -57,6 +70,13 @@ object ThemeParkFilterRule : PoiFilterRule {
     }
 }
 
+/**
+ * Filters out industrial sites, infrastructure nodes, or high mountain peaks based on trip persona
+ * context.
+ *
+ * **Rationale**: Power lines, cell towers, and industrial parks lack tourist value. Mountain peaks
+ * are filtered during family/toddler trips to avoid unsafe, strenuous mountain pass driving.
+ */
 object PersonaExclusionFilterRule : PoiFilterRule {
     override fun isExcluded(poi: POI, context: PoiEvaluationContext): Boolean {
         val tags = poi.tags

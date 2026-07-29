@@ -1,53 +1,72 @@
 package com.pathpress.poi.rules
 
 import com.pathpress.model.POI
+import com.pathpress.model.PoiCategoryConstants
 
-val RELEVANT_AMENITIES_SET =
-    setOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court")
+val RELEVANT_AMENITIES_SET = PoiCategoryConstants.FOOD_AMENITIES
 
+/**
+ * Set of mass-market commercial chain names penalizing candidate POIs in favor of unique local
+ * spots. Organized by amenity category (Fast Food & Coffee, Hotel & Lodging, Casual Dining, Gas &
+ * Convenience).
+ */
 val KNOWN_CHAINS_SET =
     setOf(
-        "taco bell",
-        "mcdonald's",
-        "mcdonalds",
-        "subway",
+        // Fast Food & Coffee Chains
         "burger king",
-        "kfc",
-        "wendy's",
         "domino's",
-        "pizza hut",
-        "starbucks",
         "dunkin",
         "dunkin'",
-        "hampton inn",
+        "kfc",
+        "mcdonald's",
+        "mcdonalds",
+        "pizza hut",
+        "starbucks",
+        "subway",
+        "taco bell",
+        "wendy's",
+
+        // Hotel & Lodging Chains
         "best western",
-        "motel 6",
-        "super 8",
-        "quality inn",
-        "days inn",
-        "holiday inn",
         "comfort inn",
         "courtyard",
+        "days inn",
+        "hampton inn",
+        "holiday inn",
         "la quinta",
-        "capital one cafe",
-        "jack in the box",
-        "in-n-out",
-        "panda express",
-        "teriyaki madness",
-        "carl's jr",
+        "motel 6",
+        "quality inn",
+        "super 8",
+
+        // Regional & Casual Dining Chains
         "arby's",
+        "capital one cafe",
+        "carl's jr",
         "dairy queen",
+        "in-n-out",
+        "jack in the box",
+        "panda express",
         "sonic drive-in",
-        "chevron",
+        "teriyaki madness",
+
+        // Gas Station & Convenience Store Chains
         "7-eleven",
-        "circle k",
-        "shell",
         "bp",
+        "chevron",
+        "circle k",
         "exxon",
         "mobil",
+        "shell",
         "speedway",
     )
 
+/**
+ * Applies a score penalty to mass-market commercial chain POIs in [KNOWN_CHAINS_SET].
+ *
+ * **Rationale**: Road trip itineraries prioritize unique local character and authentic regional
+ * stops over generic national chains (e.g. McDonald's, Starbucks, Motel 6) that travelers can find
+ * anywhere.
+ */
 object ChainPenaltyScoringRule : PoiScoringRule {
     override fun calculateScore(poi: POI, context: PoiEvaluationContext): Double {
         val tags = poi.tags
@@ -63,6 +82,13 @@ object ChainPenaltyScoringRule : PoiScoringRule {
     }
 }
 
+/**
+ * Penalizes unverified food & dining POIs that lack basic contact or web metadata.
+ *
+ * **Rationale**: OpenStreetMap dining nodes missing websites, phone numbers, or hours are
+ * frequently closed or low-quality. Penalizing them prevents guiding users to unverified or
+ * shuttered storefronts.
+ */
 object UnverifiedCommercialScoringRule : PoiScoringRule {
     override fun calculateScore(poi: POI, context: PoiEvaluationContext): Double {
         val tags = poi.tags
@@ -88,6 +114,13 @@ object UnverifiedCommercialScoringRule : PoiScoringRule {
     }
 }
 
+/**
+ * Rewards notable POIs based on rich metadata completeness (Wikipedia, website, operating hours).
+ *
+ * **Rationale**: POIs with curated metadata attributes (Wikipedia entries, websites, operating
+ * hours) correlate strongly with well-maintained, noteworthy, and verified local attractions worth
+ * stopping at.
+ */
 object MetadataNotabilityScoringRule : PoiScoringRule {
     override fun calculateScore(poi: POI, context: PoiEvaluationContext): Double {
         var score = 0.0
@@ -118,6 +151,14 @@ object MetadataNotabilityScoringRule : PoiScoringRule {
     }
 }
 
+/**
+ * Rewards high-value categories (viewpoints, parks, beaches) and family/toddler travel persona
+ * matches.
+ *
+ * **Rationale**: Core scenic categories define the highlight experience of a road trip. Boosting
+ * family-friendly spots when family/toddler keywords are present ensures safe, accessible, and
+ * enjoyable stops for parents.
+ */
 object CategoryAndPersonaScoringRule : PoiScoringRule {
     override fun calculateScore(poi: POI, context: PoiEvaluationContext): Double {
         var score = 0.0
@@ -161,6 +202,13 @@ object CategoryAndPersonaScoringRule : PoiScoringRule {
     }
 }
 
+/**
+ * Deducts score proportionally to detour distance off the main driving route.
+ *
+ * **Rationale**: Off-route detours add driving time and fuel consumption. Penalizing distance
+ * ensures selected POIs remain close to the primary driving corridor without excessive
+ * out-of-the-way driving.
+ */
 object DetourDistanceScoringRule : PoiScoringRule {
     override fun calculateScore(poi: POI, context: PoiEvaluationContext): Double {
         val distKm = (poi.distanceFromRouteMeters ?: 0.0) / 1000.0

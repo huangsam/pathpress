@@ -8,9 +8,9 @@ import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
 import java.net.http.HttpClient
 
+/** Extension helper to resolve and validate an API key for a given [LlmProviderType]. */
 fun String?.validateApiKey(type: LlmProviderType): String {
-    val resolvedKey =
-        if (!this.isNullOrBlank()) this else type.envVarName?.let { System.getenv(it) }
+    val resolvedKey = type.resolveApiKey(this)
 
     require(!resolvedKey.isNullOrBlank()) {
         "API key missing for ${type.id}. Set ${type.envVarName} or pass --llm-key"
@@ -18,14 +18,24 @@ fun String?.validateApiKey(type: LlmProviderType): String {
     return resolvedKey
 }
 
+/** Extension helper to resolve and validate an API key for a provider name string. */
 fun String?.validateApiKey(provider: String): String =
     this.validateApiKey(LlmProviderType.fromId(provider))
 
+/**
+ * Base class for HTTP-based LLM providers (OpenAI, Gemini, Claude, Ollama).
+ *
+ * Provides shared prompt construction, grounding constraints, and resilient JSON parsing logic.
+ */
 abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvider {
     protected val client: HttpClient =
         HttpClient.newBuilder().connectTimeout(config.httpLlmConnectTimeout).build()
     protected val mapper = jacksonObjectMapper()
 
+    /**
+     * Builds structured prompt for high-level trip planning. Instructs the LLM to output day
+     * themes, intermediate waypoint anchors, and a trip narrative.
+     */
     protected fun buildPrompt(
         startName: String,
         endName: String,
@@ -63,6 +73,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             .trimIndent()
     }
 
+    /**
+     * Builds structured prompt for POI curation and leg story narration. Enforces strict grounding:
+     * no hallucinated POIs, dates, or historical claims not found in OSM tags.
+     */
     protected fun buildCurationPrompt(leg: RouteLeg, userPrompt: String?): String {
         val poiDetails =
             leg.pois.joinToString("\n") { poi ->
@@ -124,6 +138,11 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             .trimIndent()
     }
 
+    /**
+     * Parses raw LLM JSON response into a [TripPlanResponse]. Uses regex fallback
+     * ([extractNarrativeFromRawJson]) to preserve narrative text if waypoint JSON deserialization
+     * fails.
+     */
     protected fun parseTripPlan(jsonText: String, days: Int): TripPlanResponse {
         val cleanJson = jsonText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
 
@@ -171,9 +190,9 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
     }
 
     /**
-     * Regex-based fallback to extract the narrative string directly from the raw LLM JSON text.
-     * This is intentionally decoupled from full JSON parsing so the narrative is not lost if other
-     * fields (e.g. waypoints) cause a parse exception.
+     * Regex-based fallback to extract the narrative string directly from raw LLM JSON output.
+     * Decoupled from Jackson JSON parsing so the narrative is preserved even if other fields fail
+     * parsing.
      */
     private fun extractNarrativeFromRawJson(jsonText: String): String? {
         val match = Regex(""""narrative"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(jsonText) ?: return null
@@ -185,6 +204,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             .takeValidText()
     }
 
+    /**
+     * Parses raw LLM POI curation JSON response and maps description text to candidate [POI] items.
+     * Falls back to [NoOpFallbackProvider] if JSON parsing fails.
+     */
     protected fun parseCurationResponse(jsonText: String, leg: RouteLeg): CuratedLegResult {
         return try {
             val cleanJson = jsonText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }

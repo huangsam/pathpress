@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     kotlin("jvm") version "2.4.10"
     application
@@ -6,7 +9,15 @@ plugins {
 
 group = "com.pathpress"
 
-version = "1.0.0"
+val versionProps =
+    Properties().apply {
+        val propFile = file("src/main/resources/version.properties")
+        if (propFile.exists()) {
+            FileInputStream(propFile).use { load(it) }
+        }
+    }
+
+version = versionProps.getProperty("version") ?: "0.1.0-SNAPSHOT"
 
 repositories { mavenCentral() }
 

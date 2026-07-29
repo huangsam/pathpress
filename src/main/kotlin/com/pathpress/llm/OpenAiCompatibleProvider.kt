@@ -11,6 +11,13 @@ import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger(OpenAiCompatibleProvider::class.java)
 
+/**
+ * [HttpLlmProvider] implementation targeting OpenAI Chat Completions API (`/v1/chat/completions`)
+ * or OpenAI-compatible local/remote servers (e.g. vLLM, LM Studio, LocalAI).
+ *
+ * Configures `Authorization: Bearer <key>` header when key is non-blank. Automatically falls back
+ * to [NoOpFallbackProvider] on network failures, non-200 responses, or parse errors.
+ */
 class OpenAiCompatibleProvider(
     apiKey: String,
     private val endpoint: String,

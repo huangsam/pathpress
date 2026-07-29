@@ -461,4 +461,55 @@ class PoiExtractorTest {
 
         PoiExtractor.clearInMemCache()
     }
+
+    @Test
+    fun `deduplicateThemeParks clusters nearby theme park rides into single representative POI`() {
+        val coaster1 =
+            POI(
+                id = "c1",
+                name = "Goliath Coaster",
+                lat = 34.425,
+                lng = -118.597,
+                tags =
+                    mapOf(
+                        "attraction" to "roller_coaster",
+                        "website" to "https://www.sixflags.com/magicmountain",
+                    ),
+                type = "roller_coaster",
+                distanceFromRouteMeters = 500.0,
+            )
+        val coaster2 =
+            POI(
+                id = "c2",
+                name = "Viper Coaster",
+                lat = 34.426,
+                lng = -118.598,
+                tags =
+                    mapOf(
+                        "attraction" to "roller_coaster",
+                        "website" to "https://www.sixflags.com/magicmountain",
+                    ),
+                type = "roller_coaster",
+                distanceFromRouteMeters = 200.0,
+            )
+        val cafe =
+            POI(
+                id = "f1",
+                name = "Roadside Cafe",
+                lat = 34.420,
+                lng = -118.590,
+                tags = mapOf("amenity" to "cafe"),
+                type = "cafe",
+                distanceFromRouteMeters = 100.0,
+            )
+
+        val deduplicated = PoiExtractor.deduplicateThemeParks(listOf(coaster1, coaster2, cafe))
+
+        assertEquals(2, deduplicated.size, "Expected 1 theme park representative + 1 cafe")
+        assertTrue(deduplicated.any { it.id == "f1" })
+        // The theme park representative should be coaster2 because distanceFromRouteMeters is
+        // closer (200m vs 500m)
+        assertTrue(deduplicated.any { it.id == "c2" })
+        assertFalse(deduplicated.any { it.id == "c1" })
+    }
 }

@@ -4,6 +4,18 @@ import com.pathpress.config.Config
 import com.pathpress.model.POI
 import kotlin.math.floor
 
+/**
+ * Represents a candidate overnight town evaluated for amenity density and route milestone
+ * proximity.
+ *
+ * @property town The underlying [TownInfo] location metadata.
+ * @property score Aggregated quality score based on local hotel, family, and dining amenity counts.
+ * @property hotelCount Number of verified lodging/hotel POIs within the scoring radius.
+ * @property familyCount Number of verified family attraction POIs within the scoring radius.
+ * @property diningCount Number of verified food and coffee POIs within the scoring radius.
+ * @property distanceFromTargetMeters Distance in meters from the ideal leg completion target
+ *   milestone.
+ */
 data class ScoredTown(
     val town: TownInfo,
     val score: Int,
@@ -13,6 +25,10 @@ data class ScoredTown(
     val distanceFromTargetMeters: Double = 0.0,
 )
 
+/**
+ * Utility object for scoring and ranking candidate overnight towns based on real OSM POI amenity
+ * density.
+ */
 object TownScorer {
     private val HOTEL_TYPES = setOf("hotel", "motel", "resort", "hostel", "alpine_hut", "camp_site")
     private val FAMILY_TYPES =
@@ -30,7 +46,18 @@ object TownScorer {
     private val DINING_TYPES =
         setOf("restaurant", "cafe", "bakery", "fast_food", "ice_cream", "pub", "food_court", "bar")
 
-    /** Score a town based on verified POI amenity density within a given radius (in miles). */
+    /**
+     * Scores a candidate [town] based on local lodging, family, and dining amenity density within
+     * [radiusMiles].
+     *
+     * Evaluation steps:
+     * 1. Compute lat/lng bounding box for [radiusMiles] and map to [GridCell] spatial indices.
+     * 2. Query POIs from spatial index within the bounding box and count matching amenity types.
+     * 3. Dynamically adjust weights if [userPrompt] requests specific trip personas (e.g.
+     *    family/kids -> higher family weight).
+     * 4. Compute composite weighted score: `(hotelCount * hWeight) + (familyCount * fWeight) +
+     *    (diningCount * dWeight)`.
+     */
     fun scoreTownForOvernight(
         town: TownInfo,
         cacheStore: PoiCacheStore,
@@ -39,6 +66,8 @@ object TownScorer {
         distanceFromTargetMeters: Double = 0.0,
         config: Config = Config.current,
     ): ScoredTown {
+        // Convert radius in miles to meters and derive lat/lng bounding box degree offset
+        // (~111,000m per degree)
         val maxDistMeters = radiusMiles * 1609.34
         val bufferDeg = (maxDistMeters / 111000.0) + 0.01
 
@@ -47,11 +76,13 @@ object TownScorer {
         val minLng = town.lng - bufferDeg
         val maxLng = town.lng + bufferDeg
 
+        // Determine spatial grid cell indices covering the search bounding box
         val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
         val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
         val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
         val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
 
+        // Gather candidate POIs across overlapping spatial grid cells
         val candidatePois = mutableSetOf<POI>()
         for (latIdx in minLatCell..maxLatCell) {
             for (lngIdx in minLngCell..maxLngCell) {
@@ -63,6 +94,7 @@ object TownScorer {
         var familyCount = 0
         var diningCount = 0
 
+        // Filter candidates by exact radial Haversine distance and categorize amenities
         for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 val dist = PoiExtractor.haversineMeters(town.lat, town.lng, poi.lat, poi.lng)
@@ -92,7 +124,7 @@ object TownScorer {
             }
         }
 
-        // Dynamic prompt-based weight adjustments
+        // Dynamic persona-based weight adjustments derived from natural language prompt keywords
         var hWeight = config.hotelWeight
         var fWeight = config.familyWeight
         var dWeight = config.diningWeight
@@ -135,8 +167,10 @@ object TownScorer {
     }
 
     /**
-     * Rank candidate scored towns using primary (POI score desc), secondary (distance to milestone
-     * asc), and tertiary (OSM place type priority: city=1, town=2, village=3, hamlet=4) criteria.
+     * Ranks candidate scored towns using multi-tier sorting:
+     * 1. Primary: Highest composite amenity score (descending).
+     * 2. Secondary: Closest distance to target leg completion milestone (ascending).
+     * 3. Tertiary: OSM place classification priority (`city` > `town` > `village` > `hamlet`).
      */
     fun rankCandidateTowns(scoredTowns: List<ScoredTown>): List<ScoredTown> {
         val placePriority = mapOf("city" to 1, "town" to 2, "village" to 3, "hamlet" to 4)

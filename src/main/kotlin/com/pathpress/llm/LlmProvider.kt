@@ -5,6 +5,14 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.model.RouteLeg
 
+/**
+ * Encapsulates high-level itinerary planning response returned by an LLM provider.
+ *
+ * @property dayThemes Titles/themes assigned to each day of the trip.
+ * @property waypoints Intermediate spatial anchor towns or coordinates suggested by the LLM.
+ * @property curatedPois Map of day numbers to curated lists of POIs.
+ * @property narrative Summary narrative describing the overall trip experience and landscape.
+ */
 data class TripPlanResponse(
     val dayThemes: List<String>,
     val waypoints: List<LocationCoords>,
@@ -12,8 +20,15 @@ data class TripPlanResponse(
     val narrative: String = "",
 )
 
+/**
+ * Result of POI narration curation for a single route leg.
+ *
+ * @property legStory Engaging narrative summary describing the drive for this leg.
+ * @property curatedPois List of POIs with LLM-enhanced or fallback descriptions and insider tips.
+ */
 data class CuratedLegResult(val legStory: String, val curatedPois: List<POI>)
 
+/** Supported LLM provider backends and their API key requirements. */
 enum class LlmProviderType(val id: String, val requiresApiKey: Boolean, val envVarName: String?) {
     GEMINI("gemini", requiresApiKey = true, envVarName = "GEMINI_API_KEY"),
     CLAUDE("claude", requiresApiKey = true, envVarName = "ANTHROPIC_API_KEY"),
@@ -21,7 +36,14 @@ enum class LlmProviderType(val id: String, val requiresApiKey: Boolean, val envV
     OLLAMA("ollama", requiresApiKey = false, envVarName = null),
     NONE("none", requiresApiKey = false, envVarName = null);
 
+    /**
+     * Resolves the API key from [providedKey] or falls back to environment variable [envVarName].
+     */
+    fun resolveApiKey(providedKey: String?): String? =
+        providedKey.takeIf { !it.isNullOrBlank() } ?: envVarName?.let { System.getenv(it) }
+
     companion object {
+        /** Map string provider identifiers (case-insensitive) to [LlmProviderType]. */
         fun fromId(id: String?): LlmProviderType {
             if (id.isNullOrBlank()) return NONE
             return when (val cleanId = id.lowercase().trim()) {
@@ -32,8 +54,9 @@ enum class LlmProviderType(val id: String, val requiresApiKey: Boolean, val envV
     }
 }
 
-/** Interface for LLM providers (Gemini, Claude, OpenAI, Ollama, and Fallback). */
+/** Interface for LLM providers generating trip plans, waypoints, and POI narratives. */
 interface LlmProvider {
+    /** Generate high-level trip plan with day themes, intermediate waypoints, and narrative. */
     fun planTrip(
         startName: String,
         endName: String,
@@ -43,9 +66,14 @@ interface LlmProvider {
         userPrompt: String?,
     ): TripPlanResponse
 
+    /** Generate leg stories and curated POI descriptions grounded in real OSM tags. */
     fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult
 
     companion object {
+        /**
+         * Factory function instantiating the requested [LlmProvider] instance (Gemini, Claude,
+         * OpenAI, Ollama, or NoOpFallback).
+         */
         fun create(
             providerName: String,
             apiKey: String?,
@@ -53,23 +81,22 @@ interface LlmProvider {
             modelName: String? = null,
             config: Config = Config.current,
         ): LlmProvider {
-            val type = LlmProviderType.fromId(providerName)
-            return when (type) {
+            return when (val type = LlmProviderType.fromId(providerName)) {
                 LlmProviderType.GEMINI ->
                     GeminiProvider(
-                        apiKey = apiKey ?: System.getenv(LlmProviderType.GEMINI.envVarName) ?: "",
+                        apiKey = type.resolveApiKey(apiKey) ?: "",
                         modelName = modelName ?: config.defaultGeminiModel,
                         config = config,
                     )
                 LlmProviderType.CLAUDE ->
                     ClaudeProvider(
-                        apiKey = apiKey ?: System.getenv(LlmProviderType.CLAUDE.envVarName) ?: "",
+                        apiKey = type.resolveApiKey(apiKey) ?: "",
                         modelName = modelName ?: config.defaultClaudeModel,
                         config = config,
                     )
                 LlmProviderType.OPENAI ->
                     OpenAiCompatibleProvider(
-                        apiKey = apiKey ?: System.getenv(LlmProviderType.OPENAI.envVarName) ?: "",
+                        apiKey = type.resolveApiKey(apiKey) ?: "",
                         endpoint = apiUrl ?: "https://api.openai.com/v1/chat/completions",
                         modelName = modelName ?: config.defaultOpenAiModel,
                         config = config,

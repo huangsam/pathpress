@@ -20,7 +20,13 @@ import com.pathpress.routing.RouteCalculator
 import org.slf4j.LoggerFactory
 
 object BuildConfig {
-    const val VERSION: String = "1.2.0"
+    val VERSION: String by lazy {
+        BuildConfig::class.java.getResourceAsStream("/version.properties")?.use { stream ->
+            val props = java.util.Properties()
+            props.load(stream)
+            props.getProperty("version")
+        } ?: "0.1.0-SNAPSHOT"
+    }
 }
 
 /** PathPress CLI command implemented using Clikt. */
@@ -63,12 +69,6 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
         option("--pois-per-leg", help = "Maximum POIs to extract per day/leg")
             .int()
             .default(Config.current.defaultPoisPerLeg)
-    val includeThemeParks by
-        option(
-                "--include-theme-parks",
-                help = "Include ticketed theme park rides (e.g. roller coasters, monorails)",
-            )
-            .flag(default = false)
     val verbose by
         option(
                 "-v",
@@ -227,7 +227,6 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
                 profile = if (profile.lowercase() == "scenic") "car" else profile,
                 limitPerLeg = poisPerLeg,
                 userPrompt = prompt,
-                includeThemeParks = includeThemeParks,
                 waypoints = resolvedWaypoints,
             )
 

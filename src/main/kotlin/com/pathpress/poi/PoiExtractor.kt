@@ -8,6 +8,7 @@ import com.graphhopper.reader.osm.OSMInputFile
 import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
+import com.pathpress.model.PoiCategoryConstants
 import com.pathpress.poi.rules.PoiEvaluationContext
 import com.pathpress.poi.rules.PoiRulesEngine
 import java.io.File
@@ -20,10 +21,18 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import org.slf4j.LoggerFactory
 
+/** Container for town location attributes parsed from OpenStreetMap nodes. */
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
 
+/**
+ * 2D spatial grid cell index used for $O(1)$ spatial binning and fast bounding box candidate
+ * retrieval.
+ *
+ * Cell dimensions are determined by [gridCellSizeDeg] (~0.05° ≈ 5.5 km or 3.4 miles).
+ */
 data class GridCell(val latIndex: Int, val lngIndex: Int) {
     companion object {
+        /** Map lat/lng coordinates to a discrete [GridCell] bucket. */
         fun fromCoords(
             lat: Double,
             lng: Double,
@@ -33,6 +42,12 @@ data class GridCell(val latIndex: Int, val lngIndex: Int) {
     }
 }
 
+/**
+ * Persistent cache store holding extracted POIs and towns from OSM PBF files.
+ *
+ * Lazily computes spatial grid indices ([spatialIndex] and [townSpatialIndex]) for fast bounding
+ * box lookups.
+ */
 data class PoiCacheStore(
     val pois: List<POI> = emptyList(),
     val towns: List<TownInfo> = emptyList(),
@@ -59,8 +74,7 @@ object PoiExtractor {
     @Volatile private var cachedStore: PoiCacheStore? = null
     private var cachedPbfPath: String? = null
 
-    private val RELEVANT_AMENITIES =
-        setOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court")
+    private val RELEVANT_AMENITIES = PoiCategoryConstants.FOOD_AMENITIES
 
     private val RELEVANT_TOURISM =
         setOf(
@@ -227,7 +241,6 @@ object PoiExtractor {
         maxDistanceMeters: Double = 5000.0,
         limitPerLeg: Int = Config.current.defaultPoisPerLeg,
         userPrompt: String? = null,
-        includeThemeParks: Boolean = false,
         excludePeaks: Boolean = false,
         excludeIndustrial: Boolean = true,
         config: Config = Config.current,
@@ -246,7 +259,6 @@ object PoiExtractor {
         val evalContext =
             PoiEvaluationContext(
                 userPrompt = userPrompt,
-                allowsThemeParks = includeThemeParks,
                 excludePeaks = excludePeaks,
                 excludeIndustrial = excludeIndustrial,
             )
@@ -281,7 +293,86 @@ object PoiExtractor {
             }
         }
 
-        return rankAndSelectPois(candidates, limitPerLeg, legPoints, evalContext, rulesEngine)
+        val deduplicatedCandidates =
+            if (evalContext.allowsThemeParksFromPrompt) {
+                deduplicateThemeParks(candidates)
+            } else {
+                candidates
+            }
+
+        return rankAndSelectPois(
+            deduplicatedCandidates,
+            limitPerLeg,
+            legPoints,
+            evalContext,
+            rulesEngine,
+        )
+    }
+
+    internal fun deduplicateThemeParks(
+        candidates: List<POI>,
+        clusterRadiusMeters: Double = 1500.0,
+    ): List<POI> {
+        val (themeParkPois, otherPois) = candidates.partition { isThemeParkNode(it) }
+        if (themeParkPois.size <= 1) return candidates
+
+        val clustered = mutableListOf<POI>()
+        val visited = BooleanArray(themeParkPois.size)
+
+        for (i in themeParkPois.indices) {
+            if (visited[i]) continue
+            visited[i] = true
+            val current = themeParkPois[i]
+            val cluster = mutableListOf(current)
+            val currentDomain = getThemeParkDomain(current)
+
+            for (j in i + 1 until themeParkPois.size) {
+                if (visited[j]) continue
+                val candidate = themeParkPois[j]
+                val dist = haversineMeters(current.lat, current.lng, candidate.lat, candidate.lng)
+                val candidateDomain = getThemeParkDomain(candidate)
+                val sameDomain = currentDomain != null && currentDomain == candidateDomain
+                if (dist <= clusterRadiusMeters || sameDomain) {
+                    visited[j] = true
+                    cluster.add(candidate)
+                }
+            }
+
+            val bestRepresentative =
+                cluster.minByOrNull { it.distanceFromRouteMeters ?: Double.MAX_VALUE } ?: current
+            clustered.add(bestRepresentative)
+        }
+
+        return otherPois + clustered
+    }
+
+    internal fun isThemeParkNode(poi: POI): Boolean {
+        val attractionType = poi.tags["attraction"]
+        if (
+            attractionType in setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
+        ) {
+            return true
+        }
+        val tourism = poi.tags["tourism"]
+        val leisure = poi.tags["leisure"]
+        val amenity = poi.tags["amenity"]
+        if (tourism == "theme_park" || leisure == "amusement_park" || amenity == "theme_park") {
+            return true
+        }
+        val website = getThemeParkDomain(poi)
+        return website != null
+    }
+
+    internal fun getThemeParkDomain(poi: POI): String? {
+        val website = (poi.tags["website"] ?: "").lowercase()
+        return when {
+            website.contains("sixflags.com") -> "sixflags.com"
+            website.contains("disney") -> "disney.com"
+            website.contains("seaworld.com") -> "seaworld.com"
+            website.contains("knotts.com") -> "knotts.com"
+            website.contains("universalstudios.com") -> "universalstudios.com"
+            else -> null
+        }
     }
 
     /**

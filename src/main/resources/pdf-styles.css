@@ -1,7 +1,11 @@
 /*
  * OPENHTMLTOPDF LAYOUT ARCHITECTURE STANDARDS:
- * 1. Use pure inline text flow (or table layout) for headers, badges, and metadata cards.
- * 2. Avoid combining `display: inline-block` with `vertical-align: middle` on SVG replacement elements adjacent to inline text.
+ * 1. Engine: CSS 2.1 only. Use tables or inline-block with percentage widths for grids (no Flexbox or CSS Grid).
+ * 2. SVG Alignment: Avoid display:inline-block + vertical-align:middle on SVGs next to text to prevent clipping.
+ * 3. Pagination: Use page-break-before:always for section breaks and page-break-inside:avoid on card elements.
+ * 4. Paged Media: Use @page margin boxes with page counters; suppress headers on cover via @page:first.
+ * 5. Fonts and Sizing: Maintain font fallbacks and use box-sizing:border-box on percentage grid containers.
+ * 6. XML Safety: Avoid literal ampersand characters in CSS to prevent XHTML SAX parser errors.
  */
 
 @page {

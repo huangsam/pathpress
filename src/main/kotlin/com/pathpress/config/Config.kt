@@ -5,8 +5,25 @@ import java.time.Duration
 /**
  * Centralized application configuration.
  *
- * Provides default values for grid dimensions, POI limits, model names, and network timeouts, with
- * support for environment variable overrides.
+ * Provides parameters for spatial grid partitioning, town scoring algorithms, LLM model defaults,
+ * and network timeouts, with support for environment variable overrides via [fromEnv].
+ *
+ * @property gridCellSizeDeg Spatial indexing cell dimension in degrees (~0.05° is roughly 5.5 km or
+ *   3.4 miles).
+ * @property defaultPoisPerLeg Maximum number of POIs selected per leg segment.
+ * @property defaultGeminiModel Default model identifier for Google Gemini API calls.
+ * @property defaultClaudeModel Default model identifier for Anthropic Claude API calls.
+ * @property defaultOpenAiModel Default model identifier for OpenAI API calls.
+ * @property defaultOllamaModel Default model identifier for local Ollama API calls.
+ * @property httpLlmTimeoutSeconds Network timeout in seconds for HTTP LLM requests.
+ * @property geocoderTimeoutSeconds Network timeout in seconds for geocoding services.
+ * @property townScoringRadiusMiles Geographic search radius (in miles) around candidate towns to
+ *   count amenities.
+ * @property townProgressWindowFraction Fraction of total leg distance used to form a search window
+ *   for overnight stay candidates.
+ * @property hotelWeight Relative scoring weight multiplier for hotel/lodging amenities.
+ * @property familyWeight Relative scoring weight multiplier for family-friendly attractions.
+ * @property diningWeight Relative scoring weight multiplier for dining options.
  */
 data class Config(
     val gridCellSizeDeg: Double = DEFAULT_GRID_CELL_SIZE_DEG,
@@ -30,18 +47,48 @@ data class Config(
         get() = Duration.ofSeconds(geocoderTimeoutSeconds)
 
     companion object {
+        /** Default spatial grid bucket size in lat/lng degrees (0.05° ≈ 5.5 km / 3.4 miles). */
         const val DEFAULT_GRID_CELL_SIZE_DEG: Double = 0.05
+
+        /** Default maximum POIs returned per route leg. */
         const val DEFAULT_POIS_PER_LEG: Int = 10
+
+        /** Default Gemini model identifier. */
         const val DEFAULT_GEMINI_MODEL: String = "gemini-1.5-flash"
+
+        /** Default Claude model identifier. */
         const val DEFAULT_CLAUDE_MODEL: String = "claude-3-haiku-20240307"
+
+        /** Default OpenAI model identifier. */
         const val DEFAULT_OPENAI_MODEL: String = "gpt-4o-mini"
+
+        /** Default local Ollama model identifier. */
         const val DEFAULT_OLLAMA_MODEL: String = "gemma4:31b-mlx"
+
+        /** Default network timeout in seconds for HTTP LLM requests. */
         const val DEFAULT_HTTP_LLM_TIMEOUT_SECONDS: Long = 15L
+
+        /** Default network timeout in seconds for geocoding requests. */
         const val DEFAULT_GEOCODER_TIMEOUT_SECONDS: Long = 10L
+
+        /**
+         * Search radius in miles around an overnight candidate town when counting local amenities.
+         */
         const val DEFAULT_TOWN_SCORING_RADIUS_MILES: Double = 3.0
+
+        /**
+         * Fractional window (10% of route length) around target leg completion distance to evaluate
+         * candidate towns.
+         */
         const val DEFAULT_TOWN_PROGRESS_WINDOW_FRACTION: Double = 0.10
+
+        /** Scoring multiplier for lodging amenities when evaluating overnight towns. */
         const val DEFAULT_HOTEL_WEIGHT: Int = 5
+
+        /** Scoring multiplier for family activities when evaluating overnight towns. */
         const val DEFAULT_FAMILY_WEIGHT: Int = 3
+
+        /** Scoring multiplier for dining options when evaluating overnight towns. */
         const val DEFAULT_DINING_WEIGHT: Int = 1
 
         /** Loads configuration populated with optional environment variable overrides. */

@@ -31,7 +31,6 @@ class RouteCalculator(
         profile: String = "car",
         limitPerLeg: Int = Config.current.defaultPoisPerLeg,
         userPrompt: String? = null,
-        includeThemeParks: Boolean = false,
         waypoints: List<LocationCoords> = emptyList(),
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
@@ -65,7 +64,6 @@ class RouteCalculator(
                     profile,
                     limitPerLeg,
                     userPrompt,
-                    includeThemeParks,
                 )
             } else if (fallbackRes.hasErrors()) {
                 throw IllegalStateException("Route calculation failed: ${response.errors}")
@@ -77,7 +75,6 @@ class RouteCalculator(
                 profile,
                 limitPerLeg,
                 userPrompt,
-                includeThemeParks,
             )
         }
 
@@ -88,7 +85,6 @@ class RouteCalculator(
             profile,
             limitPerLeg,
             userPrompt,
-            includeThemeParks,
         )
     }
 
@@ -99,7 +95,6 @@ class RouteCalculator(
         profile: String,
         limitPerLeg: Int,
         userPrompt: String? = null,
-        includeThemeParks: Boolean = false,
     ): List<RouteLeg> {
         val pointsList = path.points
         val allCoords =
@@ -115,7 +110,6 @@ class RouteCalculator(
                         maxDistanceMeters = 8000.0,
                         limitPerLeg = limitPerLeg,
                         userPrompt = userPrompt,
-                        includeThemeParks = includeThemeParks,
                     )
                     .ifEmpty {
                         filterNearbyPois(
@@ -140,8 +134,13 @@ class RouteCalculator(
             )
         }
 
-        // Town-centric multi-day pacing
-        // Determine intermediate stopover waypoints snapped to real towns/cities
+        // Town-centric multi-day pacing pipeline:
+        // 1. Calculate cumulative distance milestones along the primary route polyline (e.g. 1/N,
+        // 2/N ... target fractions).
+        // 2. Interpolate polyline coordinates at each target distance milestone.
+        // 3. Search and score real candidate towns near each target milestone based on local
+        // lodging & amenity density.
+        // 4. Snap intermediate day leg endpoints to the top-ranked town.
         val legWaypoints = mutableListOf<LocationCoords>()
         legWaypoints.add(LocationCoords(pointsList.getLat(0), pointsList.getLon(0)))
 
@@ -155,6 +154,8 @@ class RouteCalculator(
             var targetLat = pointsList.getLat(0)
             var targetLng = pointsList.getLon(0)
 
+            // Linearly interpolate coordinates along route polyline segments until target distance
+            // is reached
             for (i in 0 until pointsList.size() - 1) {
                 val segDist =
                     PoiExtractor.haversineMeters(
@@ -177,7 +178,7 @@ class RouteCalculator(
                 cumDist += segDist
             }
 
-            // Search & score candidate towns near target milestone using POI amenity density
+            // Search & score candidate towns near target milestone using local POI amenity density
             val targetProgressFraction = dayIndex.toDouble() / days
             val candidateTowns =
                 PoiExtractor.findCandidateTownsAlongRoute(
@@ -214,6 +215,7 @@ class RouteCalculator(
         townNames.add(null)
 
         val legs = mutableListOf<RouteLeg>()
+        // Track assigned POIs across legs to prevent duplicate POI recommendations across days
         val usedPoiIds = mutableSetOf<String>()
 
         for (dayIndex in 0 until days) {
@@ -242,7 +244,6 @@ class RouteCalculator(
                         maxDistanceMeters = 8000.0,
                         limitPerLeg = limitPerLeg,
                         userPrompt = userPrompt,
-                        includeThemeParks = includeThemeParks,
                         excludePoiIds = usedPoiIds,
                     )
                     .ifEmpty {

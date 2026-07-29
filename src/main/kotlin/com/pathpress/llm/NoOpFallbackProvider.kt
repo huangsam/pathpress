@@ -6,7 +6,13 @@ import com.pathpress.model.RouteLeg
 import com.pathpress.model.sanitizePoiType
 import com.pathpress.model.takeValidText
 
-/** Fallback provider when no LLM is specified or available. */
+/**
+ * Offline or fallback [LlmProvider] used when no LLM API key is specified or when remote LLM calls
+ * fail.
+ *
+ * Generates deterministic day titles, basic narratives, and rule-based POI descriptions derived
+ * directly from OpenStreetMap tag attributes without making external network requests.
+ */
 class NoOpFallbackProvider : LlmProvider {
     override fun planTrip(
         startName: String,

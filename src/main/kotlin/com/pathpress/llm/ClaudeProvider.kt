@@ -11,6 +11,12 @@ import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger(ClaudeProvider::class.java)
 
+/**
+ * [HttpLlmProvider] implementation targeting Anthropic's Claude API (`/v1/messages`).
+ *
+ * Configures `x-api-key` and `anthropic-version: 2023-06-01` HTTP headers. Automatically falls back
+ * to [NoOpFallbackProvider] on network failures, non-200 responses, or parse errors.
+ */
 class ClaudeProvider(
     apiKey: String,
     config: Config = Config.current,
