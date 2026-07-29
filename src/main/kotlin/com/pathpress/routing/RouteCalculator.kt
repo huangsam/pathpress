@@ -29,7 +29,7 @@ data class SnapResult(
 /** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(
     private val graphHopper: GraphHopper,
-    val pbfFilePath: String = "california-latest.osm.pbf",
+    val pbfFilePath: String = "data/california-latest.osm.pbf",
 ) {
     private val logger = LoggerFactory.getLogger(RouteCalculator::class.java)
 

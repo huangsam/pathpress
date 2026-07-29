@@ -138,7 +138,7 @@ object PoiExtractor {
      */
     @Synchronized
     fun getOrBuildCache(
-        pbfPath: String = "california-latest.osm.pbf",
+        pbfPath: String = "data/california-latest.osm.pbf",
         cacheFilePath: String = ".pois_cache/pois_cache.json",
     ): PoiCacheStore {
         if (cachedStore != null && cachedPbfPath == pbfPath) {

@@ -32,7 +32,7 @@ Pure LLM travel planners frequently suffer from "spatial amnesia"—hallucinatin
 java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end "Monterey, CA" --days 1
 
 # Example 2: Multi-day AI trip with Ollama, custom prompt & imperial units
-java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end "San Diego, CA" --days 2 --llm-provider ollama --prompt "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay" --units imperial
+java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end "San Diego, CA" --days 2 --llm-provider ollama --llm-model gemma4:31b-mlx --prompt "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay" --units imperial
 ```
 
 > 💡 **Tip**: Run `java -jar build/libs/pathpress-0.1.0-standalone.jar --help` to view all available CLI flags, default values, and usage options.

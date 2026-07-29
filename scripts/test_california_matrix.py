@@ -24,7 +24,11 @@ from typing import List, Optional
 # Root directory of the repository
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.1.0-standalone.jar")
-PBF_PATH = os.path.join(REPO_ROOT, "california-latest.osm.pbf")
+PBF_PATH = (
+    os.path.join(REPO_ROOT, "data", "california-latest.osm.pbf")
+    if os.path.exists(os.path.join(REPO_ROOT, "data", "california-latest.osm.pbf"))
+    else os.path.join(REPO_ROOT, "california-latest.osm.pbf")
+)
 OUTPUT_DIR = os.path.join(REPO_ROOT, "scratch", "matrix_output")
 
 

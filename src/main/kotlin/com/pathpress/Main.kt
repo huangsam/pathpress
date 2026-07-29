@@ -40,9 +40,7 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
         option("--end", help = "Destination location name or lat,lng coordinates").required()
     val days by option("--days", help = "Number of days to spread the trip across").int().default(1)
     val outputFile by option("--output", help = "Output PDF file path").default("itinerary.pdf")
-    val pbfPath by
-        option("--pbf", help = "Path to OSM PBF file")
-            .default(System.getenv("PATHPRESS_PBF") ?: "california-latest.osm.pbf")
+    val rawPbfPath by option("--pbf", help = "Path to OSM PBF file").default(defaultPbfPath())
     val graphPath by
         option("--graph", help = "GraphHopper graph storage directory").default(".graphhopper")
     val prompt by
@@ -87,6 +85,8 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
     private val logger = LoggerFactory.getLogger(PathPressCommand::class.java)
 
     override fun run() {
+        val pbfPath = resolvePbfPath(rawPbfPath)
+
         if (!prompt.isNullOrBlank() && llmProviderName.lowercase() == "none") {
             throw com.github.ajalt.clikt.core.UsageError(
                 "A --prompt was provided, but no --llm-provider was specified. Please specify a provider (e.g., --llm-provider ollama) or remove the prompt."
@@ -324,6 +324,33 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
         }
         logger.info("\n{}", summaryLog.trimEnd())
     }
+}
+
+fun resolvePbfPath(requestedPath: String): String {
+    val file = java.io.File(requestedPath)
+    if (file.exists()) return requestedPath
+    val dataFile = java.io.File("data", requestedPath)
+    if (dataFile.exists()) return dataFile.path
+    return requestedPath
+}
+
+fun defaultPbfPath(): String {
+    val envPath = System.getenv("PATHPRESS_PBF")
+    if (!envPath.isNullOrBlank()) return envPath
+
+    val defaultDataPbf = java.io.File("data", "california-latest.osm.pbf")
+    if (defaultDataPbf.exists()) return defaultDataPbf.path
+
+    val dataDir = java.io.File("data")
+    if (dataDir.exists() && dataDir.isDirectory) {
+        val pbfFile = dataDir.listFiles()?.firstOrNull { it.name.endsWith(".pbf") }
+        if (pbfFile != null) return pbfFile.path
+    }
+
+    val rootPbf = java.io.File("california-latest.osm.pbf")
+    if (rootPbf.exists()) return rootPbf.name
+
+    return "data/california-latest.osm.pbf"
 }
 
 fun main(args: Array<String>) = PathPressCommand().main(args)
