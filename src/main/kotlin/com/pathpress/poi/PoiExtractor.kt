@@ -9,6 +9,7 @@ import com.pathpress.config.Config
 import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
+import com.pathpress.poi.rules.*
 import com.pathpress.routing.*
 import java.io.File
 import kotlin.math.*
@@ -213,44 +214,6 @@ object PoiExtractor {
         return store
     }
 
-    internal fun isFamilyOrToddlerOrQuickBreak(userPrompt: String?): Boolean {
-        val prompt = userPrompt?.lowercase() ?: return false
-        return prompt.contains("toddler") ||
-            prompt.contains("toddlers") ||
-            prompt.contains("kid") ||
-            prompt.contains("kids") ||
-            prompt.contains("family") ||
-            prompt.contains("child") ||
-            prompt.contains("children") ||
-            prompt.contains("baby") ||
-            prompt.contains("highway break") ||
-            prompt.contains("quick break") ||
-            prompt.contains("rest stop")
-    }
-
-    internal fun isExcludedForPersona(
-        poi: POI,
-        shouldExcludePeaks: Boolean = false,
-        shouldExcludeIndustrial: Boolean = true,
-    ): Boolean {
-        val tags = poi.tags
-        if (shouldExcludePeaks && (tags["natural"] == "peak" || poi.type == "peak")) {
-            return true
-        }
-        if (shouldExcludeIndustrial) {
-            if (tags.containsKey("telecom") || tags["telecom"] != null) return true
-            if (tags.containsKey("power") || tags["power"] != null) return true
-            if (
-                tags.containsKey("industrial") ||
-                    tags["landuse"] == "industrial" ||
-                    tags["building"] == "industrial"
-            ) {
-                return true
-            }
-        }
-        return false
-    }
-
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
         pbfPath: String,
@@ -262,6 +225,7 @@ object PoiExtractor {
         excludePeaks: Boolean = false,
         excludeIndustrial: Boolean = true,
         config: Config = Config.current,
+        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
@@ -272,18 +236,13 @@ object PoiExtractor {
             return emptyList()
         }
 
-        val allowsThemeParks =
-            includeThemeParks ||
-                (userPrompt?.lowercase()?.let { prompt ->
-                    prompt.contains("theme park") ||
-                        prompt.contains("disney") ||
-                        prompt.contains("six flags") ||
-                        prompt.contains("amusement") ||
-                        prompt.contains("roller coaster") ||
-                        prompt.contains("coaster")
-                } ?: false)
-
-        val shouldExcludePeaks = excludePeaks || isFamilyOrToddlerOrQuickBreak(userPrompt)
+        val evalContext =
+            PoiEvaluationContext(
+                userPrompt = userPrompt,
+                allowsThemeParks = includeThemeParks,
+                excludePeaks = excludePeaks,
+                excludeIndustrial = excludeIndustrial,
+            )
 
         val bufferDeg = (maxDistanceMeters / 111000.0) + 0.02
         val minLat = legPoints.minOf { it.lat } - bufferDeg
@@ -306,8 +265,7 @@ object PoiExtractor {
         val candidates = mutableListOf<POI>()
         for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
-                if (isExcludedThemeParkPoi(poi, allowsThemeParks)) continue
-                if (isExcludedForPersona(poi, shouldExcludePeaks, excludeIndustrial)) continue
+                if (rulesEngine.isExcluded(poi, evalContext)) continue
                 val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
                     candidates.add(poi.copy(distanceFromRouteMeters = dist))
@@ -315,38 +273,7 @@ object PoiExtractor {
             }
         }
 
-        return rankAndSelectPois(candidates, limitPerLeg, legPoints, userPrompt)
-    }
-
-    private fun isExcludedThemeParkPoi(poi: POI, allowsThemeParks: Boolean = false): Boolean {
-        if (allowsThemeParks) return false
-        val attractionType = poi.tags["attraction"]
-        if (
-            attractionType in setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
-        ) {
-            return true
-        }
-        val website = (poi.tags["website"] ?: "").lowercase()
-        if (
-            website.contains("sixflags.com") ||
-                website.contains("disney.go.com") ||
-                website.contains("seaworld.com") ||
-                website.contains("knotts.com") ||
-                website.contains("universalstudios.com")
-        ) {
-            return true
-        }
-        val operator = (poi.tags["operator"] ?: "").lowercase()
-        if (
-            operator.contains("six flags") ||
-                operator.contains("disney") ||
-                operator.contains("seaworld") ||
-                operator.contains("cedar fair")
-        ) {
-            return true
-        }
-        val name = (poi.name ?: "").lowercase()
-        return name.contains("monorail station") || name.contains("roller coaster")
+        return rankAndSelectPois(candidates, limitPerLeg, legPoints, evalContext, rulesEngine)
     }
 
     /**
@@ -455,7 +382,8 @@ object PoiExtractor {
         candidates: List<POI>,
         limit: Int,
         legPoints: List<LocationCoords> = emptyList(),
-        userPrompt: String? = null,
+        evalContext: PoiEvaluationContext = PoiEvaluationContext(),
+        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
     ): List<POI> {
         if (candidates.isEmpty() || limit <= 0) return emptyList()
 
@@ -471,15 +399,39 @@ object PoiExtractor {
 
         // Use segment-based selection when we have route geometry
         if (legPoints.size >= 2) {
-            return selectBySegments(distinctByName, limit, legPoints, userPrompt)
+            return selectBySegments(distinctByName, limit, legPoints, evalContext, rulesEngine)
         }
 
         // Fallback: original distance-based two-pass selection
         return applyTypeDiversity(
-            distinctByName.sortedByDescending { calculatePoiQualityScore(it, userPrompt) },
+            distinctByName.sortedByDescending {
+                rulesEngine.calculatePoiQualityScore(it, evalContext)
+            },
             limit,
         )
     }
+
+    internal fun rankAndSelectPois(
+        candidates: List<POI>,
+        limit: Int,
+        legPoints: List<LocationCoords>,
+        userPrompt: String?,
+        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+    ): List<POI> =
+        rankAndSelectPois(
+            candidates,
+            limit,
+            legPoints,
+            PoiEvaluationContext(userPrompt = userPrompt),
+            rulesEngine,
+        )
+
+    internal fun calculatePoiQualityScore(
+        poi: POI,
+        userPrompt: String? = null,
+        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+    ): Double =
+        rulesEngine.calculatePoiQualityScore(poi, PoiEvaluationContext(userPrompt = userPrompt))
 
     /**
      * Computes a POI's normalised progress along [legPoints] (0.0 = start, 1.0 = end).
@@ -536,157 +488,6 @@ object PoiExtractor {
         return bestProgress
     }
 
-    private val KNOWN_CHAINS =
-        setOf(
-            // Fast Food
-            "arby's",
-            "burger king",
-            "carl's jr",
-            "dairy queen",
-            "domino's",
-            "in-n-out",
-            "jack in the box",
-            "kfc",
-            "mcdonald's",
-            "mcdonalds",
-            "panda express",
-            "pizza hut",
-            "sonic drive-in",
-            "subway",
-            "taco bell",
-            "teriyaki madness",
-            "wendy's",
-
-            // Coffee & Cafe
-            "capital one cafe",
-            "dunkin",
-            "dunkin'",
-            "starbucks",
-
-            // Hotels
-            "best western",
-            "comfort inn",
-            "courtyard",
-            "days inn",
-            "hampton inn",
-            "holiday inn",
-            "la quinta",
-            "motel 6",
-            "quality inn",
-            "super 8",
-
-            // Gas & Convenience
-            "7-eleven",
-            "bp",
-            "chevron",
-            "circle k",
-            "exxon",
-            "mobil",
-            "shell",
-            "speedway",
-        )
-
-    /**
-     * Calculates a popularity & metadata completeness score for a POI using OSM tag signals.
-     *
-     * Higher scores indicate notable landmarks, established businesses, or well-documented spots
-     * (e.g. Wikipedia/Wikidata entries, websites, opening hours). Known national chains receive a
-     * heavy penalty.
-     */
-    internal fun calculatePoiQualityScore(poi: POI, userPrompt: String? = null): Double {
-        var score = 0.0
-        val tags = poi.tags
-        val nameLower = poi.name?.lowercase() ?: ""
-        val brandLower = tags["brand"]?.lowercase() ?: ""
-        val operatorLower = tags["operator"]?.lowercase() ?: ""
-
-        val isChain = KNOWN_CHAINS.any { chain ->
-            nameLower.contains(chain) || brandLower.contains(chain) || operatorLower.contains(chain)
-        }
-
-        if (isChain) {
-            score -= 15.0 // Heavy penalty for corporate fast food, motels, and gas station chains
-        }
-
-        // Heavy penalty for commercial food/drink amenities lacking any contact or operational
-        // verification metadata
-        val amenity = tags["amenity"]
-        if (amenity in RELEVANT_AMENITIES) {
-            val hasVerificationMetadata =
-                tags.containsKey("website") ||
-                    tags.containsKey("url") ||
-                    tags.containsKey("contact:website") ||
-                    tags.containsKey("phone") ||
-                    tags.containsKey("contact:phone") ||
-                    tags.containsKey("opening_hours") ||
-                    tags.containsKey("wikidata") ||
-                    tags.containsKey("wikipedia") ||
-                    tags.containsKey("brand") ||
-                    tags.containsKey("operator") ||
-                    tags.containsKey("cuisine")
-            if (!hasVerificationMetadata) {
-                score -= 20.0
-            }
-        }
-
-        // Major popularity / notability signals
-        if (tags.containsKey("wikipedia") || tags.containsKey("wikidata")) score += 12.0
-        if (
-            tags.containsKey("website") ||
-                tags.containsKey("url") ||
-                tags.containsKey("contact:website")
-        )
-            score += 5.0
-        if (!isChain && (tags.containsKey("brand") || tags.containsKey("operator"))) score += 2.0
-        if (tags.containsKey("opening_hours")) score += 3.0
-        if (tags.containsKey("phone") || tags.containsKey("contact:phone")) score += 2.0
-        if (tags.containsKey("cuisine")) score += 3.0
-        if (tags.containsKey("description") || tags.containsKey("note")) score += 2.0
-        if (tags.containsKey("wheelchair") || tags.containsKey("outdoor_seating")) score += 1.0
-
-        // Strong bonus for tourist attractions, historic landmarks, viewpoints, parks, nature,
-        // culture, playgrounds, zoos, museums, cafes
-        val isChildOrFamilyFriendly =
-            poi.type in setOf("playground", "park", "zoo", "museum", "cafe") ||
-                tags["leisure"] in setOf("playground", "park") ||
-                tags["tourism"] in setOf("zoo", "museum") ||
-                tags["amenity"] == "cafe"
-
-        if (
-            poi.type in
-                setOf(
-                    "viewpoint",
-                    "attraction",
-                    "museum",
-                    "park",
-                    "nature_reserve",
-                    "historic",
-                    "monument",
-                    "peak",
-                    "beach",
-                    "artwork",
-                    "playground",
-                    "zoo",
-                    "cafe",
-                ) || isChildOrFamilyFriendly
-        ) {
-            score += 8.0
-        }
-
-        if (isChildOrFamilyFriendly) {
-            score += 2.0 // Additional prioritization bonus for playground, park, zoo, museum, cafe
-            if (isFamilyOrToddlerOrQuickBreak(userPrompt)) {
-                score += 5.0 // Extra persona bonus for family/toddler/quick-break trips
-            }
-        }
-
-        // Mild distance penalty so 1 km detour reduces score by ~1.0 point
-        val distKm = (poi.distanceFromRouteMeters ?: 0.0) / 1000.0
-        score -= distKm
-
-        return score
-    }
-
     /**
      * Divides the route into [limit] equal progress buckets and picks the highest quality,
      * type-diverse POI from each bucket. Any unfilled bucket slots are backfilled from the global
@@ -696,7 +497,8 @@ object PoiExtractor {
         candidates: List<POI>,
         limit: Int,
         legPoints: List<LocationCoords>,
-        userPrompt: String? = null,
+        evalContext: PoiEvaluationContext,
+        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
     ): List<POI> {
         data class Scored(val poi: POI, val progress: Double, val quality: Double)
 
@@ -706,7 +508,7 @@ object PoiExtractor {
                     Scored(
                         it,
                         routeProgress(it.lat, it.lng, legPoints),
-                        calculatePoiQualityScore(it, userPrompt),
+                        rulesEngine.calculatePoiQualityScore(it, evalContext),
                     )
                 }
                 .sortedBy { it.progress }
@@ -736,17 +538,13 @@ object PoiExtractor {
 
         // Pass 2: backfill empty buckets from global pool (highest quality first)
         if (selected.size < limit) {
-            val remaining =
-                scored
-                    .map { it.poi }
-                    .filter { it !in selected }
-                    .sortedByDescending { calculatePoiQualityScore(it, userPrompt) }
-            for (poi in remaining) {
+            val remaining = scored.filter { it.poi !in selected }.sortedByDescending { it.quality }
+            for (scoredItem in remaining) {
                 if (selected.size >= limit) break
-                val count = typeCounts.getOrDefault(poi.type, 0)
+                val count = typeCounts.getOrDefault(scoredItem.poi.type, 0)
                 if (count < 2) {
-                    selected.add(poi)
-                    typeCounts[poi.type] = count + 1
+                    selected.add(scoredItem.poi)
+                    typeCounts[scoredItem.poi.type] = count + 1
                 }
             }
         }

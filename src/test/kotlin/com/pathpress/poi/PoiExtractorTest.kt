@@ -3,6 +3,7 @@ package com.pathpress.poi
 import com.pathpress.export.*
 import com.pathpress.llm.*
 import com.pathpress.model.*
+import com.pathpress.poi.rules.*
 import com.pathpress.routing.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -211,11 +212,21 @@ class PoiExtractorTest {
 
     @Test
     fun `isFamilyOrToddlerOrQuickBreak detects family and quick break keywords`() {
-        assertTrue(PoiExtractor.isFamilyOrToddlerOrQuickBreak("Road trip with toddlers and kids"))
-        assertTrue(PoiExtractor.isFamilyOrToddlerOrQuickBreak("Family vacation with a baby"))
-        assertTrue(PoiExtractor.isFamilyOrToddlerOrQuickBreak("Quick highway break along I-5"))
+        assertTrue(
+            PoiEvaluationContext(userPrompt = "Road trip with toddlers and kids")
+                .isFamilyOrToddlerOrQuickBreak
+        )
+        assertTrue(
+            PoiEvaluationContext(userPrompt = "Family vacation with a baby")
+                .isFamilyOrToddlerOrQuickBreak
+        )
+        assertTrue(
+            PoiEvaluationContext(userPrompt = "Quick highway break along I-5")
+                .isFamilyOrToddlerOrQuickBreak
+        )
         assertFalse(
-            PoiExtractor.isFamilyOrToddlerOrQuickBreak("Extreme mountain climbing expedition")
+            PoiEvaluationContext(userPrompt = "Extreme mountain climbing expedition")
+                .isFamilyOrToddlerOrQuickBreak
         )
     }
 
@@ -268,46 +279,40 @@ class PoiExtractorTest {
             )
 
         assertTrue(
-            PoiExtractor.isExcludedForPersona(
+            PersonaExclusionFilterRule.isExcluded(
                 peakPoi,
-                shouldExcludePeaks = true,
-                shouldExcludeIndustrial = true,
+                PoiEvaluationContext(excludePeaks = true, excludeIndustrial = true),
             )
         )
         assertFalse(
-            PoiExtractor.isExcludedForPersona(
+            PersonaExclusionFilterRule.isExcluded(
                 peakPoi,
-                shouldExcludePeaks = false,
-                shouldExcludeIndustrial = true,
+                PoiEvaluationContext(excludePeaks = false, excludeIndustrial = true),
             )
         )
 
         assertTrue(
-            PoiExtractor.isExcludedForPersona(
+            PersonaExclusionFilterRule.isExcluded(
                 telecomPoi,
-                shouldExcludePeaks = false,
-                shouldExcludeIndustrial = true,
+                PoiEvaluationContext(excludePeaks = false, excludeIndustrial = true),
             )
         )
         assertTrue(
-            PoiExtractor.isExcludedForPersona(
+            PersonaExclusionFilterRule.isExcluded(
                 industrialPoi,
-                shouldExcludePeaks = false,
-                shouldExcludeIndustrial = true,
+                PoiEvaluationContext(excludePeaks = false, excludeIndustrial = true),
             )
         )
         assertTrue(
-            PoiExtractor.isExcludedForPersona(
+            PersonaExclusionFilterRule.isExcluded(
                 powerPoi,
-                shouldExcludePeaks = false,
-                shouldExcludeIndustrial = true,
+                PoiEvaluationContext(excludePeaks = false, excludeIndustrial = true),
             )
         )
         assertFalse(
-            PoiExtractor.isExcludedForPersona(
+            PersonaExclusionFilterRule.isExcluded(
                 playgroundPoi,
-                shouldExcludePeaks = true,
-                shouldExcludeIndustrial = true,
+                PoiEvaluationContext(excludePeaks = true, excludeIndustrial = true),
             )
         )
     }
