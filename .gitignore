@@ -31,3 +31,4 @@ dist/
 .kotlin/
 pois_cache.json
 .pois_cache/
+scratch/
