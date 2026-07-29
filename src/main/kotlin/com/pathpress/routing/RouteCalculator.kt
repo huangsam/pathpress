@@ -176,15 +176,25 @@ class RouteCalculator(
                 cumDist += segDist
             }
 
-            // Search for candidate towns near target milestone
+            // Search & score candidate towns near target milestone using POI amenity density
+            val targetProgressFraction = dayIndex.toDouble() / days
             val candidateTowns =
-                PoiExtractor.findNearbyTowns(
-                    pbfFilePath,
-                    targetLat,
-                    targetLng,
+                PoiExtractor.findCandidateTownsAlongRoute(
+                    pbfPath = pbfFilePath,
+                    routePoints = allCoords,
+                    targetProgressFraction = targetProgressFraction,
                     maxDistanceMeters = 40000.0,
+                    userPrompt = userPrompt,
                 )
-            val bestTown = candidateTowns.firstOrNull()
+            val bestTown =
+                candidateTowns.firstOrNull()?.town
+                    ?: PoiExtractor.findNearbyTowns(
+                            pbfFilePath,
+                            targetLat,
+                            targetLng,
+                            maxDistanceMeters = 40000.0,
+                        )
+                        .firstOrNull()
 
             if (bestTown != null) {
                 legWaypoints.add(LocationCoords(bestTown.lat, bestTown.lng))

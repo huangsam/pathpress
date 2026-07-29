@@ -404,4 +404,15 @@ class PoiExtractorTest {
             "Expected verified ice cream score ($verifiedScore) to be at least 20 points higher than unverified ($unverifiedScore)",
         )
     }
+
+    @Test
+    fun `findCandidateTownsAlongRoute returns empty list when routePoints is empty`() {
+        val result =
+            PoiExtractor.findCandidateTownsAlongRoute(
+                pbfPath = "non_existent.pbf",
+                routePoints = emptyList(),
+                targetProgressFraction = 0.5,
+            )
+        assertTrue(result.isEmpty())
+    }
 }

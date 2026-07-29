@@ -29,12 +29,20 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         endName: String,
         days: Int,
         userPrompt: String?,
+        recommendedTowns: List<String> = emptyList(),
     ): String {
         val promptDetail =
             userPrompt ?: "Scenic road trip highlighting nature, coastal views, and local cafes."
+        val townRecsStr =
+            if (recommendedTowns.isNotEmpty()) {
+                "\nRECOMMENDED OVERNIGHT STOPS (ranked by verified family & lodging amenity density):\n" +
+                    recommendedTowns.joinToString(", ") +
+                    "\n"
+            } else ""
+
         return """
             You are a master road trip planner. Design a $days-day road trip from $startName to $endName.
-            Theme/Preferences: $promptDetail.
+            Theme/Preferences: $promptDetail.$townRecsStr
 
             CRITICAL ROUTING INSTRUCTION:
             If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).

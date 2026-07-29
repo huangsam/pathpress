@@ -329,6 +329,115 @@ object PoiExtractor {
         )
     }
 
+    /**
+     * Find and score candidate towns near a target progress milestone along a route polyline within
+     * a target progress window (e.g. ±10% around [targetProgressFraction]).
+     *
+     * Candidates are scored using POI amenity density (lodging, family fun, dining).
+     */
+    fun findCandidateTownsAlongRoute(
+        pbfPath: String,
+        routePoints: List<LocationCoords>,
+        targetProgressFraction: Double,
+        windowFraction: Double = Config.current.townProgressWindowFraction,
+        maxDistanceMeters: Double = 40000.0,
+        userPrompt: String? = null,
+        radiusMiles: Double = Config.current.townScoringRadiusMiles,
+        config: Config = Config.current,
+    ): List<ScoredTown> {
+        val cacheStore = getOrBuildCache(pbfPath)
+        if (cacheStore.towns.isEmpty() || routePoints.size < 2) return emptyList()
+
+        val minProgress = (targetProgressFraction - windowFraction).coerceIn(0.0, 1.0)
+        val maxProgress = (targetProgressFraction + windowFraction).coerceIn(0.0, 1.0)
+
+        val totalDist =
+            routePoints
+                .zipWithNext { a, b -> haversineMeters(a.lat, a.lng, b.lat, b.lng) }
+                .sum()
+                .coerceAtLeast(1.0)
+        val targetDistMeters = totalDist * targetProgressFraction
+
+        var cumDist = 0.0
+        val targetPointCoords = mutableListOf<LocationCoords>()
+        var targetMilestoneCoords: LocationCoords? = null
+
+        for (i in 0 until routePoints.size - 1) {
+            val segDist =
+                haversineMeters(
+                    routePoints[i].lat,
+                    routePoints[i].lng,
+                    routePoints[i + 1].lat,
+                    routePoints[i + 1].lng,
+                )
+            val segStartProgress = cumDist / totalDist
+            val segEndProgress = (cumDist + segDist) / totalDist
+
+            if (cumDist + segDist >= targetDistMeters && targetMilestoneCoords == null) {
+                val remain = targetDistMeters - cumDist
+                val frac = if (segDist > 0) remain / segDist else 0.0
+                targetMilestoneCoords =
+                    LocationCoords(
+                        routePoints[i].lat + frac * (routePoints[i + 1].lat - routePoints[i].lat),
+                        routePoints[i].lng + frac * (routePoints[i + 1].lng - routePoints[i].lng),
+                    )
+            }
+
+            if (segEndProgress >= minProgress && segStartProgress <= maxProgress) {
+                targetPointCoords.add(routePoints[i])
+                targetPointCoords.add(routePoints[i + 1])
+            }
+            cumDist += segDist
+        }
+
+        val targetMilestone = targetMilestoneCoords ?: routePoints[routePoints.size / 2]
+        val sampledPoints = if (targetPointCoords.isNotEmpty()) targetPointCoords else routePoints
+
+        val candidateTowns = mutableSetOf<TownInfo>()
+        val bufferDeg = (maxDistanceMeters / 111000.0)
+
+        for (pt in sampledPoints) {
+            val minLat = pt.lat - bufferDeg
+            val maxLat = pt.lat + bufferDeg
+            val minLng = pt.lng - bufferDeg
+            val maxLng = pt.lng + bufferDeg
+
+            val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
+            val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
+            val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
+            val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
+
+            for (latIdx in minLatCell..maxLatCell) {
+                for (lngIdx in minLngCell..maxLngCell) {
+                    cacheStore.townSpatialIndex[GridCell(latIdx, lngIdx)]?.let {
+                        candidateTowns.addAll(it)
+                    }
+                }
+            }
+        }
+
+        val scoredList = mutableListOf<ScoredTown>()
+        for (town in candidateTowns) {
+            val distToPolyline = minDistanceToPolyline(town.lat, town.lng, sampledPoints)
+            if (distToPolyline <= maxDistanceMeters) {
+                val distToTargetMilestone =
+                    haversineMeters(targetMilestone.lat, targetMilestone.lng, town.lat, town.lng)
+                val scored =
+                    TownScorer.scoreTownForOvernight(
+                        town = town,
+                        cacheStore = cacheStore,
+                        radiusMiles = radiusMiles,
+                        userPrompt = userPrompt,
+                        distanceFromTargetMeters = distToTargetMilestone,
+                        config = config,
+                    )
+                scoredList.add(scored)
+            }
+        }
+
+        return TownScorer.rankCandidateTowns(scoredList)
+    }
+
     private fun extractTags(node: ReaderNode): Map<String, String> {
         val rawTags = node.tags ?: return emptyMap()
         val map = mutableMapOf<String, String>()

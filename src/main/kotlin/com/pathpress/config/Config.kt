@@ -17,6 +17,11 @@ data class Config(
     val defaultOllamaModel: String = DEFAULT_OLLAMA_MODEL,
     val httpLlmTimeoutSeconds: Long = DEFAULT_HTTP_LLM_TIMEOUT_SECONDS,
     val geocoderTimeoutSeconds: Long = DEFAULT_GEOCODER_TIMEOUT_SECONDS,
+    val townScoringRadiusMiles: Double = DEFAULT_TOWN_SCORING_RADIUS_MILES,
+    val townProgressWindowFraction: Double = DEFAULT_TOWN_PROGRESS_WINDOW_FRACTION,
+    val hotelWeight: Int = DEFAULT_HOTEL_WEIGHT,
+    val familyWeight: Int = DEFAULT_FAMILY_WEIGHT,
+    val diningWeight: Int = DEFAULT_DINING_WEIGHT,
 ) {
     val httpLlmConnectTimeout: Duration
         get() = Duration.ofSeconds(httpLlmTimeoutSeconds)
@@ -33,6 +38,11 @@ data class Config(
         const val DEFAULT_OLLAMA_MODEL: String = "gemma4:31b-mlx"
         const val DEFAULT_HTTP_LLM_TIMEOUT_SECONDS: Long = 15L
         const val DEFAULT_GEOCODER_TIMEOUT_SECONDS: Long = 10L
+        const val DEFAULT_TOWN_SCORING_RADIUS_MILES: Double = 3.0
+        const val DEFAULT_TOWN_PROGRESS_WINDOW_FRACTION: Double = 0.10
+        const val DEFAULT_HOTEL_WEIGHT: Int = 5
+        const val DEFAULT_FAMILY_WEIGHT: Int = 3
+        const val DEFAULT_DINING_WEIGHT: Int = 1
 
         /** Loads configuration populated with optional environment variable overrides. */
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
@@ -55,6 +65,15 @@ data class Config(
                 geocoderTimeoutSeconds =
                     env["GEOCODER_TIMEOUT_SECONDS"]?.toLongOrNull()
                         ?: DEFAULT_GEOCODER_TIMEOUT_SECONDS,
+                townScoringRadiusMiles =
+                    env["TOWN_SCORING_RADIUS_MILES"]?.toDoubleOrNull()
+                        ?: DEFAULT_TOWN_SCORING_RADIUS_MILES,
+                townProgressWindowFraction =
+                    env["TOWN_PROGRESS_WINDOW_FRACTION"]?.toDoubleOrNull()
+                        ?: DEFAULT_TOWN_PROGRESS_WINDOW_FRACTION,
+                hotelWeight = env["TOWN_HOTEL_WEIGHT"]?.toIntOrNull() ?: DEFAULT_HOTEL_WEIGHT,
+                familyWeight = env["TOWN_FAMILY_WEIGHT"]?.toIntOrNull() ?: DEFAULT_FAMILY_WEIGHT,
+                diningWeight = env["TOWN_DINING_WEIGHT"]?.toIntOrNull() ?: DEFAULT_DINING_WEIGHT,
             )
         }
 
