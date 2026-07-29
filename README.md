@@ -1,6 +1,6 @@
 # PathPress
 
-A robust, hybrid AI road trip planner using OpenStreetMap data and GraphHopper. Calculates dynamic multi-day driving legs, extracts real POI corridors, supports natural language trip themes with pluggable LLMs (Gemini, Claude, OpenAI, Ollama), fuzzy geocodes locations, and renders publication-ready PDF itineraries.
+**PathPress** is an AI-powered road trip planner that turns trip ideas into accurate, multi-day itineraries and publication-ready PDF travel guides using real map data.
 
 <img src="images/roadtrip.png" alt="PathPress Sample Itinerary" width="600" />
 
