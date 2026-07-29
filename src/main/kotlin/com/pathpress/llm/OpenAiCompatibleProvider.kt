@@ -49,7 +49,7 @@ class OpenAiCompatibleProvider(
             val uri = URI.create(endpoint)
             val builder =
                 HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
-            if (!apiKey.isNullOrBlank()) {
+            if (apiKey.isNotBlank()) {
                 builder.header("Authorization", "Bearer $apiKey")
             }
             val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
@@ -93,7 +93,7 @@ class OpenAiCompatibleProvider(
             val uri = URI.create(endpoint)
             val builder =
                 HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
-            if (!apiKey.isNullOrBlank()) builder.header("Authorization", "Bearer $apiKey")
+            if (apiKey.isNotBlank()) builder.header("Authorization", "Bearer $apiKey")
             val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() == 200) {

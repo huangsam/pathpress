@@ -329,7 +329,7 @@ internal fun FlowContent.navigationAppendix(route: Route) {
 
                 div("qr-card") {
                     div("qr-card-header") { +"Day ${leg.dayNumber}: ${sanitizeText(cleanTitle)}" }
-                    if (!qrDataUri.isNullOrBlank()) {
+                    if (qrDataUri.isNotBlank()) {
                         img(
                             src = qrDataUri,
                             alt = "Leg Navigation QR Code",
