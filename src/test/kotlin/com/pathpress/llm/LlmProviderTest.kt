@@ -220,4 +220,84 @@ class LlmProviderTest {
         assertEquals(LlmProviderType.NONE, LlmProviderType.fromId("unknown"))
         assertEquals(LlmProviderType.NONE, LlmProviderType.fromId(null))
     }
+
+    @Test
+    fun `HttpLlmProvider parseTripPlan handles string list waypoints and object list waypoints`() {
+        val dummyProvider =
+            object : HttpLlmProvider() {
+                fun testParse(json: String, days: Int) = parseTripPlan(json, days)
+
+                override fun planTrip(
+                    startName: String,
+                    endName: String,
+                    startCoords: LocationCoords,
+                    endCoords: LocationCoords,
+                    days: Int,
+                    userPrompt: String?,
+                ): TripPlanResponse = error("Not implemented")
+
+                override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult =
+                    error("Not implemented")
+            }
+
+        val stringWaypointsJson =
+            """
+            {
+              "dayThemes": ["Day 1: Coast", "Day 2: Pier"],
+              "waypoints": ["Monterey, CA", "Pismo Beach, CA"],
+              "narrative": "A scenic coastal voyage along the Pacific Coast Highway."
+            }
+            """
+                .trimIndent()
+
+        val stringResult = dummyProvider.testParse(stringWaypointsJson, 2)
+        assertEquals(2, stringResult.waypoints.size)
+        assertEquals("Monterey, CA", stringResult.waypoints[0].name)
+        assertEquals(0.0, stringResult.waypoints[0].lat)
+        assertEquals("Pismo Beach, CA", stringResult.waypoints[1].name)
+
+        val objectWaypointsJson =
+            """
+            {
+              "dayThemes": ["Day 1", "Day 2"],
+              "waypoints": [
+                {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
+                {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}
+              ],
+              "narrative": "A scenic trip."
+            }
+            """
+                .trimIndent()
+
+        val objectResult = dummyProvider.testParse(objectWaypointsJson, 2)
+        assertEquals(2, objectResult.waypoints.size)
+        assertEquals(36.6002, objectResult.waypoints[0].lat)
+        assertEquals(-121.8947, objectResult.waypoints[0].lng)
+        assertEquals("Monterey, CA", objectResult.waypoints[0].name)
+    }
+
+    @Test
+    fun `HttpLlmProvider buildPrompt includes critical routing instructions for waypoints`() {
+        val dummyProvider =
+            object : HttpLlmProvider() {
+                fun testPrompt(start: String, end: String, days: Int, prompt: String?) =
+                    buildPrompt(start, end, days, prompt)
+
+                override fun planTrip(
+                    startName: String,
+                    endName: String,
+                    startCoords: LocationCoords,
+                    endCoords: LocationCoords,
+                    days: Int,
+                    userPrompt: String?,
+                ): TripPlanResponse = error("Not implemented")
+
+                override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult =
+                    error("Not implemented")
+            }
+
+        val prompt = dummyProvider.testPrompt("San Jose", "Los Angeles", 2, "coastal scenic points")
+        assertTrue(prompt.contains("CRITICAL ROUTING INSTRUCTION"))
+        assertTrue(prompt.contains("waypoints"))
+    }
 }

@@ -146,6 +146,72 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
                 )
             }
 
+        // Resolve spatial intermediate waypoints (from LLM or fallback)
+        val resolvedWaypoints =
+            tripPlan.waypoints
+                .mapNotNull { wp ->
+                    if (wp.lat != 0.0 || wp.lng != 0.0) {
+                        wp
+                    } else if (!wp.name.isNullOrBlank()) {
+                        try {
+                            logger.info("Geocoding intermediate waypoint '${wp.name}'...")
+                            val geo = Geocoder.geocode(wp.name)
+                            LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
+                        } catch (e: Exception) {
+                            logger.warn("Could not geocode LLM waypoint '${wp.name}': ${e.message}")
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                }
+                .toMutableList()
+
+        // Fallback injection if waypoints are empty and prompt specifies coastal in California
+        // region
+        val isCoastalPrompt =
+            prompt?.let { p ->
+                listOf("coastal", "coast", "beach", "ocean", "highway 1", "pacific coast").any { k
+                    ->
+                    p.contains(k, ignoreCase = true)
+                }
+            } ?: false
+
+        if (resolvedWaypoints.isEmpty() && isCoastalPrompt) {
+            val isCaRegion =
+                listOf(startGeo.displayName, endGeo.displayName).any {
+                    it.contains("California", ignoreCase = true) ||
+                        it.contains("CA", ignoreCase = true) ||
+                        it.contains("San Francisco", ignoreCase = true) ||
+                        it.contains("San Jose", ignoreCase = true) ||
+                        it.contains("Los Angeles", ignoreCase = true) ||
+                        it.contains("San Diego", ignoreCase = true)
+                }
+            if (isCaRegion) {
+                logger.info(
+                    "Coastal prompt detected with empty LLM waypoints. Injecting default CA coastal anchor waypoints (Monterey & Pismo Beach)..."
+                )
+                try {
+                    val mty = Geocoder.geocode("Monterey, CA")
+                    val psb = Geocoder.geocode("Pismo Beach, CA")
+                    resolvedWaypoints.add(
+                        LocationCoords(mty.coords.lat, mty.coords.lng, mty.displayName)
+                    )
+                    resolvedWaypoints.add(
+                        LocationCoords(psb.coords.lat, psb.coords.lng, psb.displayName)
+                    )
+                } catch (e: Exception) {
+                    logger.warn("Fallback coastal waypoint geocoding error: ${e.message}")
+                }
+            }
+        }
+
+        if (resolvedWaypoints.isNotEmpty()) {
+            logger.info(
+                "Routing via ${resolvedWaypoints.size} intermediate waypoints: ${resolvedWaypoints.joinToString { it.name ?: "(${it.lat}, ${it.lng})" }}"
+            )
+        }
+
         // 4. Calculate Driving Route & Extract Real Corridor POIs
         logger.info("Calculating driving route & extracting real OSM corridor POIs...")
         val rawLegs =
@@ -160,6 +226,7 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
                 limitPerLeg = poisPerLeg,
                 userPrompt = prompt,
                 includeThemeParks = includeThemeParks,
+                waypoints = resolvedWaypoints,
             )
 
         // 5. Curate POIs & Generate Leg Storytelling with LLM

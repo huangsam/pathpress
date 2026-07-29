@@ -4,6 +4,7 @@ import com.graphhopper.GHRequest
 import com.graphhopper.GraphHopper
 import com.graphhopper.config.Profile
 import com.graphhopper.util.GHUtility
+import com.graphhopper.util.shapes.GHPoint
 import com.pathpress.config.Config
 import com.pathpress.export.*
 import com.pathpress.llm.*
@@ -30,17 +31,42 @@ class RouteCalculator(
         limitPerLeg: Int = Config.current.defaultPoisPerLeg,
         userPrompt: String? = null,
         includeThemeParks: Boolean = false,
+        waypoints: List<LocationCoords> = emptyList(),
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
 
-        val req = GHRequest(startLat, startLng, endLat, endLng).setProfile(profile)
+        val validWaypoints = waypoints.filter { it.lat != 0.0 || it.lng != 0.0 }
+
+        fun createGHRequest(p: String): GHRequest {
+            val request = GHRequest().setProfile(p)
+            request.addPoint(GHPoint(startLat, startLng))
+            validWaypoints.forEach { wp -> request.addPoint(GHPoint(wp.lat, wp.lng)) }
+            request.addPoint(GHPoint(endLat, endLng))
+            return request
+        }
+
+        val req = createGHRequest(profile)
         val response = graphHopper.route(req)
 
         if (response.hasErrors()) {
-            // Fallback to standard car profile if custom profile errors
-            val fallbackReq = GHRequest(startLat, startLng, endLat, endLng).setProfile("car")
+            val fallbackReq = createGHRequest("car")
             val fallbackRes = graphHopper.route(fallbackReq)
-            if (fallbackRes.hasErrors()) {
+            if (fallbackRes.hasErrors() && validWaypoints.isNotEmpty()) {
+                val directReq = GHRequest(startLat, startLng, endLat, endLng).setProfile("car")
+                val directRes = graphHopper.route(directReq)
+                if (directRes.hasErrors()) {
+                    throw IllegalStateException("Route calculation failed: ${response.errors}")
+                }
+                return extractLegsFromResponse(
+                    directRes.best,
+                    days,
+                    dayTitles,
+                    profile,
+                    limitPerLeg,
+                    userPrompt,
+                    includeThemeParks,
+                )
+            } else if (fallbackRes.hasErrors()) {
                 throw IllegalStateException("Route calculation failed: ${response.errors}")
             }
             return extractLegsFromResponse(

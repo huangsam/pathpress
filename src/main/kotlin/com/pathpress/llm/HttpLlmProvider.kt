@@ -36,10 +36,16 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             You are a master road trip planner. Design a $days-day road trip from $startName to $endName.
             Theme/Preferences: $promptDetail.
 
+            CRITICAL ROUTING INSTRUCTION:
+            If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).
+
             Provide a JSON response with:
             {
               "dayThemes": ["Day 1 title", "Day 2 title", ...],
-              "waypoints": [{"lat": 40.7128, "lng": -74.0060, "name": "New York"}],
+              "waypoints": [
+                {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
+                {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}
+              ],
               "narrative": "<REQUIRED: 2-3 sentence evocative description of the overall trip vibe, landscape, and theme. Must be specific to $startName → $endName and the theme above. Do NOT use generic filler like 'a wonderful journey'. Write like a travel magazine editor.>"
             }
             Return ONLY valid raw JSON. The "narrative" field is mandatory and must not be null or empty.
@@ -123,11 +129,24 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             val waypoints =
                 (map["waypoints"] as? List<*>)
                     ?.mapNotNull { w ->
-                        (w as? Map<*, *>)?.let {
-                            val lat = (it["lat"] as? Number)?.toDouble()
-                            val lng = (it["lng"] as? Number)?.toDouble()
-                            val name = it["name"]?.toString()
-                            if (lat != null && lng != null) LocationCoords(lat, lng, name) else null
+                        when (w) {
+                            is String -> {
+                                val cleanName = w.trim()
+                                if (cleanName.isNotBlank()) LocationCoords(0.0, 0.0, cleanName)
+                                else null
+                            }
+                            is Map<*, *> -> {
+                                val lat = (w["lat"] as? Number)?.toDouble() ?: 0.0
+                                val lng = (w["lng"] as? Number)?.toDouble() ?: 0.0
+                                val name =
+                                    w["name"]?.toString()
+                                        ?: w["location"]?.toString()
+                                        ?: w["town"]?.toString()
+                                if (lat != 0.0 || lng != 0.0 || !name.isNullOrBlank()) {
+                                    LocationCoords(lat, lng, name)
+                                } else null
+                            }
+                            else -> null
                         }
                     }
                     .orEmpty()
