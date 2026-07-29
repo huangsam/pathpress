@@ -98,6 +98,7 @@ object PoiExtractor {
             "archaeological_site",
             "building",
             "battlefield",
+            "yes",
         )
 
     private val RELEVANT_PLACES = setOf("city", "town", "village", "hamlet")

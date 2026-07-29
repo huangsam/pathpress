@@ -30,21 +30,36 @@ data class POI(
             distanceFromRouteMeters: Double? = null,
         ): POI {
             val name = tags["name"] ?: tags["ref"]
-            val type =
+            val primaryKeys =
+                listOf("amenity", "tourism", "natural", "historic", "leisure", "shop", "place")
+            val secondaryKeys =
+                listOf("building", "attraction", "craft", "man_made", "historic:type")
+            val invalidValues = setOf("yes", "no", "true", "false", "null", "")
+
+            val primaryVal =
                 tags.entries
-                    .firstOrNull { (k, _) ->
-                        k in
-                            listOf(
-                                "amenity",
-                                "tourism",
-                                "natural",
-                                "historic",
-                                "leisure",
-                                "shop",
-                                "place",
-                            )
-                    }
-                    ?.value ?: "poi"
+                    .firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() !in invalidValues }
+                    ?.value
+
+            val secondaryVal =
+                tags.entries
+                    .firstOrNull { (k, v) -> k in secondaryKeys && v.lowercase() !in invalidValues }
+                    ?.value
+
+            val fallbackKey =
+                tags.entries
+                    .firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() != "no" }
+                    ?.key
+
+            val rawType =
+                when {
+                    primaryVal != null -> primaryVal
+                    secondaryVal != null -> secondaryVal
+                    fallbackKey != null -> fallbackKey
+                    else -> "poi"
+                }
+
+            val type = sanitizePoiType(rawType, tags)
 
             val isFood =
                 tags["amenity"] in
@@ -62,6 +77,36 @@ data class POI(
             )
         }
     }
+}
+
+/**
+ * Sanitize POI category type to avoid generic boolean strings like "yes", "no", "true", "false".
+ */
+fun sanitizePoiType(type: String, tags: Map<String, String>): String {
+    val invalidValues = setOf("yes", "no", "true", "false", "null", "")
+    if (type.lowercase() !in invalidValues) return type
+
+    val primaryKeys =
+        listOf("amenity", "tourism", "natural", "historic", "leisure", "shop", "place")
+    val secondaryKeys = listOf("building", "attraction", "craft", "man_made", "historic:type")
+
+    val primaryVal =
+        tags.entries
+            .firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() !in invalidValues }
+            ?.value
+    if (primaryVal != null) return primaryVal
+
+    val secondaryVal =
+        tags.entries
+            .firstOrNull { (k, v) -> k in secondaryKeys && v.lowercase() !in invalidValues }
+            ?.value
+    if (secondaryVal != null) return secondaryVal
+
+    val fallbackKey =
+        tags.entries.firstOrNull { (k, v) -> k in primaryKeys && v.lowercase() != "no" }?.key
+    if (fallbackKey != null) return fallbackKey
+
+    return "poi"
 }
 
 /** Represents a daily segment of a route. */

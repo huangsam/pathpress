@@ -289,8 +289,9 @@ internal fun FlowContent.poiSection(pois: List<POI>, unit: DistanceUnit = Distan
 internal fun FlowContent.poiCard(poi: POI, index: Int, unit: DistanceUnit = DistanceUnit.METRIC) {
     val poiSearchUrl = MapUrlFormatter.formatPoiUrl(poi)
     val poiName = poi.name ?: "Point of Interest"
+    val rawType = sanitizePoiType(poi.type, poi.tags)
     val poiType =
-        poi.type.split("_").joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+        rawType.split("_").joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
     val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters, unit)
 
     div("poi-card") {

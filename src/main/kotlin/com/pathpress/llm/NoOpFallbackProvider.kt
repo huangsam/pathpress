@@ -51,33 +51,42 @@ class NoOpFallbackProvider : LlmProvider {
 
     private fun generateDynamicFallbackDescription(poi: POI): String {
         val tags = poi.tags
-        val cuisine = tags["cuisine"]?.replace('_', ' ')?.replace(';', '/')
+        val invalidValues = setOf("yes", "no", "true", "false", "null", "")
+        val cuisine =
+            tags["cuisine"]?.replace('_', ' ')?.replace(';', '/')?.takeIf {
+                it.lowercase() !in invalidValues
+            }
         val city = tags["addr:city"]
-        val historic = tags["historic"]?.replace('_', ' ')
-        val natural = tags["natural"]?.replace('_', ' ')
+        val historic =
+            tags["historic"]?.replace('_', ' ')?.takeIf { it.lowercase() !in invalidValues }
+        val natural =
+            tags["natural"]?.replace('_', ' ')?.takeIf { it.lowercase() !in invalidValues }
         val ele = tags["ele"]
         val locationSuffix = if (!city.isNullOrBlank()) " in $city" else ""
+        val sanitizedType = sanitizePoiType(poi.type, tags)
 
         return when {
             !cuisine.isNullOrBlank() ->
                 "Popular local spot specializing in $cuisine$locationSuffix along your route."
-            poi.type in listOf("cafe", "bakery", "ice_cream") ->
+            sanitizedType in listOf("cafe", "bakery", "ice_cream") ->
                 "Artisanal local stop offering coffee, fresh treats, and light refreshments$locationSuffix."
             poi.isFoodOrCoffee ->
                 "Local dining spot conveniently located along your driving route$locationSuffix."
             !historic.isNullOrBlank() ->
                 "Historic $historic landmark showcasing the rich heritage of the area$locationSuffix."
-            poi.type in listOf("museum", "monument", "artwork") ->
+            sanitizedType == "historic" || tags.containsKey("historic") ->
+                "Historic landmark showcasing the rich heritage of the area$locationSuffix."
+            sanitizedType in listOf("museum", "monument", "artwork") ->
                 "Cultural landmark featuring regional history, art, and heritage$locationSuffix."
-            poi.type in listOf("park", "nature_reserve", "beach") ->
+            sanitizedType in listOf("park", "nature_reserve", "beach") ->
                 "Serene natural highlight ideal for a quick scenic walk, fresh air, and outdoor relaxation."
             natural == "peak" || !ele.isNullOrBlank() -> {
                 val eleStr = if (!ele.isNullOrBlank()) " ($ele m)" else ""
                 "Scenic mountain peak$eleStr offering panoramic views of the surrounding landscape."
             }
-            poi.type in listOf("viewpoint", "attraction") ->
+            sanitizedType in listOf("viewpoint", "attraction") ->
                 "Scenic viewpoint providing sweeping views of the surrounding corridor."
-            poi.type in listOf("hotel", "motel", "guest_house") ->
+            sanitizedType in listOf("hotel", "motel", "guest_house") ->
                 "Comfortable lodging stop located near your travel corridor$locationSuffix."
             else ->
                 "Recommended point of interest conveniently located near your driving route$locationSuffix."

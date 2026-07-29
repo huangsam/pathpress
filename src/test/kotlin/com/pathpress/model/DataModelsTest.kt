@@ -91,4 +91,29 @@ class DataModelsTest {
         assertEquals(37.7749, coords.lat)
         assertEquals(-122.4194, coords.lng)
     }
+
+    @Test
+    fun `POI fromOsm handles historic yes tag without creating type yes`() {
+        val tags = mapOf("name" to "Old Mission Jail", "historic" to "yes")
+        val poi = POI.fromOsm(id = 1006L, lat = 36.6, lng = -121.6, tags = tags)
+        assertEquals("historic", poi.type)
+
+        val tagsWithBuilding =
+            mapOf("name" to "Old Mission Jail", "historic" to "yes", "building" to "jail")
+        val poiWithBuilding =
+            POI.fromOsm(id = 1007L, lat = 36.6, lng = -121.6, tags = tagsWithBuilding)
+        assertEquals("jail", poiWithBuilding.type)
+    }
+
+    @Test
+    fun `sanitizePoiType resolves boolean string values to meaningful category`() {
+        assertEquals("historic", sanitizePoiType("yes", mapOf("historic" to "yes")))
+        assertEquals("attraction", sanitizePoiType("yes", mapOf("tourism" to "attraction")))
+        assertEquals(
+            "jail",
+            sanitizePoiType("yes", mapOf("historic" to "yes", "building" to "jail")),
+        )
+        assertEquals("poi", sanitizePoiType("yes", emptyMap()))
+        assertEquals("cafe", sanitizePoiType("cafe", mapOf("amenity" to "cafe")))
+    }
 }

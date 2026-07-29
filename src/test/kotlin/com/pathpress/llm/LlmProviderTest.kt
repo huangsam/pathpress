@@ -5,6 +5,7 @@ import com.pathpress.model.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -299,5 +300,39 @@ class LlmProviderTest {
         val prompt = dummyProvider.testPrompt("San Jose", "Los Angeles", 2, "coastal scenic points")
         assertTrue(prompt.contains("CRITICAL ROUTING INSTRUCTION"))
         assertTrue(prompt.contains("waypoints"))
+    }
+
+    @Test
+    fun `NoOpFallbackProvider generates clean description for POI with historic yes tag`() {
+        val provider = NoOpFallbackProvider()
+        val poi =
+            POI(
+                id = "100",
+                name = "Old Mission Jail",
+                lat = 36.6,
+                lng = -121.6,
+                tags = mapOf("name" to "Old Mission Jail", "historic" to "yes"),
+                type = "historic",
+            )
+        val leg =
+            RouteLeg(
+                startLat = 36.5,
+                startLng = -121.5,
+                endLat = 36.7,
+                endLng = -121.7,
+                dayNumber = 1,
+                totalDays = 1,
+                pois = listOf(poi),
+            )
+        val curated = provider.curateLegPois(leg, null)
+        val desc = curated.curatedPois[0].description!!
+        assertFalse(
+            desc.contains("Historic yes", ignoreCase = true),
+            "Description should not contain 'Historic yes': $desc",
+        )
+        assertTrue(
+            desc.startsWith("Historic landmark showcasing"),
+            "Description should start with 'Historic landmark showcasing': $desc",
+        )
     }
 }
