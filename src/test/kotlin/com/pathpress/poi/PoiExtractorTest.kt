@@ -349,4 +349,54 @@ class PoiExtractorTest {
             "Expected playground score ($familyScore) to be significantly higher than generic spot ($defaultScore)",
         )
     }
+
+    @Test
+    fun `isRelevantPoi filters out disused, abandoned, closed, or private nodes`() {
+        assertFalse(PoiExtractor.isRelevantPoi(mapOf("amenity" to "ice_cream", "disused" to "yes")))
+        assertFalse(
+            PoiExtractor.isRelevantPoi(mapOf("amenity" to "restaurant", "abandoned" to "yes"))
+        )
+        assertFalse(PoiExtractor.isRelevantPoi(mapOf("amenity" to "cafe", "closed" to "yes")))
+        assertFalse(
+            PoiExtractor.isRelevantPoi(mapOf("amenity" to "fast_food", "end_date" to "2015"))
+        )
+        assertFalse(PoiExtractor.isRelevantPoi(mapOf("amenity" to "cafe", "access" to "private")))
+        assertFalse(PoiExtractor.isRelevantPoi(mapOf("disused:amenity" to "ice_cream")))
+        assertFalse(PoiExtractor.isRelevantPoi(mapOf("abandoned:amenity" to "restaurant")))
+    }
+
+    @Test
+    fun `calculatePoiQualityScore penalizes unverified commercial food amenities`() {
+        val unverifiedIceCream =
+            POI(
+                id = "1",
+                name = "Tastee Freez",
+                lat = 35.98,
+                lng = -119.95,
+                tags = mapOf("amenity" to "ice_cream"),
+                type = "ice_cream",
+            )
+        val verifiedIceCream =
+            POI(
+                id = "2",
+                name = "Local Creamery",
+                lat = 35.98,
+                lng = -119.95,
+                tags =
+                    mapOf(
+                        "amenity" to "ice_cream",
+                        "website" to "https://creamery.example.com",
+                        "opening_hours" to "Mo-Su 10:00-22:00",
+                    ),
+                type = "ice_cream",
+            )
+
+        val unverifiedScore = PoiExtractor.calculatePoiQualityScore(unverifiedIceCream)
+        val verifiedScore = PoiExtractor.calculatePoiQualityScore(verifiedIceCream)
+
+        assertTrue(
+            verifiedScore - unverifiedScore >= 20.0,
+            "Expected verified ice cream score ($verifiedScore) to be at least 20 points higher than unverified ($unverifiedScore)",
+        )
+    }
 }

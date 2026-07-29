@@ -410,7 +410,24 @@ object PoiExtractor {
         return map
     }
 
+    internal fun isDisusedOrClosed(tags: Map<String, String>): Boolean {
+        if (tags["disused"] == "yes" || tags["abandoned"] == "yes" || tags["closed"] == "yes")
+            return true
+        if (tags.containsKey("end_date")) return true
+        if (tags["access"] == "no" || tags["access"] == "private") return true
+        for (key in tags.keys) {
+            if (
+                key.startsWith("disused:") || key.startsWith("abandoned:") || key.startsWith("was:")
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
     internal fun isRelevantPoi(tags: Map<String, String>): Boolean {
+        if (isDisusedOrClosed(tags)) return false
+
         val amenity = tags["amenity"]
         val tourism = tags["tourism"]
         val natural = tags["natural"]
@@ -582,6 +599,27 @@ object PoiExtractor {
 
         if (isChain) {
             score -= 15.0 // Heavy penalty for corporate fast food, motels, and gas station chains
+        }
+
+        // Heavy penalty for commercial food/drink amenities lacking any contact or operational
+        // verification metadata
+        val amenity = tags["amenity"]
+        if (amenity in RELEVANT_AMENITIES) {
+            val hasVerificationMetadata =
+                tags.containsKey("website") ||
+                    tags.containsKey("url") ||
+                    tags.containsKey("contact:website") ||
+                    tags.containsKey("phone") ||
+                    tags.containsKey("contact:phone") ||
+                    tags.containsKey("opening_hours") ||
+                    tags.containsKey("wikidata") ||
+                    tags.containsKey("wikipedia") ||
+                    tags.containsKey("brand") ||
+                    tags.containsKey("operator") ||
+                    tags.containsKey("cuisine")
+            if (!hasVerificationMetadata) {
+                score -= 20.0
+            }
         }
 
         // Major popularity / notability signals
