@@ -10,7 +10,7 @@ class ConfigTest {
     fun `default Config contains expected constant default values`() {
         val config = Config()
         assertEquals(0.05, config.gridCellSizeDeg)
-        assertEquals(7, config.defaultPoisPerLeg)
+        assertEquals(6, config.defaultPoisPerLeg)
         assertEquals("gemini-1.5-flash", config.defaultGeminiModel)
         assertEquals("claude-3-haiku-20240307", config.defaultClaudeModel)
         assertEquals("gpt-4o-mini", config.defaultOpenAiModel)
