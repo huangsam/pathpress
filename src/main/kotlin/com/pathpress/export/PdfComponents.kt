@@ -8,6 +8,7 @@ import com.pathpress.model.DistanceUnit
 import com.pathpress.model.POI
 import com.pathpress.model.Route
 import com.pathpress.model.RouteLeg
+import com.pathpress.model.boundNarrative
 import com.pathpress.model.sanitizePoiType
 import com.pathpress.poi.AddressResolver
 import com.pathpress.poi.MapUrlFormatter
@@ -182,7 +183,10 @@ internal fun FlowContent.legCard(
                 }
             }
             if (!leg.legStory.isNullOrBlank()) {
-                val cleanStory = sanitizeText(leg.legStory).trim().trim('"', '“', '”')
+                val cleanStory =
+                    sanitizeText(leg.legStory.boundNarrative(maxSentences = 1))
+                        .trim()
+                        .trim('"', '“', '”')
                 div("leg-story-caption") { +"“$cleanStory”" }
             }
         }
