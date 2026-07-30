@@ -48,7 +48,7 @@ class OllamaProvider(
                             ),
                         "stream" to false,
                         "format" to "json",
-                        "options" to mapOf("temperature" to 0.0),
+                        "options" to mapOf("temperature" to 0.1),
                     )
                 )
 
