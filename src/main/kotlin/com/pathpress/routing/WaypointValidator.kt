@@ -52,13 +52,17 @@ object WaypointValidator {
                 endCoords.lng,
             )
 
-        // Buffer in meters and degrees (min 30 km buffer for short trips)
+        // Buffer in meters (proportional to trip length, minimum 30 km for short legs)
         val bufferMeters = (straightLineMeters * bufferFraction).coerceAtLeast(30000.0)
+
+        // Convert meter buffer to lat/lng degrees (1° latitude ≈ 111,000 meters; longitude scales
+        // with cos(latitude))
         val avgLat = (startCoords.lat + endCoords.lat) / 2.0
         val bufferLatDeg = bufferMeters / 111000.0
         val cosAvgLat = cos(Math.toRadians(avgLat)).coerceAtLeast(0.01)
         val bufferLngDeg = bufferMeters / (111000.0 * cosAvgLat)
 
+        // Construct expanded spatial bounding box for corridor filtering
         val minLat = minOf(startCoords.lat, endCoords.lat) - bufferLatDeg
         val maxLat = maxOf(startCoords.lat, endCoords.lat) + bufferLatDeg
         val minLng = minOf(startCoords.lng, endCoords.lng) - bufferLngDeg
