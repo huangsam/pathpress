@@ -28,11 +28,7 @@ class NoOpFallbackProvider : LlmProvider {
             } else {
                 "A custom $days-day road trip experience from $startName to $endName designed with PathPress."
             }
-        return TripPlanResponse(
-            dayThemes = emptyList(),
-            waypoints = emptyList(),
-            narrative = narrative,
-        )
+        return TripPlanResponse(waypoints = emptyList(), narrative = narrative)
     }
 
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {

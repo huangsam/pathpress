@@ -242,7 +242,6 @@ class LlmProviderTest {
         val stringWaypointsJson =
             """
             {
-              "dayThemes": ["Day 1: Coast", "Day 2: Pier"],
               "waypoints": ["Monterey, CA", "Pismo Beach, CA"],
               "narrative": "A scenic coastal voyage along the Pacific Coast Highway."
             }
@@ -258,7 +257,6 @@ class LlmProviderTest {
         val objectWaypointsJson =
             """
             {
-              "dayThemes": ["Day 1", "Day 2"],
               "waypoints": [
                 {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
                 {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}

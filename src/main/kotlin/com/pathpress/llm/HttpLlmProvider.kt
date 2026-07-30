@@ -154,9 +154,6 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
         return try {
             val map: Map<String, Any> = mapper.readValue(cleanJson)
-            val themes =
-                (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
-                    ?: (1..days).map { "Day $it" }
             val legStories =
                 (map["legStories"] as? List<*>)?.mapNotNull { it.toString() } ?: emptyList()
             val narrative = map["narrative"]?.toString().takeValidText() ?: narrativeFallback ?: ""
@@ -184,15 +181,9 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                         }
                     }
                     .orEmpty()
-            TripPlanResponse(
-                dayThemes = themes,
-                waypoints = waypoints,
-                narrative = narrative,
-                legStories = legStories,
-            )
+            TripPlanResponse(waypoints = waypoints, narrative = narrative, legStories = legStories)
         } catch (_: Exception) {
             TripPlanResponse(
-                dayThemes = (1..days).map { "Day $it" },
                 waypoints = emptyList(),
                 narrative = narrativeFallback ?: "",
                 legStories = emptyList(),

@@ -8,13 +8,11 @@ import com.pathpress.model.RouteLeg
 /**
  * Encapsulates high-level itinerary planning response returned by an LLM provider.
  *
- * @property dayThemes Titles/themes assigned to each day of the trip.
  * @property waypoints Intermediate spatial anchor towns or coordinates suggested by the LLM.
  * @property curatedPois Map of day numbers to curated lists of POIs.
  * @property narrative Summary narrative describing the overall trip experience and landscape.
  */
 data class TripPlanResponse(
-    val dayThemes: List<String>,
     val waypoints: List<LocationCoords>,
     val curatedPois: Map<Int, List<POI>> = emptyMap(),
     val narrative: String = "",
