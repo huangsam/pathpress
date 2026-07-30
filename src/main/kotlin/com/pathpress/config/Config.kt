@@ -51,7 +51,7 @@ data class Config(
         const val DEFAULT_GRID_CELL_SIZE_DEG: Double = 0.05
 
         /** Default maximum POIs returned per route leg. */
-        const val DEFAULT_POIS_PER_LEG: Int = 10
+        const val DEFAULT_POIS_PER_LEG: Int = 7
 
         /** Default Gemini model identifier. */
         const val DEFAULT_GEMINI_MODEL: String = "gemini-1.5-flash"
