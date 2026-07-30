@@ -150,6 +150,9 @@ h3,
   background: #ffffff;
   page-break-inside: auto;
 }
+.leg-page-break {
+  page-break-before: always;
+}
 .leg-top-grid {
   width: 100%;
   border-collapse: collapse;
