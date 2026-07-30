@@ -74,10 +74,6 @@ class LlmProviderTest {
                 userPrompt = "Scenic coastal route",
             )
 
-        assertEquals(3, response.dayThemes.size)
-        assertTrue(response.dayThemes[0].contains("Day 1"))
-        assertTrue(response.dayThemes[0].contains("San Francisco"))
-        assertTrue(response.dayThemes[2].contains("Day 3"))
         assertTrue(response.narrative.isNotBlank())
     }
 

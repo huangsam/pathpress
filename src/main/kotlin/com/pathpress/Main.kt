@@ -219,7 +219,6 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 endLat = endGeo.coords.lat,
                 endLng = endGeo.coords.lng,
                 days = days,
-                dayTitles = tripPlan.dayThemes,
                 profile = if (profile.lowercase() == "scenic") "car" else profile,
                 limitPerLeg = poisPerLeg,
                 userPrompt = prompt,

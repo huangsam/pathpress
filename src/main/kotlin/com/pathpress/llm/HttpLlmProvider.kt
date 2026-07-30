@@ -61,7 +61,6 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
             Provide a JSON response with:
             {
-              "dayThemes": ["Day 1 title", "Day 2 title", ...],
               "legStories": [
                 "1-2 sentence engaging description of driving Day 1.",
                 "1-2 sentence engaging description of driving Day 2."
