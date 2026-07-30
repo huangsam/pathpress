@@ -71,13 +71,7 @@ object PoiDescriptionFormatter {
                     "Recommended point of interest conveniently located near your driving route$locationSuffix."
             }
 
-        val openingHours =
-            tags["opening_hours"]?.takeIf { it.isNotBlank() && it.lowercase() !in invalidValues }
-        return if (openingHours != null) {
-            "$baseDesc Open: $openingHours."
-        } else {
-            baseDesc
-        }
+        return baseDesc
     }
 
     /** Formats a quick insider tip string for a given [POI] based on off-route distance. */

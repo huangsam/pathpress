@@ -69,7 +69,7 @@ h3,
 .hero-banner {
   background-color: #0f172a;
   color: #f8fafc;
-  padding: 40px 32px;
+  padding: 36px 30px;
   border-radius: 12px;
   margin-bottom: 24px;
 }
@@ -128,6 +128,9 @@ h3,
   font-size: 14px;
   margin-top: 4px;
   display: block;
+}
+.daily-schedule-section {
+  page-break-before: always;
 }
 .section-title {
   font-size: 18px;
@@ -400,17 +403,17 @@ h3,
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 16px 20px;
-  margin-top: 16px;
-  margin-bottom: 24px;
+  padding: 22px 26px;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 .toc-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: bold;
   color: #0f172a;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 6px;
+  margin-bottom: 14px;
+  border-bottom: 1.5px solid #0284c7;
+  padding-bottom: 8px;
   line-height: 1.4;
 }
 .toc-list {
@@ -419,9 +422,9 @@ h3,
   margin: 0;
 }
 .toc-item {
-  font-size: 11.5px;
-  margin-bottom: 6px;
-  line-height: 1.5;
+  font-size: 13px;
+  margin-bottom: 10px;
+  line-height: 1.6;
 }
 .toc-link {
   color: #0284c7;

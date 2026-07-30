@@ -47,7 +47,7 @@ class PoiDescriptionFormatterTest {
     }
 
     @Test
-    fun `formatDescription includes opening hours when present`() {
+    fun `formatDescription omits opening hours to keep descriptions clean`() {
         val poi =
             POI(
                 id = "node/103",
@@ -62,7 +62,7 @@ class PoiDescriptionFormatterTest {
                 type = "bakery",
             )
         val desc = PoiDescriptionFormatter.formatDescription(poi)
-        assertTrue(desc.contains("Open: Mo-Fr 07:00-18:00; Sa-Su 08:00-16:00."))
+        assertTrue(!desc.contains("Open:"))
     }
 
     @Test

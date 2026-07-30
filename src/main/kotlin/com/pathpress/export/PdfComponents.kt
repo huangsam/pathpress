@@ -112,9 +112,11 @@ internal fun FlowContent.metadataCard(route: Route, unit: DistanceUnit = Distanc
 }
 
 internal fun FlowContent.dailySchedule(route: Route, unit: DistanceUnit = DistanceUnit.METRIC) {
-    div("section-title editorial-heading") { +"Daily Schedule & Itinerary" }
-    for (leg in route.legs) {
-        legCard(leg, route, unit)
+    div("daily-schedule-section") {
+        div("section-title editorial-heading") { +"Daily Schedule & Itinerary" }
+        for (leg in route.legs) {
+            legCard(leg, route, unit)
+        }
     }
 }
 
@@ -135,8 +137,8 @@ internal fun FlowContent.legCard(
     val legClasses = if (leg.dayNumber > 1) "leg leg-page-break" else "leg"
 
     div(legClasses) {
-        id = "leg-${leg.dayNumber}"
         div("leg-header") {
+            id = "leg-${leg.dayNumber}"
             div("day-badge") { +"Day ${leg.dayNumber} of ${leg.totalDays}" }
             div("leg-title editorial-heading") { +sanitizeText(cleanTitle) }
             div("meta-pills") {
