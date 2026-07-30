@@ -83,7 +83,9 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
             }
         }
         div("hero-narrative") {
-            +"\"${sanitizeText(route.getNarrativeOrDefault(startLocation, endLocation))}\""
+            val narrative = route.getNarrativeOrDefault(startLocation, endLocation)
+            val clean = sanitizeText(narrative).trim().trim('"', '“', '”')
+            +"“$clean”"
         }
     }
 }
@@ -180,7 +182,8 @@ internal fun FlowContent.legCard(
                 }
             }
             if (!leg.legStory.isNullOrBlank()) {
-                div("leg-story-caption") { +"\"${sanitizeText(leg.legStory)}\"" }
+                val cleanStory = sanitizeText(leg.legStory).trim().trim('"', '“', '”')
+                div("leg-story-caption") { +"“$cleanStory”" }
             }
         }
 

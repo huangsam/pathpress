@@ -24,12 +24,13 @@ class PdfExporterTest {
     }
 
     @Test
-    fun `sanitizeText removes diacritics and non-ascii characters`() {
+    fun `sanitizeText removes diacritics and non-ascii characters while preserving typographic quotes`() {
         assertEquals("Nuoc Mia Vien Dong 2", PdfExporter.sanitizeText("Nước Mía Viễn Đông 2"))
         assertEquals("Pho Co II", PdfExporter.sanitizeText("Phở Cổ II"))
         assertEquals("Aero", PdfExporter.sanitizeText("Ærø"))
         assertEquals("San Jose, CA", PdfExporter.sanitizeText("San Jose, CA"))
         assertEquals("Coffee Shop ", PdfExporter.sanitizeText("Coffee Shop ☕"))
+        assertEquals("“Scenic coastal drive”", PdfExporter.sanitizeText("“Scenic coastal drive”"))
     }
 
     @Test
@@ -125,6 +126,7 @@ class PdfExporterTest {
         assertTrue(html.contains("poi-header-table"))
         assertTrue(html.contains("poi-nav-btn"))
         assertTrue(html.contains("poi-card-address"))
+        assertTrue(html.contains("“Pacific Coast Highway drive”"))
         assertTrue(html.contains("vertical-align: -0.15em;"))
         assertTrue(html.contains("display: inline-block;"))
     }

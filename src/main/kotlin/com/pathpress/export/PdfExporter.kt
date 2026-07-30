@@ -95,15 +95,11 @@ object PdfExporter {
             .replace("ø", "o")
             .replace("Å", "A")
             .replace("å", "a")
-            .replace("“", "\"")
-            .replace("”", "\"")
-            .replace("‘", "'")
-            .replace("’", "'")
             .replace("–", "-")
             .replace("—", " - ")
             .replace("…", "...")
             .replace("\u00A0", " ")
-            .replace(Regex("[^\\x20-\\x7E]"), "")
+            .replace(Regex("[^\\x20-\\x7E\\u201C\\u201D\\u2018\\u2019]"), "")
     }
 
     internal fun escapeXml(text: String): String {
