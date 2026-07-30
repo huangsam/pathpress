@@ -8,8 +8,7 @@ import java.time.Duration
  * Provides parameters for spatial grid partitioning, town scoring algorithms, LLM model defaults,
  * and network timeouts, with support for environment variable overrides via [fromEnv].
  *
- * @property gridCellSizeDeg Spatial indexing cell dimension in degrees (~0.05° is roughly 5.5 km or
- *   3.4 miles).
+ * @property gridCellSizeDeg Spatial indexing cell dimension in degrees.
  * @property defaultPoisPerLeg Maximum number of POIs selected per leg segment.
  * @property defaultGeminiModel Default model identifier for Google Gemini API calls.
  * @property defaultClaudeModel Default model identifier for Anthropic Claude API calls.
@@ -17,10 +16,8 @@ import java.time.Duration
  * @property defaultOllamaModel Default model identifier for local Ollama API calls.
  * @property httpLlmTimeoutSeconds Network timeout in seconds for HTTP LLM requests.
  * @property geocoderTimeoutSeconds Network timeout in seconds for geocoding services.
- * @property townScoringRadiusMiles Geographic search radius (in miles) around candidate towns to
- *   count amenities.
- * @property townProgressWindowFraction Fraction of total leg distance used to form a search window
- *   for overnight stay candidates.
+ * @property townScoringRadiusMiles Search radius in miles around towns for scoring.
+ * @property townProgressWindowFraction Route fraction for overnight search window.
  * @property hotelWeight Relative scoring weight multiplier for hotel/lodging amenities.
  * @property familyWeight Relative scoring weight multiplier for family-friendly attractions.
  * @property diningWeight Relative scoring weight multiplier for dining options.
