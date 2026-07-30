@@ -2,9 +2,12 @@ package com.pathpress.poi
 
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
+import org.slf4j.LoggerFactory
 
 /** Formatter for generating Google Maps URLs with zero external dependencies. */
 object MapUrlFormatter {
+
+    private val logger = LoggerFactory.getLogger(MapUrlFormatter::class.java)
 
     private fun roundCoord(value: Double): String =
         String.format(java.util.Locale.US, "%.4f", value)
@@ -32,6 +35,13 @@ object MapUrlFormatter {
         endLng: Double,
         waypoints: List<LocationCoords> = emptyList(),
     ): String {
+        if (waypoints.size > 9) {
+            logger.warn(
+                "Directions URL requested with {} waypoints, exceeding Google Maps API limit of 9. Truncating to first 9 waypoints.",
+                waypoints.size,
+            )
+        }
+
         return buildString {
             append("https://www.google.com/maps/dir/?api=1")
             append("&origin=${roundCoord(startLat)},${roundCoord(startLng)}")

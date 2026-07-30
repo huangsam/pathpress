@@ -187,7 +187,8 @@ internal fun FlowContent.legCard(
             }
         }
 
-        // Filter out separate Start/Finish cards and cap POIs per leg at 6 max
+        // Filter out separate Start/Finish cards and cap POIs per leg at 9 max (matching Google
+        // Maps waypoints limit)
         val filteredPois =
             leg.pois
                 .filterNot { poi ->
@@ -199,7 +200,7 @@ internal fun FlowContent.legCard(
                         nameLower == "origin" ||
                         nameLower == "destination"
                 }
-                .take(6)
+                .take(9)
 
         if (filteredPois.isNotEmpty()) {
             poiSection(filteredPois, unit)
