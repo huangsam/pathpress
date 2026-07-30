@@ -327,7 +327,6 @@ h3,
   width: 100%;
   margin-bottom: 28px;
   page-break-inside: avoid;
-  break-inside: avoid;
 }
 .appendix-leg-header {
   font-size: 14px;
@@ -470,5 +469,4 @@ h3,
   max-height: 200px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
-  object-fit: cover;
 }
