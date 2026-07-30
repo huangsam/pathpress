@@ -7,7 +7,6 @@ Defines the MatrixTestCase data structure and route matrices for tested states
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass
@@ -20,7 +19,7 @@ class MatrixTestCase:
     units: str
 
 
-CALIFORNIA_MATRIX: List[MatrixTestCase] = [
+CALIFORNIA_MATRIX: list[MatrixTestCase] = [
     # 1. Major Metropolitan Routes
     MatrixTestCase(1, "Major Metropolitan", "San Francisco", "Los Angeles", 2, "metric"),
     MatrixTestCase(2, "Major Metropolitan", "Sacramento", "San Diego", 3, "imperial"),
@@ -41,7 +40,7 @@ CALIFORNIA_MATRIX: List[MatrixTestCase] = [
     MatrixTestCase(12, "Multi-day (5-day)", "San Francisco", "San Diego", 5, "metric"),
 ]
 
-TEXAS_MATRIX: List[MatrixTestCase] = [
+TEXAS_MATRIX: list[MatrixTestCase] = [
     # 1. Major Metropolitan Corridors
     MatrixTestCase(1, "Major Metro", "Austin, TX", "San Antonio, TX", 1, "metric"),
     MatrixTestCase(2, "Major Metro", "Houston, TX", "Dallas, TX", 1, "imperial"),
@@ -57,7 +56,7 @@ TEXAS_MATRIX: List[MatrixTestCase] = [
     MatrixTestCase(9, "Raw Coordinates", "30.2711,-97.7437", "29.4246,-98.4951", 1, "metric"),
 ]
 
-STATE_MATRICES: Dict[str, List[MatrixTestCase]] = {
+STATE_MATRICES: dict[str, list[MatrixTestCase]] = {
     "california": CALIFORNIA_MATRIX,
     "texas": TEXAS_MATRIX,
 }

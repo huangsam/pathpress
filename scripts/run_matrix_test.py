@@ -14,18 +14,65 @@ Usage:
 import argparse
 import os
 import re
+import subprocess
 import sys
 import time
-import subprocess
 from dataclasses import dataclass
-from typing import List, Optional
 
 # Local imports
-from matrix_cases import MatrixTestCase, STATE_MATRICES
+from matrix_cases import STATE_MATRICES, MatrixTestCase
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.1.0-standalone.jar")
 DEFAULT_OUTPUT_BASE = os.path.join(REPO_ROOT, "scratch", "matrix_output")
+
+
+class Colors:
+    """ANSI color code definitions with auto-disable support."""
+
+    enabled = True
+
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    GREEN = "\033[32m"
+    RED = "\033[31m"
+    YELLOW = "\033[33m"
+    CYAN = "\033[36m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    RESET = "\033[0m"
+
+    @classmethod
+    def disable(cls):
+        cls.BOLD = ""
+        cls.DIM = ""
+        cls.GREEN = ""
+        cls.RED = ""
+        cls.YELLOW = ""
+        cls.CYAN = ""
+        cls.BLUE = ""
+        cls.MAGENTA = ""
+        cls.RESET = ""
+        cls.enabled = False
+
+
+def visible_len(s: str) -> int:
+    """Calculate the visible character length of a string, ignoring ANSI color codes."""
+    return len(re.sub(r"\033\[[0-9;]*m", "", s))
+
+
+def pad_colored(s: str, width: int, align: str = "left") -> str:
+    """Pad a string containing ANSI escape codes to a target visible width."""
+    vlen = visible_len(s)
+    padding = max(0, width - vlen)
+    if align == "right":
+        return " " * padding + s
+    elif align == "center":
+        left_pad = padding // 2
+        right_pad = padding - left_pad
+        return " " * left_pad + s + " " * right_pad
+    else:  # left
+        return s + " " * padding
 
 
 @dataclass
@@ -37,60 +84,60 @@ class TestResult:
     pdf_bytes: int
     total_distance: str
     total_duration: str
-    warnings: List[str]
-    error_message: Optional[str] = None
+    warnings: list[str]
+    error_message: str | None = None
 
 
-def check_prerequisites(state: str, jar_path: str, custom_pbf: Optional[str] = None) -> str:
+def check_prerequisites(state: str, jar_path: str, custom_pbf: str | None = None) -> str:
     """Verify java, PBF file, and compile standalone shadow JAR if missing."""
-    print("================================================================================")
-    print(f"       PATHPRESS MATRIX TEST RUNNER - SETUP [{state.upper()}]                   ")
-    print("================================================================================")
+    border = f"{Colors.CYAN}{Colors.BOLD}{'═' * 80}{Colors.RESET}"
+    print(border)
+    print(f"{Colors.CYAN}{Colors.BOLD} PATHPRESS MATRIX TEST RUNNER - SETUP [{state.upper()}]{Colors.RESET}")
+    print(border)
 
     # 1. Check java executable
     res = subprocess.run(["java", "-version"], capture_output=True, text=True)
     if res.returncode != 0:
-        print("[ERROR] 'java' command not found or failed. Please install Java 21+.")
+        print(f"{Colors.RED}[ERROR] 'java' command not found or failed. Please install Java 21+.{Colors.RESET}")
         sys.exit(1)
-    print("[✓] Java runtime detected.")
+    print(f"{Colors.GREEN}[✓]{Colors.RESET} Java runtime detected.")
 
     # 2. Resolve & verify OSM PBF file
     if custom_pbf:
         pbf_path = os.path.abspath(custom_pbf)
     else:
         pbf_filename = f"{state}-latest.osm.pbf"
-        # Check data/ subdirectory first, then repo root fallback
         pbf_path = os.path.join(REPO_ROOT, "data", pbf_filename)
         if not os.path.exists(pbf_path) and os.path.exists(os.path.join(REPO_ROOT, pbf_filename)):
             pbf_path = os.path.join(REPO_ROOT, pbf_filename)
 
     if not os.path.exists(pbf_path):
-        print(f"[!] OSM PBF file missing at: {pbf_path}")
+        print(f"{Colors.YELLOW}[!]{Colors.RESET} OSM PBF file missing at: {pbf_path}")
         print(f"    Attempting to download via ./scripts/download_state.sh {state} ...")
         downloader = os.path.join(REPO_ROOT, "scripts", "download_state.sh")
         dl_res = subprocess.run([downloader, state], cwd=REPO_ROOT, capture_output=True, text=True)
         if dl_res.returncode != 0 or not os.path.exists(pbf_path):
-            print(f"[ERROR] Failed to download OSM PBF file for state '{state}':")
+            print(f"{Colors.RED}[ERROR] Failed to download OSM PBF file for state '{state}':{Colors.RESET}")
             print(dl_res.stderr or dl_res.stdout)
             sys.exit(1)
-        print(f"[✓] {state.capitalize()} OSM PBF file downloaded successfully.")
+        print(f"{Colors.GREEN}[✓]{Colors.RESET} {state.capitalize()} OSM PBF file downloaded successfully.")
 
     pbf_size_mb = os.path.getsize(pbf_path) / (1024 * 1024)
-    print(f"[✓] OSM PBF file verified ({pbf_size_mb:.1f} MB) -> {pbf_path}")
+    print(f"{Colors.GREEN}[✓]{Colors.RESET} OSM PBF file verified ({pbf_size_mb:.1f} MB) -> {Colors.DIM}{pbf_path}{Colors.RESET}")
 
     # 3. Build standalone shadow JAR if missing
     if not os.path.exists(jar_path):
-        print(f"[!] Standalone JAR not found at: {jar_path}")
+        print(f"{Colors.YELLOW}[!]{Colors.RESET} Standalone JAR not found at: {jar_path}")
         print("    Building shadow JAR via ./gradlew shadowJar ...")
         gradlew = os.path.join(REPO_ROOT, "gradlew")
         build_res = subprocess.run([gradlew, "shadowJar"], cwd=REPO_ROOT, capture_output=True, text=True)
         if build_res.returncode != 0:
-            print("[ERROR] Failed to build shadow JAR:")
+            print(f"{Colors.RED}[ERROR] Failed to build shadow JAR:{Colors.RESET}")
             print(build_res.stderr)
             sys.exit(1)
-        print("[✓] Standalone JAR compiled successfully.")
+        print(f"{Colors.GREEN}[✓]{Colors.RESET} Standalone JAR compiled successfully.")
     else:
-        print(f"[✓] Standalone JAR found at: {jar_path}")
+        print(f"{Colors.GREEN}[✓]{Colors.RESET} Standalone JAR found at: {Colors.DIM}{jar_path}{Colors.RESET}")
 
     print()
     return pbf_path
@@ -185,17 +232,123 @@ def run_test_case(
     )
 
 
-def print_summary_report(state: str, results: List[TestResult]) -> bool:
-    """Print clean ASCII summary table of test results for a state."""
-    title = f"{state.upper()} LOCATION MATRIX TEST SUITE RESULTS"
-    print("=" * 125)
-    print(f"{title:^125}")
-    print("=" * 125)
-    header = (
-        f"{'ID':<3} | {'Category':<22} | {'Route':<38} | {'Days':<4} | {'Units':<8} | {'Status':<6} | {'Time':<6} | {'Distance':<10} | {'Warnings / Snapping'}"
+def print_summary_report(state: str, results: list[TestResult], output_dir: str) -> bool:
+    """Print polished Unicode box-drawing summary table of test results for a state."""
+    # Define column widths
+    w_id = 4
+    w_cat = 22
+    w_route = 38
+    w_days = 5
+    w_units = 8
+    w_status = 8
+    w_time = 7
+    w_dist = 11
+    w_warn = 36
+
+    # Box-drawing characters
+    c_tl, c_tr, c_bl, c_br = "┌", "┐", "└", "┘"
+    c_h, c_v = "─", "│"
+    c_tj, c_bj, c_lj, c_rj, c_x = "┬", "┴", "├", "┤", "┼"
+
+    top_border = (
+        Colors.DIM
+        + c_tl
+        + c_h * w_id
+        + c_tj
+        + c_h * w_cat
+        + c_tj
+        + c_h * w_route
+        + c_tj
+        + c_h * w_days
+        + c_tj
+        + c_h * w_units
+        + c_tj
+        + c_h * w_status
+        + c_tj
+        + c_h * w_time
+        + c_tj
+        + c_h * w_dist
+        + c_tj
+        + c_h * w_warn
+        + c_tr
+        + Colors.RESET
     )
-    print(header)
-    print("-" * 125)
+
+    mid_border = (
+        Colors.DIM
+        + c_lj
+        + c_h * w_id
+        + c_x
+        + c_h * w_cat
+        + c_x
+        + c_h * w_route
+        + c_x
+        + c_h * w_days
+        + c_x
+        + c_h * w_units
+        + c_x
+        + c_h * w_status
+        + c_x
+        + c_h * w_time
+        + c_x
+        + c_h * w_dist
+        + c_x
+        + c_h * w_warn
+        + c_rj
+        + Colors.RESET
+    )
+
+    bot_border = (
+        Colors.DIM
+        + c_bl
+        + c_h * w_id
+        + c_bj
+        + c_h * w_cat
+        + c_bj
+        + c_h * w_route
+        + c_bj
+        + c_h * w_days
+        + c_bj
+        + c_h * w_units
+        + c_bj
+        + c_h * w_status
+        + c_bj
+        + c_h * w_time
+        + c_bj
+        + c_h * w_dist
+        + c_bj
+        + c_h * w_warn
+        + c_br
+        + Colors.RESET
+    )
+
+    total_table_width = visible_len(top_border)
+
+    # Header title banner
+    title_text = f" {state.upper()} LOCATION MATRIX TEST SUITE RESULTS "
+    side_dash_count = max(0, total_table_width - visible_len(title_text)) // 2
+    right_dash_count = total_table_width - visible_len(title_text) - side_dash_count
+    banner_line = f"{'═' * side_dash_count}{title_text}{'═' * right_dash_count}"
+
+    print()
+    print(f"{Colors.CYAN}{Colors.BOLD}{banner_line}{Colors.RESET}")
+    print(top_border)
+
+    # Column Headers
+    hdr_id = pad_colored(f"{Colors.BOLD}ID{Colors.RESET}", w_id, "center")
+    hdr_cat = pad_colored(f"{Colors.BOLD}Category{Colors.RESET}", w_cat)
+    hdr_route = pad_colored(f"{Colors.BOLD}Route Permutation{Colors.RESET}", w_route)
+    hdr_days = pad_colored(f"{Colors.BOLD}Days{Colors.RESET}", w_days, "center")
+    hdr_units = pad_colored(f"{Colors.BOLD}Units{Colors.RESET}", w_units, "center")
+    hdr_status = pad_colored(f"{Colors.BOLD}Status{Colors.RESET}", w_status, "center")
+    hdr_time = pad_colored(f"{Colors.BOLD}Time{Colors.RESET}", w_time, "right")
+    hdr_dist = pad_colored(f"{Colors.BOLD}Distance{Colors.RESET}", w_dist, "right")
+    hdr_warn = pad_colored(f"{Colors.BOLD}Warnings / Snapping{Colors.RESET}", w_warn)
+
+    v_bar = f"{Colors.DIM}{c_v}{Colors.RESET}"
+    header_row = f"{v_bar}{hdr_id}{v_bar}{hdr_cat}{v_bar}{hdr_route}{v_bar}{hdr_days}{v_bar}{hdr_units}{v_bar}{hdr_status}{v_bar}{hdr_time}{v_bar}{hdr_dist}{v_bar}{hdr_warn}{v_bar}"
+    print(header_row)
+    print(mid_border)
 
     passed_count = 0
     total_time = sum(r.elapsed_sec for r in results)
@@ -203,42 +356,81 @@ def print_summary_report(state: str, results: List[TestResult]) -> bool:
     for r in results:
         tc = r.test_case
         route_str = f"{tc.start} ➔ {tc.end}"
-        if len(route_str) > 38:
-            route_str = route_str[:35] + "..."
-        status_str = "PASS" if r.passed else "FAIL"
+        if len(route_str) > w_route:
+            route_str = route_str[: w_route - 3] + "..."
+
         if r.passed:
             passed_count += 1
+            status_fmt = f"{Colors.GREEN}{Colors.BOLD}PASS{Colors.RESET}"
+        else:
+            status_fmt = f"{Colors.RED}{Colors.BOLD}FAIL{Colors.RESET}"
 
-        warn_str = "; ".join(r.warnings) if r.warnings else "None"
-        if len(warn_str) > 40:
-            warn_str = warn_str[:37] + "..."
+        warn_text = "; ".join(r.warnings) if r.warnings else "None"
+        if len(warn_text) > w_warn:
+            warn_text = warn_text[: w_warn - 3] + "..."
 
-        row = f"{tc.id:<3} | {tc.category:<22} | {route_str:<38} | {tc.days:<4} | {tc.units:<8} | {status_str:<6} | {r.elapsed_sec:4.1f}s | {r.total_distance:<10} | {warn_str}"
-        print(row)
+        if warn_text != "None":
+            warn_fmt = f"{Colors.YELLOW}{warn_text}{Colors.RESET}"
+        else:
+            warn_fmt = f"{Colors.DIM}None{Colors.RESET}"
+
+        cell_id = pad_colored(f"{Colors.DIM}{tc.id:02d}{Colors.RESET}", w_id, "center")
+        cell_cat = pad_colored(tc.category, w_cat)
+        cell_route = pad_colored(route_str, w_route)
+        cell_days = pad_colored(str(tc.days), w_days, "center")
+        cell_units = pad_colored(tc.units, w_units, "center")
+        cell_status = pad_colored(status_fmt, w_status, "center")
+        cell_time = pad_colored(f"{r.elapsed_sec:5.1f}s", w_time, "right")
+        cell_dist = pad_colored(r.total_distance, w_dist, "right")
+        cell_warn = pad_colored(warn_fmt, w_warn)
+
+        row_str = f"{v_bar}{cell_id}{v_bar}{cell_cat}{v_bar}{cell_route}{v_bar}{cell_days}{v_bar}{cell_units}{v_bar}{cell_status}{v_bar}{cell_time}{v_bar}{cell_dist}{v_bar}{cell_warn}{v_bar}"
+        print(row_str)
 
         if not r.passed and r.error_message:
-            print(f"    └─> FAILURE DETAILS: {r.error_message}")
+            fail_msg = f"{Colors.RED}    └─> FAILURE DETAILS: {r.error_message}{Colors.RESET}"
+            print(fail_msg)
 
-    print("=" * 125)
-    print(
-        f"[{state.capitalize()}] Total Tests: {len(results)} | Passed: {passed_count} | Failed: {len(results) - passed_count} | Total Time: {total_time:.1f}s"
-    )
-    print("=" * 125)
-    print()
+    print(bot_border)
 
-    return passed_count == len(results)
+    # Executive Summary Card (fully enclosed box matching exact total_table_width)
+    total_tests = len(results)
+    failed_count = total_tests - passed_count
+    pass_rate = (passed_count / total_tests) * 100.0 if total_tests > 0 else 0.0
+    avg_time = total_time / total_tests if total_tests > 0 else 0.0
+
+    pass_color = Colors.GREEN if failed_count == 0 else Colors.RED
+    status_summary = f"{pass_color}{Colors.BOLD}{passed_count}/{total_tests} Passed ({pass_rate:.1f}%){Colors.RESET}"
+
+    card_header = f" EXECUTIVE SUMMARY [{state.upper()}] "
+    right_dash_summary = max(0, total_table_width - 2 - visible_len(card_header) - 1)
+    summary_top = f"┌─{card_header}{'─' * right_dash_summary}┐"
+    summary_bot = f"└{'─' * (total_table_width - 2)}┘"
+
+    def make_summary_row(content: str) -> str:
+        inner_width = total_table_width - 2
+        padded_content = pad_colored(content, inner_width)
+        return f"{Colors.CYAN}│{Colors.RESET}{padded_content}{Colors.CYAN}│{Colors.RESET}"
+
+    print(f"\n{Colors.CYAN}{Colors.BOLD}{summary_top}{Colors.RESET}")
+    print(make_summary_row(f"  • Overall Status : {status_summary}"))
+    print(make_summary_row(f"  • Execution Time : {Colors.BOLD}{total_time:.2f}s{Colors.RESET} total ({avg_time:.2f}s avg/test)"))
+    print(make_summary_row(f"  • PDF Outputs    : {Colors.DIM}{output_dir}{Colors.RESET}"))
+    print(f"{Colors.CYAN}{Colors.BOLD}{summary_bot}{Colors.RESET}\n")
+
+    return passed_count == total_tests
 
 
 def run_state_matrix(
     state: str,
     jar_path: str,
-    custom_pbf: Optional[str] = None,
+    custom_pbf: str | None = None,
     output_base: str = DEFAULT_OUTPUT_BASE,
 ) -> bool:
     """Run matrix test suite for a given state."""
     test_cases = STATE_MATRICES.get(state.lower())
     if not test_cases:
-        print(f"[ERROR] No matrix test cases defined for state '{state}'.")
+        print(f"{Colors.RED}[ERROR] No matrix test cases defined for state '{state}'.{Colors.RESET}")
         print(f"        Available states: {', '.join(STATE_MATRICES.keys())}")
         return False
 
@@ -246,17 +438,20 @@ def run_state_matrix(
     output_dir = os.path.join(output_base, state)
     graph_dir = os.path.join(REPO_ROOT, f".graphhopper_{state}")
 
-    print(f"Running {len(test_cases)} test cases for {state.capitalize()}...\n")
+    print(f"Running {len(test_cases)} test cases for {Colors.BOLD}{state.capitalize()}{Colors.RESET}...\n")
     results = []
     for tc in test_cases:
-        print(f"[{tc.id:02d}/{len(test_cases):02d}] Testing [{tc.category}] {tc.start} ➔ {tc.end} ({tc.days}d, {tc.units})... ", end="", flush=True)
+        print(
+            f"[{tc.id:02d}/{len(test_cases):02d}] Testing [{tc.category}] {tc.start} ➔ {tc.end} ({tc.days}d, {tc.units})... ",
+            end="",
+            flush=True,
+        )
         res = run_test_case(tc, state, jar_path, pbf_path, output_dir, graph_dir)
-        status_label = "✓ PASS" if res.passed else "✗ FAIL"
+        status_label = f"{Colors.GREEN}✓ PASS{Colors.RESET}" if res.passed else f"{Colors.RED}✗ FAIL{Colors.RESET}"
         print(f"{status_label} ({res.elapsed_sec:.2f}s, {res.total_distance})")
         results.append(res)
 
-    print()
-    return print_summary_report(state, results)
+    return print_summary_report(state, results, output_dir)
 
 
 def main():
@@ -270,8 +465,12 @@ def main():
     parser.add_argument("--jar", type=str, default=DEFAULT_JAR_PATH, help="Path to standalone shadow JAR")
     parser.add_argument("--pbf", type=str, default=None, help="Explicit path to OSM PBF data file")
     parser.add_argument("--output-dir", type=str, default=DEFAULT_OUTPUT_BASE, help="Output directory for generated PDFs")
+    parser.add_argument("--no-color", action="store_true", help="Disable ANSI colors in terminal output")
 
     args = parser.parse_args()
+
+    if args.no_color or not sys.stdout.isatty():
+        Colors.disable()
 
     target_state = args.state.lower()
     if target_state == "all":
@@ -279,7 +478,7 @@ def main():
     elif target_state in STATE_MATRICES:
         states_to_run = [target_state]
     else:
-        print(f"[ERROR] Unknown state '{args.state}'.")
+        print(f"{Colors.RED}[ERROR] Unknown state '{args.state}'.{Colors.RESET}")
         print(f"        Valid options are: {', '.join(STATE_MATRICES.keys())}, or 'all'.")
         sys.exit(1)
 
