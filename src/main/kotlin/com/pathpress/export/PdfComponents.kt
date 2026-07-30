@@ -23,16 +23,19 @@ internal fun FlowContent.coverPage(
         heroBanner(route, startLocation, endLocation)
         metadataCard(route, unit)
         tableOfContentsCard(route)
+        routeOverviewMapCard(route)
     }
 }
 
 internal fun FlowContent.tableOfContentsCard(route: Route) {
+    val isMultiCol = route.legs.size >= 4
+    val ulClass = if (isMultiCol) "toc-list toc-grid-2col" else "toc-list"
     div("toc-card") {
         div("toc-title editorial-heading") {
             unsafe { raw(LucideIcon.compass("#0284c7", 14)) }
             +" Table of Contents"
         }
-        ul("toc-list") {
+        ul(ulClass) {
             for (leg in route.legs) {
                 val rawTitle = leg.dayTitle ?: "Scenic Drive"
                 val cleanTitle =
@@ -50,6 +53,20 @@ internal fun FlowContent.tableOfContentsCard(route: Route) {
                     +"Mobile Navigation & Route Map Appendix"
                 }
             }
+        }
+    }
+}
+
+internal fun FlowContent.routeOverviewMapCard(route: Route) {
+    val mapDataUri = OsmTileStitcher.renderRouteMapDataUri(route, 560, 200)
+    if (mapDataUri.isBlank()) return
+    div("cover-map-card") {
+        div("cover-map-header editorial-heading") {
+            unsafe { raw(LucideIcon.mapPin("#0284c7", 14)) }
+            +" Full Route Overview Map"
+        }
+        div("cover-map-container") {
+            img(src = mapDataUri, alt = "Full Route Overview Map", classes = "cover-map-img")
         }
     }
 }

@@ -84,6 +84,57 @@ object OsmTileStitcher {
             leg.pois.forEach { points.add(LocationCoords(it.lat, it.lng)) }
             points.add(LocationCoords(leg.endLat, leg.endLng))
         }
+        return renderPointsMapDataUri(
+            points = points,
+            startLat = leg.startLat,
+            startLng = leg.startLng,
+            endLat = leg.endLat,
+            endLng = leg.endLng,
+            width = width,
+            height = height,
+        )
+    }
+
+    /** Render a clean line-shape full route overview map for all legs in a Route. */
+    fun renderRouteMapDataUri(
+        route: com.pathpress.model.Route,
+        width: Int = 560,
+        height: Int = 220,
+    ): String {
+        if (route.legs.isEmpty()) return ""
+        val points = mutableListOf<LocationCoords>()
+        for (leg in route.legs) {
+            if (leg.geometry.isNotEmpty()) {
+                points.addAll(leg.geometry)
+            } else {
+                points.add(LocationCoords(leg.startLat, leg.startLng))
+                leg.pois.forEach { points.add(LocationCoords(it.lat, it.lng)) }
+                points.add(LocationCoords(leg.endLat, leg.endLng))
+            }
+        }
+        val firstLeg = route.legs.first()
+        val lastLeg = route.legs.last()
+        return renderPointsMapDataUri(
+            points = points,
+            startLat = firstLeg.startLat,
+            startLng = firstLeg.startLng,
+            endLat = lastLeg.endLat,
+            endLng = lastLeg.endLng,
+            width = width,
+            height = height,
+        )
+    }
+
+    private fun renderPointsMapDataUri(
+        points: List<LocationCoords>,
+        startLat: Double,
+        startLng: Double,
+        endLat: Double,
+        endLng: Double,
+        width: Int,
+        height: Int,
+    ): String {
+        if (points.isEmpty()) return ""
 
         var minLat = points.minOf { it.lat }
         var maxLat = points.maxOf { it.lat }
@@ -178,8 +229,8 @@ object OsmTileStitcher {
         g.drawPolyline(polyX, polyY, points.size)
 
         // Start Pin (Green Dot)
-        val startPxX = toPxX(leg.startLng).toInt()
-        val startPxY = toPxY(leg.startLat).toInt()
+        val startPxX = toPxX(startLng).toInt()
+        val startPxY = toPxY(startLat).toInt()
         g.color = Color(5, 150, 105)
         g.fillOval(startPxX - 10, startPxY - 10, 20, 20)
         g.color = Color.WHITE
@@ -187,8 +238,8 @@ object OsmTileStitcher {
         g.drawOval(startPxX - 10, startPxY - 10, 20, 20)
 
         // End Pin (Red Dot)
-        val endPxX = toPxX(leg.endLng).toInt()
-        val endPxY = toPxY(leg.endLat).toInt()
+        val endPxX = toPxX(endLng).toInt()
+        val endPxY = toPxY(endLat).toInt()
         g.color = Color(220, 38, 38)
         g.fillOval(endPxX - 10, endPxY - 10, 20, 20)
         g.color = Color.WHITE

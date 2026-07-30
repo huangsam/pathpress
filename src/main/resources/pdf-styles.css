@@ -436,3 +436,40 @@ h3,
   color: #64748b;
   font-weight: normal;
 }
+
+.toc-grid-2col .toc-item {
+  display: inline-block;
+  width: 48%;
+  vertical-align: top;
+  margin-right: 2%;
+}
+
+/* Cover Page Full Route Overview Map Card */
+.cover-map-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+.cover-map-header {
+  font-size: 14px;
+  font-weight: bold;
+  color: #0f172a;
+  margin-bottom: 12px;
+  border-bottom: 1.5px solid #0284c7;
+  padding-bottom: 6px;
+  line-height: 1.4;
+}
+.cover-map-container {
+  text-align: center;
+}
+.cover-map-img {
+  width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  object-fit: cover;
+}
+

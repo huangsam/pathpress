@@ -199,4 +199,112 @@ class PdfExporterTest {
             }
         }
     }
+
+    @Test
+    fun `generateHtml applies 2-column TOC grid for 4 or more days`() {
+        fun makeLeg(day: Int) =
+            RouteLeg(
+                startLat = 37.0 + day,
+                startLng = -121.0,
+                endLat = 37.5 + day,
+                endLng = -120.5,
+                dayNumber = day,
+                totalDays = 4,
+                dayTitle = "Day $day Adventure",
+                endTownName = "Town $day",
+                distanceMeters = 100000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val route3Days =
+            Route(
+                legs = listOf(makeLeg(1), makeLeg(2), makeLeg(3)),
+                totalDistanceMeters = 300000.0,
+                totalDurationSeconds = 10800.0,
+            )
+        val html3 = PdfExporter.generateHtml(route3Days, "Start", "End")
+        assertTrue(
+            !html3.contains("class=\"toc-list toc-grid-2col\""),
+            "3-day route should use 1-column TOC",
+        )
+
+        val route4Days =
+            Route(
+                legs = listOf(makeLeg(1), makeLeg(2), makeLeg(3), makeLeg(4)),
+                totalDistanceMeters = 400000.0,
+                totalDurationSeconds = 14400.0,
+            )
+        val html4 = PdfExporter.generateHtml(route4Days, "Start", "End")
+        assertTrue(
+            html4.contains("class=\"toc-list toc-grid-2col\""),
+            "4-day route should apply 2-column TOC grid",
+        )
+    }
+
+    @Test
+    fun `generate pdf and png renders for 8-day itinerary`() {
+        val legs =
+            (1..8).map { day ->
+                RouteLeg(
+                    startLat = 36.0 + (day * 0.2),
+                    startLng = -120.0 - (day * 0.2),
+                    endLat = 36.1 + (day * 0.2),
+                    endLng = -120.1 - (day * 0.2),
+                    dayNumber = day,
+                    totalDays = 8,
+                    dayTitle = "Scenic Highway Drive $day",
+                    endTownName = "Stop $day",
+                    distanceMeters = 150000.0,
+                    durationSeconds = 5400.0,
+                    pois = emptyList(),
+                    legStory = "Enjoy scenic coastal views and local landmarks on Day $day.",
+                )
+            }
+        val route =
+            Route(
+                legs = legs,
+                totalDistanceMeters = 1200000.0,
+                totalDurationSeconds = 43200.0,
+                narrative = "Ultimate 8-Day Road Trip",
+            )
+
+        val html =
+            PdfExporter.generateHtml(route, "San Francisco", "Los Angeles", DistanceUnit.IMPERIAL)
+        assertTrue(html.contains("class=\"toc-list toc-grid-2col\""))
+
+        val snapshotsDir = java.io.File("build/snapshots")
+        snapshotsDir.mkdirs()
+
+        val pdfFile = java.io.File(snapshotsDir, "test_itinerary_8day.pdf")
+        PdfExporter.exportToPdf(html, pdfFile.absolutePath)
+        assertTrue(pdfFile.exists() && pdfFile.length() > 0)
+
+        org.apache.pdfbox.pdmodel.PDDocument.load(pdfFile).use { document ->
+            val outline = document.documentCatalog.documentOutline
+            kotlin.test.assertNotNull(
+                outline,
+                "PDF Document Outline should be present for 8-day trip",
+            )
+            val titles = mutableListOf<String>()
+            var curr = outline.firstChild
+            while (curr != null) {
+                titles.add(curr.title)
+                curr = curr.nextSibling
+            }
+            assertTrue(titles.contains("Cover & Overview"))
+            for (d in 1..8) {
+                assertTrue(titles.contains("Day $d: Scenic Highway Drive $d"))
+            }
+            assertTrue(titles.contains("Mobile Navigation & Route Map Appendix"))
+
+            val renderer = org.apache.pdfbox.rendering.PDFRenderer(document)
+            for (i in 0 until document.numberOfPages) {
+                val pageImage = renderer.renderImageWithDPI(i, 150f)
+                val pngFile = java.io.File(snapshotsDir, "test_itinerary_8day_page_${i + 1}.png")
+                javax.imageio.ImageIO.write(pageImage, "PNG", pngFile)
+                assertTrue(pngFile.exists() && pngFile.length() > 0)
+            }
+        }
+    }
 }
