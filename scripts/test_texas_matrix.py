@@ -93,7 +93,7 @@ def check_prerequisites():
             print(dl_res.stderr or dl_res.stdout)
             sys.exit(1)
         print("[✓] Texas OSM PBF file downloaded successfully.")
-    
+
     pbf_size_mb = os.path.getsize(PBF_PATH) / (1024 * 1024)
     print(f"[✓] Texas OSM PBF file verified ({pbf_size_mb:.1f} MB).")
 
@@ -193,9 +193,7 @@ def print_summary(results: List[TestResult]):
     print("================================================================================")
     print("                     TEXAS MATRIX TEST RESULTS SUMMARY                          ")
     print("================================================================================")
-    print(
-        f"{'ID':<3} | {'Category':<20} | {'Start -> End':<32} | {'Days':<4} | {'Status':<6} | {'Dist':<10} | {'Time':<6}"
-    )
+    print(f"{'ID':<3} | {'Category':<20} | {'Start -> End':<32} | {'Days':<4} | {'Status':<6} | {'Dist':<10} | {'Time':<6}")
     print("-" * 100)
 
     passed_count = 0
@@ -211,12 +209,10 @@ def print_summary(results: List[TestResult]):
             passed_count += 1
         total_time += r.elapsed_sec
 
-        print(
-            f"{tc.id:<3} | {tc.category:<20} | {route_str:<32} | {tc.days:<4} | {status_str:<6} | {r.total_distance:<10} | {r.elapsed_sec:5.2f}s"
-        )
+        print(f"{tc.id:<3} | {tc.category:<20} | {route_str:<32} | {tc.days:<4} | {status_str:<6} | {r.total_distance:<10} | {r.elapsed_sec:5.2f}s")
 
     print("-" * 100)
-    print(f"Total: {passed_count}/{len(results)} Passed ({passed_count/len(results)*100:.1f}%) in {total_time:.2f}s")
+    print(f"Total: {passed_count}/{len(results)} Passed ({passed_count / len(results) * 100:.1f}%) in {total_time:.2f}s")
     print("================================================================================")
 
 
