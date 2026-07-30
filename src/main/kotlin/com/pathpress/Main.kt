@@ -17,6 +17,7 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.Route
 import com.pathpress.routing.Geocoder
 import com.pathpress.routing.RouteCalculator
+import com.pathpress.routing.WaypointValidator
 import org.slf4j.LoggerFactory
 
 object BuildConfig {
@@ -119,20 +120,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
             "  -> End:   '${endGeo.displayName}' (${endGeo.coords.lat}, ${endGeo.coords.lng})"
         )
 
-        // 2. Initialize LLM Provider & Plan Trip Concept
-        logger.info("Initializing AI Trip Planner ($llmProviderName)...")
-        val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl, llmModel)
-        val tripPlan =
-            llm.planTrip(
-                startName = startGeo.displayName,
-                endName = endGeo.displayName,
-                startCoords = startGeo.coords,
-                endCoords = endGeo.coords,
-                days = days,
-                userPrompt = prompt,
-            )
-
-        // 3. Initialize GraphHopper Routing Engine
+        // 2. Initialize GraphHopper Routing Engine
         logger.info("Loading spatial routing data from $pbfPath...")
         val routeCalculator =
             try {
@@ -144,9 +132,22 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 )
             }
 
-        // Resolve spatial intermediate waypoints (from LLM or fallback)
-        val resolvedWaypoints =
-            tripPlan.waypoints
+        // 3. Initialize AI Trip Planner & Plan Trip Concept
+        logger.info("Initializing AI Trip Planner ($llmProviderName)...")
+        val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl, llmModel)
+        var tripPlan =
+            llm.planTrip(
+                startName = startGeo.displayName,
+                endName = endGeo.displayName,
+                startCoords = startGeo.coords,
+                endCoords = endGeo.coords,
+                days = days,
+                userPrompt = prompt,
+            )
+
+        // Helper to geocode and resolve intermediate waypoints from LLM
+        fun geocodeWaypoints(rawWaypoints: List<LocationCoords>): MutableList<LocationCoords> {
+            return rawWaypoints
                 .mapNotNull { wp ->
                     if (wp.lat != 0.0 || wp.lng != 0.0) {
                         wp
@@ -164,6 +165,54 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                     }
                 }
                 .toMutableList()
+        }
+
+        var resolvedWaypoints = geocodeWaypoints(tripPlan.waypoints)
+
+        // Validate waypoints against direct route corridor
+        if (resolvedWaypoints.isNotEmpty()) {
+            val valResult =
+                WaypointValidator.validateWaypoints(
+                    resolvedWaypoints,
+                    startGeo.coords,
+                    endGeo.coords,
+                )
+
+            if (!valResult.isValid) {
+                logger.warn(
+                    "LLM waypoint validation failed: ${valResult.reason}. " +
+                        "Retrying trip planning with LLM (attempt 2/2)..."
+                )
+                val retryTripPlan =
+                    llm.planTrip(
+                        startName = startGeo.displayName,
+                        endName = endGeo.displayName,
+                        startCoords = startGeo.coords,
+                        endCoords = endGeo.coords,
+                        days = days,
+                        userPrompt = prompt,
+                    )
+                val retryWaypoints = geocodeWaypoints(retryTripPlan.waypoints)
+                val retryValResult =
+                    WaypointValidator.validateWaypoints(
+                        retryWaypoints,
+                        startGeo.coords,
+                        endGeo.coords,
+                    )
+
+                if (retryValResult.isValid && retryWaypoints.isNotEmpty()) {
+                    logger.info("Retry attempt produced valid waypoints!")
+                    resolvedWaypoints = retryWaypoints
+                    tripPlan = retryTripPlan
+                } else {
+                    logger.warn(
+                        "LLM waypoint validation failed on retry attempt. " +
+                            "Clearing invalid waypoints and using deterministic route fallback."
+                    )
+                    resolvedWaypoints.clear()
+                }
+            }
+        }
 
         // Fallback injection if waypoints are empty and prompt specifies coastal in California
         // region
