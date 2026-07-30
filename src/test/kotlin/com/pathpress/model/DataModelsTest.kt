@@ -118,4 +118,16 @@ class DataModelsTest {
         assertEquals("bakery", sanitizePoiType("confectionery", emptyMap()))
         assertEquals("scenic viewpoint", sanitizePoiType("scenic_viewpoint", emptyMap()))
     }
+
+    @Test
+    fun `boundNarrative bounds dense multi-sentence paragraph to max words and sentences`() {
+        val denseText =
+            "This two-day coastal odyssey transforms the bustling energy of Silicon Valley into a rhythmic Pacific escape, tracing California's iconic Highway 1 through mist-kissed bluffs and golden sand dunes. Designed with little legs in mind, the itinerary balances manageable driving segments with wide, stroller-accessible beaches and historic seaside villages that invite slow, sensory exploration. From Monterey's tidal pools to Santa Barbara's Mediterranean-inspired waterfront, the journey captures the raw beauty of the California coast while keeping toddler-friendly comfort at the forefront."
+        val bounded = denseText.boundNarrative(maxWords = 55, maxSentences = 3)
+        val sentences = bounded.split(Regex("(?<=[.!?])\\s+"))
+        assertTrue(sentences.size <= 3)
+        val wordCount = bounded.split(Regex("\\s+")).size
+        assertTrue(wordCount <= 55)
+        assertTrue(bounded.startsWith("This two-day coastal odyssey"))
+    }
 }

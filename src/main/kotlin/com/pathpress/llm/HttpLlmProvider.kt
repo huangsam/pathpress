@@ -69,7 +69,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                 {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
                 {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}
               ],
-              "narrative": "<REQUIRED: 2-3 sentence evocative description of the overall trip vibe, landscape, and theme. Must be specific to $startName → $endName and the theme above. Do NOT use generic filler like 'a wonderful journey'. Write like a travel magazine editor.>"
+              "narrative": "<REQUIRED: 2 to 3 short, clear sentences (maximum 50 words total) summarizing the trip vibe and route from $startName to $endName. Keep sentences brief, direct, and easy to read. Do NOT write dense, multi-sentence purple prose or flowery fluff.>"
             }
             Return ONLY valid raw JSON. The "narrative" and "legStories" fields are mandatory and must not be null or empty.
         """

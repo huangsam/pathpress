@@ -207,6 +207,30 @@ data class RouteLeg(
 fun String?.takeValidText(): String? =
     this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
 
+/**
+ * Limits narrative text to a clean, bounded summary of at most [maxSentences] sentences and
+ * [maxWords] words total, preventing dense or overly long paragraphs on the cover page.
+ */
+fun String.boundNarrative(maxWords: Int = 55, maxSentences: Int = 3): String {
+    val clean = this.trim()
+    if (clean.isBlank()) return clean
+    val sentences = clean.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
+    val result = mutableListOf<String>()
+    var totalWords = 0
+    for (sentence in sentences) {
+        val wordCount = sentence.split(Regex("\\s+")).count { it.isNotBlank() }
+        if (
+            result.isEmpty() || (result.size < maxSentences && totalWords + wordCount <= maxWords)
+        ) {
+            result.add(sentence)
+            totalWords += wordCount
+        } else {
+            break
+        }
+    }
+    return result.joinToString(" ")
+}
+
 /** Represents the complete calculated route. */
 data class Route(
     val legs: List<RouteLeg>,
@@ -215,7 +239,7 @@ data class Route(
     val narrative: String = "",
 ) {
     fun getNarrativeOrDefault(startLocation: String, endLocation: String): String =
-        narrative.takeValidText()
+        narrative.takeValidText()?.boundNarrative(maxWords = 55, maxSentences = 3)
             ?: "A custom road trip experience from $startLocation to $endLocation."
 }
 
