@@ -9,6 +9,7 @@ build/
 
 # GraphHopper
 .graphhopper/
+.graphhopper_*/
 *.graphhopper/
 
 # Generated PDFs
@@ -32,3 +33,4 @@ dist/
 pois_cache.json
 .pois_cache/
 scratch/
+.map_cache/
