@@ -13,7 +13,6 @@ object PdfExporter {
     fun exportToPdf(htmlContent: String, outputFilePath: String) {
         java.io.FileOutputStream(outputFilePath).use { os ->
             val builder = PdfRendererBuilder()
-            builder.useFastMode()
             builder.useSVGDrawer(BatikSVGDrawer())
 
             // Register bundled custom fonts for editorial typography
@@ -53,6 +52,7 @@ object PdfExporter {
                     meta { charset = "UTF-8" }
                     title { +"PathPress Scenic Itinerary" }
                     style { unsafe { raw(pdfStyles(safeStart, safeEnd)) } }
+                    unsafe { raw(renderBookmarks(route)) }
                 }
                 body {
                     coverPage(route, safeStart, safeEnd, unit)
@@ -60,6 +60,26 @@ object PdfExporter {
                     navigationAppendix(route)
                 }
             }
+        }
+    }
+
+    internal fun renderBookmarks(route: Route): String {
+        return buildString {
+            appendLine("<bookmarks>")
+            appendLine("  <bookmark name=\"Cover &amp; Overview\" href=\"#cover-page\" />")
+            for (leg in route.legs) {
+                val rawTitle = leg.dayTitle ?: "Scenic Drive"
+                val cleanTitle =
+                    rawTitle
+                        .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
+                        .ifBlank { "Scenic Drive" }
+                val bookmarkName = escapeXml("Day ${leg.dayNumber}: $cleanTitle")
+                appendLine("  <bookmark name=\"$bookmarkName\" href=\"#leg-${leg.dayNumber}\" />")
+            }
+            appendLine(
+                "  <bookmark name=\"Mobile Navigation Cheat Sheet\" href=\"#navigation-appendix\" />"
+            )
+            appendLine("</bookmarks>")
         }
     }
 

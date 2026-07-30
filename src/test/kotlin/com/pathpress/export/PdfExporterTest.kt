@@ -113,6 +113,10 @@ class PdfExporterTest {
 
         assertTrue(html.contains("hero-banner"))
         assertTrue(html.contains("editorial-heading"))
+        assertTrue(html.contains("toc-card"))
+        assertTrue(html.contains("toc-link"))
+        assertTrue(html.contains("href=\"#leg-1\""))
+        assertTrue(html.contains("href=\"#navigation-appendix\""))
         assertTrue(html.contains("<svg"))
         assertTrue(html.contains("Merriweather"))
         assertTrue(html.contains("Inter"))
@@ -172,8 +176,20 @@ class PdfExporterTest {
         PdfExporter.exportToPdf(html, pdfFile.absolutePath)
         assertTrue(pdfFile.exists() && pdfFile.length() > 0)
 
-        // Render PDF pages as PNG images for visual inspection
+        // Verify PDF document outline (sidebar bookmarks) catalog
         org.apache.pdfbox.pdmodel.PDDocument.load(pdfFile).use { document ->
+            val outline = document.documentCatalog.documentOutline
+            kotlin.test.assertNotNull(outline, "PDF Document Outline should be present")
+            val titles = mutableListOf<String>()
+            var curr = outline.firstChild
+            while (curr != null) {
+                titles.add(curr.title)
+                curr = curr.nextSibling
+            }
+            assertTrue(titles.contains("Cover & Overview"))
+            assertTrue(titles.contains("Day 1: Coastal Exploration & Beach Play"))
+            assertTrue(titles.contains("Mobile Navigation Cheat Sheet"))
+
             val renderer = org.apache.pdfbox.rendering.PDFRenderer(document)
             for (i in 0 until document.numberOfPages) {
                 val pageImage = renderer.renderImageWithDPI(i, 150f)

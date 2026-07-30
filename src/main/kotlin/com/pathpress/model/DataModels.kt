@@ -183,6 +183,7 @@ data class RouteLeg(
     val pois: List<POI> = emptyList(),
     val legStory: String? = null,
     val endTownName: String? = null,
+    val geometry: List<LocationCoords> = emptyList(),
 ) {
     /** Generate a Google Maps URL for directions on this leg. */
     fun toDirectionsUrl(): String =

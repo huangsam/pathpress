@@ -200,6 +200,7 @@ class RouteCalculator(
                     durationSeconds = path.time / 1000.0,
                     dayTitle = dayTitles.getOrNull(0) ?: "Day 1 Scenic Drive",
                     pois = realPois,
+                    geometry = pointsList.map { LocationCoords(it.lat, it.lon) },
                 )
             )
         }
