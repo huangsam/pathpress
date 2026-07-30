@@ -121,6 +121,10 @@ class PdfExporterTest {
         assertTrue(html.contains("Merriweather"))
         assertTrue(html.contains("Inter"))
         assertTrue(html.contains("Big Sur Viewpoint"))
+        assertTrue(html.contains("Scenic Overview"))
+        assertTrue(html.contains("poi-header-table"))
+        assertTrue(html.contains("poi-nav-btn"))
+        assertTrue(html.contains("poi-card-address"))
         assertTrue(html.contains("vertical-align: -0.15em;"))
         assertTrue(html.contains("display: inline-block;"))
     }

@@ -9,6 +9,7 @@ import com.pathpress.model.POI
 import com.pathpress.model.Route
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.sanitizePoiType
+import com.pathpress.poi.AddressResolver
 import com.pathpress.poi.MapUrlFormatter
 import kotlinx.html.*
 
@@ -175,17 +176,30 @@ internal fun FlowContent.legCard(
                 }
                 a(href = directionsUrl, classes = "meta-badge-nav") {
                     unsafe { raw(LucideIcon.navigation("#0284c7", 12)) }
-                    +" Directions"
+                    +" Scenic Overview"
                 }
+            }
+            if (!leg.legStory.isNullOrBlank()) {
+                div("leg-story-caption") { +"\"${sanitizeText(leg.legStory)}\"" }
             }
         }
 
-        if (!leg.legStory.isNullOrBlank()) {
-            div("leg-story") { +"\"${sanitizeText(leg.legStory)}\"" }
-        }
+        // Filter out separate Start/Finish cards and cap POIs per leg at 6 max
+        val filteredPois =
+            leg.pois
+                .filterNot { poi ->
+                    val typeLower = poi.type.lowercase().trim()
+                    val nameLower = poi.name?.lowercase()?.trim() ?: ""
+                    typeLower in setOf("start", "finish", "origin", "destination") ||
+                        nameLower == "start" ||
+                        nameLower == "finish" ||
+                        nameLower == "origin" ||
+                        nameLower == "destination"
+                }
+                .take(6)
 
-        if (leg.pois.isNotEmpty()) {
-            poiSection(leg.pois, unit)
+        if (filteredPois.isNotEmpty()) {
+            poiSection(filteredPois, unit)
         }
     }
 }
@@ -210,24 +224,43 @@ internal fun FlowContent.poiSection(pois: List<POI>, unit: DistanceUnit = Distan
 
 internal fun FlowContent.poiCard(poi: POI, index: Int, unit: DistanceUnit = DistanceUnit.METRIC) {
     val poiSearchUrl = MapUrlFormatter.formatPoiUrl(poi)
+    val poiNavUrl = MapUrlFormatter.formatSingleStopNavUrl(poi.lat, poi.lng)
     val poiName = poi.name ?: "Point of Interest"
     val rawType = sanitizePoiType(poi.type, poi.tags)
     val poiType =
         rawType.split("_").joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
     val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters, unit)
+    val resolvedAddress = AddressResolver.resolveAddress(poi)
 
     div("poi-card") {
-        div("poi-card-header") {
-            span("poi-number") { +"$index." }
-            +" "
-            a(href = poiSearchUrl, classes = "poi-name-link") { +sanitizeText(poiName) }
-            +"  "
-            span("tag-badge") { +poiType }
-            if (distOffRoute != null) {
-                +" "
-                span("dist-badge") { +distOffRoute }
+        // Line 1: Header table with title link, category tag, off-route distance badge, and
+        // float-right 1-tap Nav button
+        table("poi-header-table") {
+            tr {
+                td("poi-header-left") {
+                    span("poi-number") { +"$index. " }
+                    a(href = poiSearchUrl, classes = "poi-name-link") { +sanitizeText(poiName) }
+                    +"  "
+                    span("tag-badge") { +poiType }
+                    if (distOffRoute != null) {
+                        +" "
+                        span("dist-badge") { +distOffRoute }
+                    }
+                }
+                td("poi-header-right") {
+                    a(href = poiNavUrl, classes = "poi-nav-btn") {
+                        unsafe { raw(LucideIcon.navigation("#ffffff", 10)) }
+                        +" Nav"
+                    }
+                }
             }
         }
+        // Line 2: Muted resolved physical street address with location pin SVG icon
+        div("poi-card-address") {
+            unsafe { raw(LucideIcon.mapPin("#64748b", 12)) }
+            +" ${sanitizeText(resolvedAddress)}"
+        }
+        // Line 3: Rich POI description text
         if (!poi.description.isNullOrBlank()) {
             div("poi-card-desc") { +sanitizeText(poi.description) }
         }
