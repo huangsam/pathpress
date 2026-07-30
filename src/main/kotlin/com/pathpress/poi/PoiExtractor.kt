@@ -131,21 +131,40 @@ object PoiExtractor {
     }
 
     /**
+     * Resolves a PBF-specific cache file path under `.pois_cache/` (e.g.
+     * `.pois_cache/pois_cache_california-latest.json`). If [customCachePath] is explicitly passed,
+     * it is returned directly.
+     */
+    fun resolveCacheFilePath(pbfPath: String, customCachePath: String? = null): String {
+        if (!customCachePath.isNullOrBlank()) return customCachePath
+        val fileName = File(pbfPath).name
+        val baseName =
+            fileName
+                .removeSuffix(".osm.pbf")
+                .removeSuffix(".pbf")
+                .replace(Regex("[^a-zA-Z0-9_-]"), "_")
+                .ifBlank { "default" }
+        return ".pois_cache/pois_cache_$baseName.json"
+    }
+
+    /**
      * Retrieve or build the [PoiCacheStore].
      *
-     * If `.pois_cache/pois_cache.json` exists and is up to date, it is loaded into memory (~15ms).
-     * Otherwise, a one-time single-pass scan over the PBF file is executed to generate it.
+     * If a state-qualified cache file (e.g. `.pois_cache/pois_cache_california-latest.json`) exists
+     * and is up to date, it is loaded into memory (~15ms). Otherwise, a one-time single-pass scan
+     * over the PBF file is executed to generate it.
      */
     @Synchronized
     fun getOrBuildCache(
         pbfPath: String = "data/california-latest.osm.pbf",
-        cacheFilePath: String = ".pois_cache/pois_cache.json",
+        cacheFilePath: String? = null,
     ): PoiCacheStore {
+        val resolvedCachePath = resolveCacheFilePath(pbfPath, cacheFilePath)
         if (cachedStore != null && cachedPbfPath == pbfPath) {
             return cachedStore!!
         }
 
-        val cacheFile = File(cacheFilePath)
+        val cacheFile = File(resolvedCachePath)
         val pbfFile = File(pbfPath)
 
         if (
@@ -158,7 +177,7 @@ object PoiExtractor {
                 cachedPbfPath = pbfPath
                 logger.info(
                     "Loaded POI cache from {} ({} POIs, {} towns)",
-                    cacheFilePath,
+                    resolvedCachePath,
                     store.pois.size,
                     store.towns.size,
                 )
@@ -166,7 +185,7 @@ object PoiExtractor {
             } catch (e: Exception) {
                 logger.warn(
                     "Failed to load POI cache from {}: {}. Rebuilding...",
-                    cacheFilePath,
+                    resolvedCachePath,
                     e.message,
                 )
             }
@@ -220,13 +239,13 @@ object PoiExtractor {
             val elapsed = System.currentTimeMillis() - startTime
             logger.info(
                 "Saved POI cache to {} with {} POIs and {} towns in {} ms",
-                cacheFilePath,
+                resolvedCachePath,
                 pois.size,
                 towns.size,
                 elapsed,
             )
         } catch (e: Exception) {
-            logger.warn("Failed to write POI cache to {}: {}", cacheFilePath, e.message)
+            logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message)
         }
 
         cachedStore = store
@@ -489,7 +508,7 @@ object PoiExtractor {
         }
 
         val targetMilestone = targetMilestoneCoords ?: routePoints[routePoints.size / 2]
-        val sampledPoints = if (targetPointCoords.isNotEmpty()) targetPointCoords else routePoints
+        val sampledPoints = targetPointCoords.ifEmpty { routePoints }
 
         val candidateTowns = mutableSetOf<TownInfo>()
         val bufferDeg = (maxDistanceMeters / 111000.0)

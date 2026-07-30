@@ -512,4 +512,20 @@ class PoiExtractorTest {
         assertTrue(deduplicated.any { it.id == "c2" })
         assertFalse(deduplicated.any { it.id == "c1" })
     }
+
+    @Test
+    fun `resolveCacheFilePath derives state-qualified cache paths`() {
+        assertEquals(
+            ".pois_cache/pois_cache_california-latest.json",
+            PoiExtractor.resolveCacheFilePath("data/california-latest.osm.pbf"),
+        )
+        assertEquals(
+            ".pois_cache/pois_cache_texas-latest.json",
+            PoiExtractor.resolveCacheFilePath("data/texas-latest.osm.pbf"),
+        )
+        assertEquals(
+            "custom_cache.json",
+            PoiExtractor.resolveCacheFilePath("data/california-latest.osm.pbf", "custom_cache.json"),
+        )
+    }
 }
