@@ -62,13 +62,17 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             Provide a JSON response with:
             {
               "dayThemes": ["Day 1 title", "Day 2 title", ...],
+              "legStories": [
+                "1-2 sentence engaging description of driving Day 1.",
+                "1-2 sentence engaging description of driving Day 2."
+              ],
               "waypoints": [
                 {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
                 {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}
               ],
               "narrative": "<REQUIRED: 2-3 sentence evocative description of the overall trip vibe, landscape, and theme. Must be specific to $startName → $endName and the theme above. Do NOT use generic filler like 'a wonderful journey'. Write like a travel magazine editor.>"
             }
-            Return ONLY valid raw JSON. The "narrative" field is mandatory and must not be null or empty.
+            Return ONLY valid raw JSON. The "narrative" and "legStories" fields are mandatory and must not be null or empty.
         """
             .trimIndent()
     }
@@ -154,6 +158,8 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             val themes =
                 (map["dayThemes"] as? List<*>)?.mapNotNull { it.toString() }
                     ?: (1..days).map { "Day $it" }
+            val legStories =
+                (map["legStories"] as? List<*>)?.mapNotNull { it.toString() } ?: emptyList()
             val narrative = map["narrative"]?.toString().takeValidText() ?: narrativeFallback ?: ""
             val waypoints =
                 (map["waypoints"] as? List<*>)
@@ -179,12 +185,18 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                         }
                     }
                     .orEmpty()
-            TripPlanResponse(dayThemes = themes, waypoints = waypoints, narrative = narrative)
+            TripPlanResponse(
+                dayThemes = themes,
+                waypoints = waypoints,
+                narrative = narrative,
+                legStories = legStories,
+            )
         } catch (_: Exception) {
             TripPlanResponse(
                 dayThemes = (1..days).map { "Day $it" },
                 waypoints = emptyList(),
                 narrative = narrativeFallback ?: "",
+                legStories = emptyList(),
             )
         }
     }
@@ -202,6 +214,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             .replace("\\\\", "\\")
             .trim()
             .takeValidText()
+    }
+
+    override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
+        return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
 
     /**

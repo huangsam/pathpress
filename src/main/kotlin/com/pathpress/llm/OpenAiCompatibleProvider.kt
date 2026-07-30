@@ -3,7 +3,6 @@ package com.pathpress.llm
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
-import com.pathpress.model.RouteLeg
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -78,43 +77,5 @@ class OpenAiCompatibleProvider(
         }
         return NoOpFallbackProvider()
             .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
-    }
-
-    override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
-        try {
-            val promptText = buildCurationPrompt(leg, userPrompt)
-            val requestBody =
-                mapper.writeValueAsString(
-                    mapOf(
-                        "model" to modelName,
-                        "messages" to
-                            listOf(
-                                mapOf(
-                                    "role" to "system",
-                                    "content" to
-                                        "You are a local travel guide that outputs raw JSON.",
-                                ),
-                                mapOf("role" to "user", "content" to promptText),
-                            ),
-                    )
-                )
-            val uri = URI.create(endpoint)
-            val builder =
-                HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
-            if (apiKey.isNotBlank()) builder.header("Authorization", "Bearer $apiKey")
-            val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() == 200) {
-                val root: Map<String, Any> = mapper.readValue(response.body())
-                val choices = root["choices"] as? List<*>
-                val firstChoice = choices?.firstOrNull() as? Map<*, *>
-                val message = firstChoice?.get("message") as? Map<*, *>
-                val text = message?.get("content") as? String
-                if (!text.isNullOrBlank()) return parseCurationResponse(text, leg)
-            }
-        } catch (e: Exception) {
-            logger.warn("OpenAI Curation warning: {}", e.message)
-        }
-        return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
 }

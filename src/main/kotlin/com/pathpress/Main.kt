@@ -230,11 +230,14 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
                 waypoints = resolvedWaypoints,
             )
 
-        // 5. Curate POIs & Generate Leg Storytelling with LLM
-        logger.info("Curating POIs & storytelling with LLM...")
-        val curatedLegs = rawLegs.map { leg ->
-            val curation = llm.curateLegPois(leg, prompt)
-            leg.copy(legStory = curation.legStory, pois = curation.curatedPois)
+        // 5. Curate POIs & Apply Leg Storytelling
+        logger.info("Curating POIs & applying leg storytelling...")
+        val curatedLegs = rawLegs.mapIndexed { idx, leg ->
+            val storyFromPlan = tripPlan.legStories.getOrNull(idx)
+            val legWithStory =
+                if (!storyFromPlan.isNullOrBlank()) leg.copy(legStory = storyFromPlan) else leg
+            val curation = llm.curateLegPois(legWithStory, prompt)
+            legWithStory.copy(legStory = curation.legStory, pois = curation.curatedPois)
         }
 
         val totalDistance = curatedLegs.sumOf { it.distanceMeters ?: 0.0 }

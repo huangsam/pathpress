@@ -18,6 +18,7 @@ data class TripPlanResponse(
     val waypoints: List<LocationCoords>,
     val curatedPois: Map<Int, List<POI>> = emptyMap(),
     val narrative: String = "",
+    val legStories: List<String> = emptyList(),
 )
 
 /**
