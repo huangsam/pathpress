@@ -30,7 +30,7 @@ object BuildConfig {
 }
 
 /** PathPress CLI command implemented using Clikt. */
-class PathPressCommand : CliktCommand(name = "pathpress") {
+open class PathPressCommand : CliktCommand(name = "pathpress") {
     override fun help(context: Context): String =
         "PathPress - A robust, hybrid AI road trip planner using OpenStreetMap & GraphHopper."
 
@@ -55,11 +55,7 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
         option("--llm-provider", help = "LLM provider: gemini, claude, openai, ollama, or none")
             .default("none")
     val llmModel by
-        option(
-                "--llm-model",
-                help = "Model name for LLM (e.g. '${Config.current.defaultOllamaModel}')",
-            )
-            .default(Config.current.defaultOllamaModel)
+        option("--llm-model", help = "Model name for LLM (defaults to provider default if omitted)")
     val llmKey by option("--llm-key", help = "API Key for the chosen LLM provider")
     val llmUrl by
         option("--llm-url", help = "Endpoint URL for LLM (e.g. for Ollama or custom server)")
@@ -107,7 +103,7 @@ class PathPressCommand : CliktCommand(name = "pathpress") {
         logger.info("Duration: $days days")
         logger.info("Profile: $profile")
         if (!prompt.isNullOrBlank()) logger.info("Prompt: $prompt")
-        logger.info("LLM Provider: $llmProviderName (Model: $llmModel)")
+        logger.info("LLM Provider: $llmProviderName (Model: ${llmModel ?: "default"})")
         logger.info("Distance Unit: ${distanceUnit.name.lowercase()}")
         logger.info("Output: $outputFile")
         logger.info("Verbose Mode: ${if (verbose) "ENABLED" else "DISABLED"}")
