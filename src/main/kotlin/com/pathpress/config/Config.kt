@@ -60,7 +60,7 @@ data class Config(
         const val DEFAULT_OPENAI_MODEL: String = "gpt-4o-mini"
 
         /** Default local Ollama model identifier. */
-        const val DEFAULT_OLLAMA_MODEL: String = "qwen3.6:27b-mlx"
+        const val DEFAULT_OLLAMA_MODEL: String = "qwen3.6:35b-mlx"
 
         /** Default network timeout in seconds for HTTP LLM requests. */
         const val DEFAULT_HTTP_LLM_TIMEOUT_SECONDS: Long = 15L
