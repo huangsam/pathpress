@@ -24,7 +24,7 @@ from matrix_cases import STATE_MATRICES, MatrixTestCase
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.1.0-standalone.jar")
-DEFAULT_OUTPUT_BASE = os.path.join(REPO_ROOT, "build", "matrix_output")
+DEFAULT_OUTPUT_BASE = os.path.join(REPO_ROOT, "build", "matrix-output")
 
 
 class Colors:
