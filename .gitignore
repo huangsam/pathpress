@@ -34,3 +34,4 @@ pois_cache.json
 .pois_cache/
 scratch/
 .map_cache/
+__pycache__/
