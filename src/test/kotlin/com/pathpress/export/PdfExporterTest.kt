@@ -188,7 +188,7 @@ class PdfExporterTest {
             }
             assertTrue(titles.contains("Cover & Overview"))
             assertTrue(titles.contains("Day 1: Coastal Exploration & Beach Play"))
-            assertTrue(titles.contains("Mobile Navigation Cheat Sheet"))
+            assertTrue(titles.contains("Mobile Navigation & Route Map Appendix"))
 
             val renderer = org.apache.pdfbox.rendering.PDFRenderer(document)
             for (i in 0 until document.numberOfPages) {

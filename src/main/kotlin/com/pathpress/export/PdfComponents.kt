@@ -47,7 +47,7 @@ internal fun FlowContent.tableOfContentsCard(route: Route) {
             }
             li("toc-item") {
                 a(href = "#navigation-appendix", classes = "toc-link") {
-                    +"Mobile Navigation Cheat Sheet"
+                    +"Mobile Navigation & Route Map Appendix"
                 }
             }
         }

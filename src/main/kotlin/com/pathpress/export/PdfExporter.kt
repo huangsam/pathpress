@@ -77,7 +77,7 @@ object PdfExporter {
                 appendLine("  <bookmark name=\"$bookmarkName\" href=\"#leg-${leg.dayNumber}\" />")
             }
             appendLine(
-                "  <bookmark name=\"Mobile Navigation Cheat Sheet\" href=\"#navigation-appendix\" />"
+                "  <bookmark name=\"Mobile Navigation &amp; Route Map Appendix\" href=\"#navigation-appendix\" />"
             )
             appendLine("</bookmarks>")
         }
