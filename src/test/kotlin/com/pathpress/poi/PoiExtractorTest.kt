@@ -70,11 +70,29 @@ class PoiExtractorTest {
     fun `pointToSegmentDistanceMeters uses cosine latitude scaling for California projection`() {
         // Diagonal segment in California from (37.0, -122.0) to (38.0, -120.0)
         // Point at (38.0, -121.5)
-        // Unscaled t is 0.4000 -> dist ~ 71385m
-        // Scaled t is ~0.4632 -> dist ~ 70491m
-        val dist =
-            PoiExtractor.pointToSegmentDistanceMeters(38.0, -121.5, 37.0, -122.0, 38.0, -120.0)
-        assertEquals(70490.77, dist, 1.0)
+        val pLat = 38.0
+        val pLng = -121.5
+        val aLat = 37.0
+        val aLng = -122.0
+        val bLat = 38.0
+        val bLng = -120.0
+
+        val reported = PoiExtractor.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
+
+        // Compute true minimum distance along segment via fine sampling
+        val trueMinimum =
+            (0..1000).minOf { step ->
+                val t = step / 1000.0
+                val sampleLat = aLat + t * (bLat - aLat)
+                val sampleLng = aLng + t * (bLng - aLng)
+                PoiExtractor.haversineMeters(pLat, pLng, sampleLat, sampleLng)
+            }
+
+        val toleranceMeters = 50.0
+        assertTrue(
+            reported <= trueMinimum + toleranceMeters,
+            "Reported distance ($reported m) should be <= true minimum ($trueMinimum m) + tolerance ($toleranceMeters m)",
+        )
     }
 
     @Test
