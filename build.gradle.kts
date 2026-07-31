@@ -65,7 +65,13 @@ tasks.register<JavaExec>("run") {
 
 ktfmt { kotlinLangStyle() }
 
-tasks.test { useJUnitPlatform() }
+tasks.test {
+    useJUnitPlatform {
+        if (providers.environmentVariable("CI").isPresent) {
+            excludeTags("network")
+        }
+    }
+}
 
 tasks.shadowJar {
     archiveBaseName.set("pathpress")
