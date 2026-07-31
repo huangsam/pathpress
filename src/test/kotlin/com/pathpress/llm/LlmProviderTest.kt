@@ -174,7 +174,7 @@ class LlmProviderTest {
 
         val provider =
             object : HttpLlmProvider() {
-                override fun complete(prompt: String): String? = validLlmJson
+                override fun complete(prompt: String): String = validLlmJson
             }
 
         val response =

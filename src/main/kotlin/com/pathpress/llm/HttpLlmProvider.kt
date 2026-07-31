@@ -7,6 +7,7 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
 import java.net.http.HttpClient
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 /** Extension helper to resolve and validate an API key for a given [LlmProviderType]. */
@@ -30,7 +31,7 @@ fun String?.validateApiKey(provider: String): String =
  * resilient JSON parsing logic.
  */
 abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvider {
-    protected val logger = LoggerFactory.getLogger(javaClass)
+    protected val logger: Logger = LoggerFactory.getLogger(javaClass)
     protected val client: HttpClient =
         HttpClient.newBuilder().connectTimeout(config.httpLlmConnectTimeout).build()
     protected val mapper = jacksonObjectMapper()
