@@ -392,6 +392,7 @@ class RouteCalculator(
                     dayTitle = finalLegTitle,
                     pois = realPois,
                     endTownName = endTown,
+                    geometry = legPoints,
                 )
             )
         }
