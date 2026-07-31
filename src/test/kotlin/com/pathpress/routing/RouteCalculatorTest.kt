@@ -83,6 +83,8 @@ class RouteCalculatorTest {
         assertEquals(2, legs[1].dayNumber)
         assertEquals(250000.0, legs[0].distanceMeters)
         assertEquals(250000.0, legs[1].distanceMeters)
+        assertEquals(2, legs[0].geometry.size)
+        assertEquals(2, legs[1].geometry.size)
     }
 
     @Test
@@ -112,6 +114,52 @@ class RouteCalculatorTest {
         assertEquals("Day 1: Coast", legs[0].dayTitle)
         assertEquals("Day 2: Valley", legs[1].dayTitle)
         assertEquals("Day 3: Desert", legs[2].dayTitle)
+    }
+
+    @Test
+    fun `extractLegsFromResponse multi-day route partitions geometry correctly into legs`() {
+        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val path = ResponsePath()
+        val pointList = PointList()
+        pointList.add(37.7749, -122.4194)
+        pointList.add(36.8000, -119.8000)
+        pointList.add(35.3658, -118.8239)
+        pointList.add(34.0522, -118.2437)
+        path.points = pointList
+        path.distance = 900000.0
+        path.time = 32400000L
+
+        val legs =
+            calculator.extractLegsFromResponse(
+                path = path,
+                days = 3,
+                dayTitles = emptyList(),
+                profile = "car",
+                limitPerLeg = 2,
+            )
+
+        assertEquals(3, legs.size)
+
+        // Assert each leg has geometry populated (fallback geometry uses start/end so size is 2)
+        assertEquals(2, legs[0].geometry.size)
+        assertEquals(2, legs[1].geometry.size)
+        assertEquals(2, legs[2].geometry.size)
+
+        // Assert geometry coordinates match the expected partitioned start/end points
+        assertEquals(37.7749, legs[0].geometry[0].lat)
+        assertEquals(-122.4194, legs[0].geometry[0].lng)
+
+        // The end of leg 0 should be the start of leg 1
+        assertEquals(legs[0].geometry.last().lat, legs[1].geometry.first().lat)
+        assertEquals(legs[0].geometry.last().lng, legs[1].geometry.first().lng)
+
+        // The end of leg 1 should be the start of leg 2
+        assertEquals(legs[1].geometry.last().lat, legs[2].geometry.first().lat)
+        assertEquals(legs[1].geometry.last().lng, legs[2].geometry.first().lng)
+
+        // The end of leg 2 should be the final destination
+        assertEquals(34.0522, legs[2].geometry.last().lat)
+        assertEquals(-118.2437, legs[2].geometry.last().lng)
     }
 
     @Test
