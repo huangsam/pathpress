@@ -197,6 +197,7 @@ object PoiExtractor {
                     "Failed to load POI cache from {}: {}. Rebuilding...",
                     resolvedCachePath,
                     e.message,
+                    e,
                 )
             }
         }
@@ -226,7 +227,9 @@ object PoiExtractor {
             } finally {
                 try {
                     osmInput1.close()
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    logger.warn("Failed to close Pass 1 OSM PBF input file: {}", e.message, e)
+                }
             }
         } catch (e: Exception) {
             logger.warn("Error in Pass 1 (ways) reading OSM PBF: {}", e.message, e)
@@ -259,7 +262,9 @@ object PoiExtractor {
             } finally {
                 try {
                     osmInput2.close()
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    logger.warn("Failed to close Pass 2 OSM PBF input file: {}", e.message, e)
+                }
             }
         } catch (e: Exception) {
             logger.warn("Error in Pass 2 (nodes) reading OSM PBF: {}", e.message, e)
