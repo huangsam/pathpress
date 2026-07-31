@@ -128,9 +128,76 @@ class LlmProviderTest {
     }
 
     @Test
-    fun `HttpLlmProvider planTrip uses complete template method and falls back on null response`() {
+    fun `HttpLlmProvider curateLegPois never calls the LLM`() {
         var completeCalled = false
-        val dummyProvider =
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? {
+                    completeCalled = true
+                    error("complete() must never be called during curateLegPois!")
+                }
+            }
+
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 1,
+                totalDays = 1,
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val result = provider.curateLegPois(leg, userPrompt = "Family coastal trip")
+
+        assertFalse(completeCalled, "complete() must not be called when curating POIs")
+        assertTrue(result.legStory.contains("Monterey"))
+    }
+
+    @Test
+    fun `HttpLlmProvider planTrip returns parsed response when complete succeeds`() {
+        val validLlmJson =
+            """
+            {
+              "waypoints": [
+                {"name": "Big Sur, CA", "lat": 36.2704, "lng": -121.8081}
+              ],
+              "narrative": "LLM custom parsed narrative for coastal trip.",
+              "legStories": ["Day 1: Drive along cliffside Highway 1."]
+            }
+            """
+                .trimIndent()
+
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = validLlmJson
+            }
+
+        val response =
+            provider.planTrip(
+                startName = "San Francisco",
+                endName = "Los Angeles",
+                startCoords = LocationCoords(37.7749, -122.4194),
+                endCoords = LocationCoords(34.0522, -118.2437),
+                days = 2,
+                userPrompt = "Scenic",
+            )
+
+        assertEquals("LLM custom parsed narrative for coastal trip.", response.narrative)
+        assertEquals(1, response.waypoints.size)
+        assertEquals("Big Sur, CA", response.waypoints[0].name)
+        assertEquals(36.2704, response.waypoints[0].lat)
+        assertEquals(listOf("Day 1: Drive along cliffside Highway 1."), response.legStories)
+    }
+
+    @Test
+    fun `HttpLlmProvider planTrip falls back to NoOpFallbackProvider when complete returns null`() {
+        var completeCalled = false
+        val provider =
             object : HttpLlmProvider() {
                 override fun complete(prompt: String): String? {
                     completeCalled = true
@@ -139,7 +206,7 @@ class LlmProviderTest {
             }
 
         val response =
-            dummyProvider.planTrip(
+            provider.planTrip(
                 startName = "San Francisco",
                 endName = "Los Angeles",
                 startCoords = LocationCoords(37.7749, -122.4194),
@@ -149,7 +216,12 @@ class LlmProviderTest {
             )
 
         assertTrue(completeCalled)
-        assertTrue(response.narrative.isNotBlank())
+        assertEquals(
+            "A 2-day road trip experience from San Francisco to Los Angeles tailored for: Scenic.",
+            response.narrative,
+        )
+        assertTrue(response.waypoints.isEmpty())
+        assertTrue(response.legStories.isEmpty())
     }
 
     @Test
