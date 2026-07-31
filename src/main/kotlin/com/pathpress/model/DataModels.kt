@@ -49,7 +49,7 @@ data class POI(
          * 4. Default to `"poi"` if no descriptive tags exist.
          */
         fun fromOsm(
-            id: Long,
+            id: String,
             lat: Double,
             lng: Double,
             tags: Map<String, String>,
@@ -95,7 +95,7 @@ data class POI(
             val isFood = tags["amenity"] in PoiCategoryConstants.FOOD_AMENITIES
 
             return POI(
-                id = id.toString(),
+                id = id,
                 name = name,
                 lat = lat,
                 lng = lng,
@@ -105,6 +105,21 @@ data class POI(
                 isFoodOrCoffee = isFood,
             )
         }
+
+        fun fromOsm(
+            id: Long,
+            lat: Double,
+            lng: Double,
+            tags: Map<String, String>,
+            distanceFromRouteMeters: Double? = null,
+        ): POI =
+            fromOsm(
+                id = id.toString(),
+                lat = lat,
+                lng = lng,
+                tags = tags,
+                distanceFromRouteMeters = distanceFromRouteMeters,
+            )
     }
 }
 

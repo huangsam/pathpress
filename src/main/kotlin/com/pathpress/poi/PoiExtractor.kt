@@ -1,9 +1,11 @@
 package com.pathpress.poi
 
+import com.carrotsearch.hppc.LongDoubleHashMap
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.graphhopper.reader.ReaderElement
 import com.graphhopper.reader.ReaderNode
+import com.graphhopper.reader.ReaderWay
 import com.graphhopper.reader.osm.OSMInputFile
 import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
@@ -199,6 +201,8 @@ object PoiExtractor {
         val startTime = System.currentTimeMillis()
         val pois = mutableListOf<POI>()
         val towns = mutableListOf<TownInfo>()
+        val nodeLats = LongDoubleHashMap()
+        val nodeLons = LongDoubleHashMap()
 
         try {
             val osmInput = OSMInputFile(pbfFile).open()
@@ -206,13 +210,16 @@ object PoiExtractor {
                 val elem = osmInput.getNext() ?: break
                 if (elem.type == ReaderElement.Type.NODE) {
                     val node = elem as ReaderNode
+                    nodeLats.put(node.id, node.lat)
+                    nodeLons.put(node.id, node.lon)
+
                     val tags = extractTags(node)
                     val name = tags["name"]
                     if (!name.isNullOrBlank()) {
                         if (isRelevantPoi(tags)) {
                             val poi =
                                 POI.fromOsm(
-                                    id = node.id,
+                                    id = "n${node.id}",
                                     lat = node.lat,
                                     lng = node.lon,
                                     tags = tags,
@@ -223,6 +230,36 @@ object PoiExtractor {
                         val placeType = tags["place"]
                         if (placeType in RELEVANT_PLACES) {
                             towns.add(TownInfo(name, node.lat, node.lon, placeType!!))
+                        }
+                    }
+                } else if (elem.type == ReaderElement.Type.WAY) {
+                    val way = elem as ReaderWay
+                    val tags = extractTags(way)
+                    val name = tags["name"]
+                    if (!name.isNullOrBlank() && isRelevantPoi(tags)) {
+                        val wayNodes = way.nodes
+                        var sumLat = 0.0
+                        var sumLon = 0.0
+                        var count = 0
+                        val nodeCount = wayNodes.size()
+                        for (i in 0 until nodeCount) {
+                            val nodeId = wayNodes.get(i)
+                            if (nodeLats.containsKey(nodeId)) {
+                                sumLat += nodeLats.get(nodeId)
+                                sumLon += nodeLons.get(nodeId)
+                                count++
+                            }
+                        }
+                        if (count > 0) {
+                            val poi =
+                                POI.fromOsm(
+                                    id = "w${way.id}",
+                                    lat = sumLat / count,
+                                    lng = sumLon / count,
+                                    tags = tags,
+                                    distanceFromRouteMeters = null,
+                                )
+                            pois.add(poi)
                         }
                     }
                 }
@@ -555,8 +592,8 @@ object PoiExtractor {
         return TownScorer.rankCandidateTowns(scoredList)
     }
 
-    private fun extractTags(node: ReaderNode): Map<String, String> {
-        val rawTags = node.tags ?: return emptyMap()
+    private fun extractTags(elem: ReaderElement): Map<String, String> {
+        val rawTags = elem.tags ?: return emptyMap()
         val map = mutableMapOf<String, String>()
         for ((k, v) in rawTags) {
             if (v != null) map[k] = v.toString()

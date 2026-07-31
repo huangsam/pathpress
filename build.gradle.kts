@@ -27,6 +27,9 @@ dependencies {
     // GraphHopper for spatial routing
     implementation("com.graphhopper:graphhopper-core:11.0")
 
+    // High performance primitive collections
+    implementation("com.carrotsearch:hppc:0.8.1")
+
     // PDF rendering (JVM-native)
     implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
     implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")

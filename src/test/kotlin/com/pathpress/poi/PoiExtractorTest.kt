@@ -528,4 +528,84 @@ class PoiExtractorTest {
             PoiExtractor.resolveCacheFilePath("data/california-latest.osm.pbf", "custom_cache.json"),
         )
     }
+
+    @Test
+    fun `node and way POI IDs are correctly prefixed with n and w`() {
+        val nodePoi =
+            POI.fromOsm(
+                id = "n12345",
+                lat = 37.77,
+                lng = -122.41,
+                tags = mapOf("name" to "Cafe", "amenity" to "cafe"),
+            )
+        val wayPoi =
+            POI.fromOsm(
+                id = "w67890",
+                lat = 37.78,
+                lng = -122.42,
+                tags = mapOf("name" to "Park", "leisure" to "park"),
+            )
+
+        assertEquals("n12345", nodePoi.id)
+        assertEquals("w67890", wayPoi.id)
+    }
+
+    @Test
+    fun `extracts area-mapped POI ways calculating centroid from node coordinates`() {
+        val nodeLats = com.carrotsearch.hppc.LongDoubleHashMap()
+        val nodeLons = com.carrotsearch.hppc.LongDoubleHashMap()
+
+        // 4 corner nodes of a square area-mapped park
+        nodeLats.put(1L, 37.0)
+        nodeLons.put(1L, -122.0)
+
+        nodeLats.put(2L, 37.0)
+        nodeLons.put(2L, -120.0)
+
+        nodeLats.put(3L, 39.0)
+        nodeLons.put(3L, -120.0)
+
+        nodeLats.put(4L, 39.0)
+        nodeLons.put(4L, -122.0)
+
+        val way = com.graphhopper.reader.ReaderWay(999L)
+        way.nodes.add(1L)
+        way.nodes.add(2L)
+        way.nodes.add(3L)
+        way.nodes.add(4L)
+        way.setTag("name", "Yosemite Area Park")
+        way.setTag("leisure", "park")
+
+        var sumLat = 0.0
+        var sumLon = 0.0
+        var count = 0
+        for (i in 0 until way.nodes.size()) {
+            val nId = way.nodes.get(i)
+            if (nodeLats.containsKey(nId)) {
+                sumLat += nodeLats.get(nId)
+                sumLon += nodeLons.get(nId)
+                count++
+            }
+        }
+
+        val centroidLat = sumLat / count
+        val centroidLon = sumLon / count
+
+        assertEquals(38.0, centroidLat, 0.001)
+        assertEquals(-121.0, centroidLon, 0.001)
+
+        val wayPoi =
+            POI.fromOsm(
+                id = "w${way.id}",
+                lat = centroidLat,
+                lng = centroidLon,
+                tags = mapOf("name" to way.getTag("name"), "leisure" to way.getTag("leisure")),
+            )
+
+        assertEquals("w999", wayPoi.id)
+        assertEquals("Yosemite Area Park", wayPoi.name)
+        assertEquals(38.0, wayPoi.lat, 0.001)
+        assertEquals(-121.0, wayPoi.lng, 0.001)
+        assertEquals("park", wayPoi.type)
+    }
 }
