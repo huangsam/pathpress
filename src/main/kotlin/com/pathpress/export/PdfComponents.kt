@@ -79,7 +79,7 @@ internal fun FlowContent.heroBanner(route: Route, startLocation: String, endLoca
         div("hero-subtitle") {
             unsafe {
                 raw(
-                    "${LucideIcon.mapPin("#94a3b8", 15)} $startLocation ${LucideIcon.arrowRight("#94a3b8", 14)} ${LucideIcon.mapPin("#94a3b8", 15)} $endLocation"
+                    "${LucideIcon.mapPin("#94a3b8", 15)} ${PdfExporter.escapeXml(startLocation)} ${LucideIcon.arrowRight("#94a3b8", 14)} ${LucideIcon.mapPin("#94a3b8", 15)} ${PdfExporter.escapeXml(endLocation)}"
                 )
             }
         }

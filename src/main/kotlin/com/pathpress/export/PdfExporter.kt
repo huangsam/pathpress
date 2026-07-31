@@ -51,7 +51,7 @@ object PdfExporter {
                 head {
                     meta { charset = "UTF-8" }
                     title { +"PathPress Scenic Itinerary" }
-                    style { unsafe { raw(pdfStyles(safeStart, safeEnd)) } }
+                    style { unsafe { raw(pdfStyles(escapeXml(safeStart), escapeXml(safeEnd))) } }
                     unsafe { raw(renderBookmarks(route)) }
                 }
                 body {
