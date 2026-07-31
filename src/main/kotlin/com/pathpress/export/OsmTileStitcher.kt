@@ -77,13 +77,7 @@ object OsmTileStitcher {
     /** Render a clean line-shape route map as a raw Data URI. */
     fun renderLegMapDataUri(leg: RouteLeg, width: Int = 260, height: Int = 260): String {
         val points = mutableListOf<LocationCoords>()
-        if (leg.geometry.isNotEmpty()) {
-            points.addAll(leg.geometry)
-        } else {
-            points.add(LocationCoords(leg.startLat, leg.startLng))
-            leg.pois.forEach { points.add(LocationCoords(it.lat, it.lng)) }
-            points.add(LocationCoords(leg.endLat, leg.endLng))
-        }
+        points.addAll(leg.geometry)
         return renderPointsMapDataUri(
             points = points,
             startLat = leg.startLat,
@@ -104,13 +98,7 @@ object OsmTileStitcher {
         if (route.legs.isEmpty()) return ""
         val points = mutableListOf<LocationCoords>()
         for (leg in route.legs) {
-            if (leg.geometry.isNotEmpty()) {
-                points.addAll(leg.geometry)
-            } else {
-                points.add(LocationCoords(leg.startLat, leg.startLng))
-                leg.pois.forEach { points.add(LocationCoords(it.lat, it.lng)) }
-                points.add(LocationCoords(leg.endLat, leg.endLng))
-            }
+            points.addAll(leg.geometry)
         }
         val firstLeg = route.legs.first()
         val lastLeg = route.legs.last()
