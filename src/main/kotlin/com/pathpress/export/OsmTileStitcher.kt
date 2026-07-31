@@ -4,6 +4,7 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.RouteLeg
 import java.awt.BasicStroke
 import java.awt.Color
+import java.awt.Font
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -233,6 +234,24 @@ object OsmTileStitcher {
         g.color = Color.WHITE
         g.stroke = BasicStroke(3f)
         g.drawOval(endPxX - 10, endPxY - 10, 20, 20)
+
+        // Attribution bar — required by CARTO and OSM tile usage policies
+        val attrText = "© CARTO © OpenStreetMap"
+        val attrFont = Font(Font.SANS_SERIF, Font.PLAIN, 14)
+        g.font = attrFont
+        val fm = g.fontMetrics
+        val textW = fm.stringWidth(attrText)
+        val textH = fm.height
+        val padH = 4
+        val padW = 6
+        val barX = targetW - textW - padW * 2
+        val barY = targetH - textH - padH * 2
+        // Semi-transparent dark pill background
+        g.color = Color(0, 0, 0, 140)
+        g.fillRoundRect(barX, barY, textW + padW * 2, textH + padH * 2, 6, 6)
+        // White text
+        g.color = Color(255, 255, 255, 230)
+        g.drawString(attrText, barX + padW, barY + padH + fm.ascent)
 
         g.dispose()
 
