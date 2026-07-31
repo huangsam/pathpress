@@ -62,7 +62,7 @@ class LlmProviderTest {
     }
 
     @Test
-    fun `NoOpFallbackProvider planTrip creates day themes and narrative`() {
+    fun `NoOpFallbackProvider planTrip creates narrative`() {
         val provider = NoOpFallbackProvider()
         val response =
             provider.planTrip(

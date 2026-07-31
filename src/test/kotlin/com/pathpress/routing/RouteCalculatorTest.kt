@@ -7,17 +7,8 @@ import com.pathpress.model.LocationCoords
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class RouteCalculatorTest {
-
-    @Test
-    fun `filterNearbyPois returns empty list when OSM data has no match and does not invent places`() {
-        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
-        val fallbackPois = calculator.filterNearbyPois(37.7749, -122.4194)
-
-        assertTrue(fallbackPois.isEmpty())
-    }
 
     @Test
     fun `extractLegsFromResponse single day leg formats distance, duration, and custom day title`() {

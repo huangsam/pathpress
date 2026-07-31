@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import org.junit.jupiter.api.Tag
 
 class AddressResolverTest {
 
@@ -52,6 +53,7 @@ class AddressResolverTest {
     }
 
     @Test
+    @Tag("network")
     fun `resolveAddress falls back to formatted coordinates if Nominatim unavailable`() {
         val poi =
             POI(

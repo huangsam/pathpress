@@ -8,6 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Tag
 
 class PdfExporterTest {
 
@@ -76,6 +77,7 @@ class PdfExporterTest {
     }
 
     @Test
+    @Tag("network")
     fun `generateHtml outputs modern editorial elements and SVG icons`() {
         val poi =
             POI(
@@ -139,6 +141,7 @@ class PdfExporterTest {
     }
 
     @Test
+    @Tag("network")
     fun `generate pdf and png renders for inspection`() {
         val poi1 =
             POI(
@@ -207,6 +210,7 @@ class PdfExporterTest {
     }
 
     @Test
+    @Tag("network")
     fun `generateHtml applies 2-column TOC grid for 4 or more days`() {
         fun makeLeg(day: Int) =
             RouteLeg(
@@ -249,6 +253,7 @@ class PdfExporterTest {
     }
 
     @Test
+    @Tag("network")
     fun `generate pdf and png renders for 8-day itinerary`() {
         val legs =
             (1..8).map { day ->

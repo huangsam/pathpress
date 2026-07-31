@@ -7,7 +7,6 @@ import com.graphhopper.util.GHUtility
 import com.graphhopper.util.shapes.GHPoint
 import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
-import com.pathpress.model.POI
 import com.pathpress.model.Route
 import com.pathpress.model.RouteLeg
 import com.pathpress.poi.PoiExtractor
@@ -184,19 +183,12 @@ class RouteCalculator(
         if (days == 1) {
             val realPois =
                 PoiExtractor.extractPoisForLeg(
-                        pbfFilePath,
-                        allCoords,
-                        maxDistanceMeters = 8000.0,
-                        limitPerLeg = limitPerLeg,
-                        userPrompt = userPrompt,
-                    )
-                    // Fall back to empty list if no OSM POIs match
-                    .ifEmpty {
-                        filterNearbyPois(
-                            pointsList.getLat(pointsList.size() / 2),
-                            pointsList.getLon(pointsList.size() / 2),
-                        )
-                    }
+                    pbfFilePath,
+                    allCoords,
+                    maxDistanceMeters = 8000.0,
+                    limitPerLeg = limitPerLeg,
+                    userPrompt = userPrompt,
+                )
 
             val destTown =
                 PoiExtractor.findNearbyTowns(
@@ -342,20 +334,13 @@ class RouteCalculator(
 
             val realPois =
                 PoiExtractor.extractPoisForLeg(
-                        pbfFilePath,
-                        legPoints,
-                        maxDistanceMeters = 8000.0,
-                        limitPerLeg = limitPerLeg,
-                        userPrompt = userPrompt,
-                        excludePoiIds = usedPoiIds,
-                    )
-                    // Fall back to empty list if no OSM POIs match
-                    .ifEmpty {
-                        filterNearbyPois(
-                            (legStart.lat + legEnd.lat) / 2,
-                            (legStart.lng + legEnd.lng) / 2,
-                        )
-                    }
+                    pbfFilePath,
+                    legPoints,
+                    maxDistanceMeters = 8000.0,
+                    limitPerLeg = limitPerLeg,
+                    userPrompt = userPrompt,
+                    excludePoiIds = usedPoiIds,
+                )
 
             usedPoiIds.addAll(realPois.map { it.id })
 
@@ -400,18 +385,6 @@ class RouteCalculator(
         }
 
         return legs
-    }
-
-    /**
-     * Fallback POI lookup when OSM extraction yields no matches for a route leg.
-     *
-     * This fallback strictly returns an empty list rather than generating synthetic placeholder
-     * POIs. As a result, routes traversing regions with no matching OSM POIs will contain an empty
-     * POI list, which may leave leg recommendations appearing minimal/unfinished, but guarantees
-     * data provenance integrity.
-     */
-    fun filterNearbyPois(lat: Double, lng: Double, radiusMeters: Double = 5000.0): List<POI> {
-        return emptyList()
     }
 
     private val snapFilter: com.graphhopper.routing.util.EdgeFilter by lazy {
