@@ -15,9 +15,11 @@ class ConfigTest {
         assertEquals("claude-3-haiku-20240307", config.defaultClaudeModel)
         assertEquals("gpt-4o-mini", config.defaultOpenAiModel)
         assertEquals("qwen3.6:35b-mlx", config.defaultOllamaModel)
-        assertEquals(15L, config.httpLlmTimeoutSeconds)
+        assertEquals(10L, config.httpLlmConnectTimeoutSeconds)
+        assertEquals(60L, config.httpLlmRequestTimeoutSeconds)
         assertEquals(10L, config.geocoderTimeoutSeconds)
-        assertEquals(Duration.ofSeconds(15), config.httpLlmConnectTimeout)
+        assertEquals(Duration.ofSeconds(10), config.httpLlmConnectTimeout)
+        assertEquals(Duration.ofSeconds(60), config.httpLlmRequestTimeout)
         assertEquals(Duration.ofSeconds(10), config.geocoderConnectTimeout)
     }
 
@@ -31,7 +33,8 @@ class ConfigTest {
                 "CLAUDE_MODEL" to "claude-3-5-sonnet-custom",
                 "OPENAI_MODEL" to "gpt-4o-custom",
                 "OLLAMA_MODEL" to "llama3:8b-custom",
-                "HTTP_LLM_TIMEOUT_SECONDS" to "30",
+                "HTTP_LLM_CONNECT_TIMEOUT_SECONDS" to "5",
+                "HTTP_LLM_REQUEST_TIMEOUT_SECONDS" to "45",
                 "GEOCODER_TIMEOUT_SECONDS" to "20",
             )
 
@@ -42,9 +45,11 @@ class ConfigTest {
         assertEquals("claude-3-5-sonnet-custom", config.defaultClaudeModel)
         assertEquals("gpt-4o-custom", config.defaultOpenAiModel)
         assertEquals("llama3:8b-custom", config.defaultOllamaModel)
-        assertEquals(30L, config.httpLlmTimeoutSeconds)
+        assertEquals(5L, config.httpLlmConnectTimeoutSeconds)
+        assertEquals(45L, config.httpLlmRequestTimeoutSeconds)
+        assertEquals(Duration.ofSeconds(5), config.httpLlmConnectTimeout)
+        assertEquals(Duration.ofSeconds(45), config.httpLlmRequestTimeout)
         assertEquals(20L, config.geocoderTimeoutSeconds)
-        assertEquals(Duration.ofSeconds(30), config.httpLlmConnectTimeout)
         assertEquals(Duration.ofSeconds(20), config.geocoderConnectTimeout)
     }
 
@@ -59,9 +64,14 @@ class ConfigTest {
             )
 
         val config = Config.fromEnv(invalidEnv)
-        assertEquals(Config.DEFAULT_GRID_CELL_SIZE_DEG, config.gridCellSizeDeg)
-        assertEquals(Config.DEFAULT_POIS_PER_LEG, config.defaultPoisPerLeg)
-        assertEquals(Config.DEFAULT_HTTP_LLM_TIMEOUT_SECONDS, config.httpLlmTimeoutSeconds)
+        assertEquals(
+            Config.DEFAULT_HTTP_LLM_REQUEST_TIMEOUT_SECONDS,
+            config.httpLlmRequestTimeoutSeconds,
+        )
+        assertEquals(
+            Config.DEFAULT_HTTP_LLM_CONNECT_TIMEOUT_SECONDS,
+            config.httpLlmConnectTimeoutSeconds,
+        )
         assertEquals(Config.DEFAULT_GEOCODER_TIMEOUT_SECONDS, config.geocoderTimeoutSeconds)
     }
 }

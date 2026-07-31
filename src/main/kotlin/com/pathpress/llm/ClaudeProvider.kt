@@ -33,7 +33,7 @@ class ClaudeProvider(
         val request =
             HttpRequest.newBuilder()
                 .uri(uri)
-                .timeout(config.httpLlmConnectTimeout)
+                .timeout(config.httpLlmRequestTimeout)
                 .header("Content-Type", "application/json")
                 .header("x-api-key", apiKey)
                 .header("anthropic-version", "2023-06-01")

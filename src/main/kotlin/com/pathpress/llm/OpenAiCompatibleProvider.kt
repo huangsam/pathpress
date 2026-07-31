@@ -43,7 +43,7 @@ class OpenAiCompatibleProvider(
         val builder =
             HttpRequest.newBuilder()
                 .uri(uri)
-                .timeout(config.httpLlmConnectTimeout)
+                .timeout(config.httpLlmRequestTimeout)
                 .header("Content-Type", "application/json")
         if (apiKey.isNotBlank()) {
             builder.header("Authorization", "Bearer $apiKey")

@@ -29,7 +29,8 @@ data class Config(
     val defaultClaudeModel: String = DEFAULT_CLAUDE_MODEL,
     val defaultOpenAiModel: String = DEFAULT_OPENAI_MODEL,
     val defaultOllamaModel: String = DEFAULT_OLLAMA_MODEL,
-    val httpLlmTimeoutSeconds: Long = DEFAULT_HTTP_LLM_TIMEOUT_SECONDS,
+    val httpLlmConnectTimeoutSeconds: Long = DEFAULT_HTTP_LLM_CONNECT_TIMEOUT_SECONDS,
+    val httpLlmRequestTimeoutSeconds: Long = DEFAULT_HTTP_LLM_REQUEST_TIMEOUT_SECONDS,
     val geocoderTimeoutSeconds: Long = DEFAULT_GEOCODER_TIMEOUT_SECONDS,
     val townScoringRadiusMiles: Double = DEFAULT_TOWN_SCORING_RADIUS_MILES,
     val townProgressWindowFraction: Double = DEFAULT_TOWN_PROGRESS_WINDOW_FRACTION,
@@ -38,7 +39,10 @@ data class Config(
     val diningWeight: Int = DEFAULT_DINING_WEIGHT,
 ) {
     val httpLlmConnectTimeout: Duration
-        get() = Duration.ofSeconds(httpLlmTimeoutSeconds)
+        get() = Duration.ofSeconds(httpLlmConnectTimeoutSeconds)
+
+    val httpLlmRequestTimeout: Duration
+        get() = Duration.ofSeconds(httpLlmRequestTimeoutSeconds)
 
     val geocoderConnectTimeout: Duration
         get() = Duration.ofSeconds(geocoderTimeoutSeconds)
@@ -62,8 +66,11 @@ data class Config(
         /** Default local Ollama model identifier. */
         const val DEFAULT_OLLAMA_MODEL: String = "qwen3.6:35b-mlx"
 
-        /** Default network timeout in seconds for HTTP LLM requests. */
-        const val DEFAULT_HTTP_LLM_TIMEOUT_SECONDS: Long = 15L
+        /** Default network connection timeout in seconds for HTTP LLM sockets. */
+        const val DEFAULT_HTTP_LLM_CONNECT_TIMEOUT_SECONDS: Long = 10L
+
+        /** Default network response request timeout in seconds for HTTP LLM requests. */
+        const val DEFAULT_HTTP_LLM_REQUEST_TIMEOUT_SECONDS: Long = 60L
 
         /** Default network timeout in seconds for geocoding requests. */
         const val DEFAULT_GEOCODER_TIMEOUT_SECONDS: Long = 10L
@@ -103,9 +110,13 @@ data class Config(
                     env["DEFAULT_OPENAI_MODEL"] ?: env["OPENAI_MODEL"] ?: DEFAULT_OPENAI_MODEL,
                 defaultOllamaModel =
                     env["DEFAULT_OLLAMA_MODEL"] ?: env["OLLAMA_MODEL"] ?: DEFAULT_OLLAMA_MODEL,
-                httpLlmTimeoutSeconds =
-                    env["HTTP_LLM_TIMEOUT_SECONDS"]?.toLongOrNull()
-                        ?: DEFAULT_HTTP_LLM_TIMEOUT_SECONDS,
+                httpLlmConnectTimeoutSeconds =
+                    env["HTTP_LLM_CONNECT_TIMEOUT_SECONDS"]?.toLongOrNull()
+                        ?: DEFAULT_HTTP_LLM_CONNECT_TIMEOUT_SECONDS,
+                httpLlmRequestTimeoutSeconds =
+                    env["HTTP_LLM_REQUEST_TIMEOUT_SECONDS"]?.toLongOrNull()
+                        ?: env["HTTP_LLM_TIMEOUT_SECONDS"]?.toLongOrNull()
+                        ?: DEFAULT_HTTP_LLM_REQUEST_TIMEOUT_SECONDS,
                 geocoderTimeoutSeconds =
                     env["GEOCODER_TIMEOUT_SECONDS"]?.toLongOrNull()
                         ?: DEFAULT_GEOCODER_TIMEOUT_SECONDS,

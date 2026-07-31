@@ -34,7 +34,7 @@ class GeminiProvider(
         val request =
             HttpRequest.newBuilder()
                 .uri(uri)
-                .timeout(config.httpLlmConnectTimeout)
+                .timeout(config.httpLlmRequestTimeout)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build()
