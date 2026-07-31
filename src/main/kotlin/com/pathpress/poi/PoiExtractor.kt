@@ -16,6 +16,7 @@ import com.pathpress.model.PoiCategoryConstants
 import com.pathpress.poi.rules.PoiEvaluationContext
 import com.pathpress.poi.rules.PoiRulesEngine
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
@@ -923,7 +924,7 @@ object PoiExtractor {
         val typeCounts = mutableMapOf<String, Int>()
 
         fun clearOfSelected(item: ScoredPoi, gap: Double): Boolean = selected.none {
-            Math.abs(it.progress - item.progress) < gap
+            abs(it.progress - item.progress) < gap
         }
 
         // Pass 1: one best POI per progress bucket (type diversity + min progress gap)
