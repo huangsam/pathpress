@@ -174,12 +174,11 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
     }
 
     /**
-     * Curates POIs for a route leg using deterministic, rule-based, OSM-tag-derived descriptions.
+     * Curates POIs using rule-based OSM metadata formatting rather than calling the LLM.
      *
-     * Product Decision: HttpLlmProvider explicitly does NOT invoke LLMs for POI curation.
-     * Rule-based curation guarantees factual accuracy, grounding in verified OpenStreetMap
-     * metadata, zero latency overhead, and immunity to LLM hallucinated places or historical
-     * claims.
+     * Product Decision: HttpLlmProvider intentionally does not invoke the LLM for POI curation.
+     * Rule-based curation via [RuleBasedCuration] eliminates LLM hallucinated facts, avoids
+     * unnecessary API latency and cost, and guarantees 100% factual accuracy grounded in OSM tags.
      */
     final override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
         return RuleBasedCuration.curate(leg)
