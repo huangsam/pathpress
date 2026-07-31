@@ -213,6 +213,7 @@ object PoiExtractor {
 
         val neededNodeIds = LongHashSet()
         val wayCandidates = mutableListOf<WayPoiCandidate>()
+        var readSuccess = true
 
         // Pass 1: Read WAYS first to collect member node IDs of relevant POI ways
         try {
@@ -232,6 +233,7 @@ object PoiExtractor {
                 }
             }
         } catch (e: Exception) {
+            readSuccess = false
             logger.warn("Error in Pass 1 (ways) reading OSM PBF: {}", e.message, e)
         }
 
@@ -267,6 +269,7 @@ object PoiExtractor {
                 }
             }
         } catch (e: Exception) {
+            readSuccess = false
             logger.warn("Error in Pass 2 (nodes) reading OSM PBF: {}", e.message, e)
         }
 
@@ -274,23 +277,29 @@ object PoiExtractor {
         resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, pois)
 
         val store = PoiCacheStore(pois = pois, towns = towns)
-        try {
-            cacheFile.parentFile?.mkdirs()
-            mapper.writeValue(cacheFile, store)
-            val elapsed = System.currentTimeMillis() - startTime
-            logger.info(
-                "Saved POI cache to {} with {} POIs and {} towns in {} ms",
-                resolvedCachePath,
-                pois.size,
-                towns.size,
-                elapsed,
-            )
-        } catch (e: Exception) {
-            logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message, e)
-        }
+        if (readSuccess) {
+            try {
+                cacheFile.parentFile?.mkdirs()
+                mapper.writeValue(cacheFile, store)
+                val elapsed = System.currentTimeMillis() - startTime
+                logger.info(
+                    "Saved POI cache to {} with {} POIs and {} towns in {} ms",
+                    resolvedCachePath,
+                    pois.size,
+                    towns.size,
+                    elapsed,
+                )
+            } catch (e: Exception) {
+                logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message, e)
+            }
 
-        cachedStore = store
-        cachedPbfPath = pbfPath
+            cachedStore = store
+            cachedPbfPath = pbfPath
+        } else {
+            logger.warn(
+                "POI cache construction encountered errors. Skipping cache persistence to prevent corrupting disk cache with partial data."
+            )
+        }
         return store
     }
 
