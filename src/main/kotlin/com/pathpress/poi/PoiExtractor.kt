@@ -763,7 +763,7 @@ object PoiExtractor {
             historic in RELEVANT_HISTORIC ||
             leisure in RELEVANT_LEISURE ||
             tags.containsKey("nrhp:nhl") ||
-            tags["heritage"] == "2" ||
+            tags["heritage"] in setOf("1", "2") ||
             tags.containsKey("heritage:operator")
     }
 

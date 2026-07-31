@@ -81,6 +81,7 @@ class PoiExtractorTest {
     @Test
     fun `isRelevantPoi recognizes heritage and nrhp tags`() {
         assertTrue(PoiExtractor.isRelevantPoi(mapOf("nrhp:nhl" to "yes")))
+        assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage" to "1")))
         assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage" to "2")))
         assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage:operator" to "nps")))
 
