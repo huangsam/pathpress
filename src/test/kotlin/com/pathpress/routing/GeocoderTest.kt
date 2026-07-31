@@ -2,6 +2,7 @@ package com.pathpress.routing
 
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -30,18 +31,16 @@ class GeocoderTest {
 
         // Second call should return instantly from cache
         val second = Geocoder.geocode("San Jose, CA")
+        assertNotNull(second)
         assertEquals(first.coords.lat, second.coords.lat)
         assertEquals(first.coords.lng, second.coords.lng)
     }
 
     @Test
     @Tag("network")
-    fun `test fallback geocoding for unresolvable location`() {
+    fun `test geocoding unresolvable location returns null`() {
         val result = Geocoder.geocode("Unknown Test Village 12345")
-        assertNotNull(result)
-        assertNotNull(result.coords.lat)
-        assertNotNull(result.coords.lng)
-        assertEquals("Unknown Test Village 12345", result.displayName)
+        assertNull(result)
     }
 
     @Test

@@ -111,8 +111,16 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
 
         // 1. Geocode start and end locations (resolving typos to clean display names & coordinates)
         logger.info("Geocoding locations...")
-        val startGeo = Geocoder.geocode(startLocation)
-        val endGeo = Geocoder.geocode(endLocation)
+        val startGeo =
+            Geocoder.geocode(startLocation)
+                ?: throw com.github.ajalt.clikt.core.UsageError(
+                    "Could not geocode start location '$startLocation'"
+                )
+        val endGeo =
+            Geocoder.geocode(endLocation)
+                ?: throw com.github.ajalt.clikt.core.UsageError(
+                    "Could not geocode end location '$endLocation'"
+                )
         logger.info(
             "  -> Start: '${startGeo.displayName}' (${startGeo.coords.lat}, ${startGeo.coords.lng})"
         )
@@ -155,7 +163,12 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                         try {
                             logger.info("Geocoding intermediate waypoint '${wp.name}'...")
                             val geo = Geocoder.geocode(wp.name)
-                            LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
+                            if (geo != null) {
+                                LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
+                            } else {
+                                logger.warn("Could not geocode LLM waypoint '${wp.name}'")
+                                null
+                            }
                         } catch (e: Exception) {
                             logger.warn("Could not geocode LLM waypoint '${wp.name}': ${e.message}")
                             null
@@ -241,12 +254,16 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 try {
                     val mty = Geocoder.geocode("Monterey, CA")
                     val psb = Geocoder.geocode("Pismo Beach, CA")
-                    resolvedWaypoints.add(
-                        LocationCoords(mty.coords.lat, mty.coords.lng, mty.displayName)
-                    )
-                    resolvedWaypoints.add(
-                        LocationCoords(psb.coords.lat, psb.coords.lng, psb.displayName)
-                    )
+                    if (mty != null) {
+                        resolvedWaypoints.add(
+                            LocationCoords(mty.coords.lat, mty.coords.lng, mty.displayName)
+                        )
+                    }
+                    if (psb != null) {
+                        resolvedWaypoints.add(
+                            LocationCoords(psb.coords.lat, psb.coords.lng, psb.displayName)
+                        )
+                    }
                 } catch (e: Exception) {
                     logger.warn("Fallback coastal waypoint geocoding error: ${e.message}")
                 }

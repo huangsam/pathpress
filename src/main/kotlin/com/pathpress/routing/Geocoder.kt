@@ -12,7 +12,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.abs
+import org.slf4j.LoggerFactory
 
 data class GeocodedLocation(val coords: LocationCoords, val displayName: String)
 
@@ -21,6 +21,8 @@ data class GeocodedLocation(val coords: LocationCoords, val displayName: String)
  * and clean display names globally, backed by an in-memory query cache and rate limiter.
  */
 object Geocoder {
+
+    private val logger = LoggerFactory.getLogger(Geocoder::class.java)
 
     private val httpClient: HttpClient =
         HttpClient.newBuilder()
@@ -41,9 +43,10 @@ object Geocoder {
      * Resolves a location string (which may be "lat,lng" coordinates or a city/landmark name).
      *
      * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or "Seattle, WA")
-     * @return GeocodedLocation representing the resolved latitude, longitude, and display name
+     * @return GeocodedLocation representing the resolved latitude, longitude, and display name, or
+     *   null if unresolvable
      */
-    fun geocode(location: String): GeocodedLocation {
+    fun geocode(location: String): GeocodedLocation? {
         val trimmed = location.trim()
 
         // 1. Direct lat,lng coordinates
@@ -72,10 +75,8 @@ object Geocoder {
             }
         }
 
-        // 3. Fallback estimation if unresolvable
-        val fallback = fallbackLocation(trimmed)
-        cache[cacheKey] = fallback
-        return fallback
+        logger.warn("Could not geocode location '$trimmed' via OSM/Nominatim")
+        return null
     }
 
     private fun queryNominatim(queryString: String): GeocodedLocation? {
@@ -138,16 +139,8 @@ object Geocoder {
                 }
             }
         } catch (e: Exception) {
-            // Silently attempt fallback
+            logger.warn("Nominatim geocoding failed for query '$queryString': ${e.message}", e)
         }
         return null
-    }
-
-    private fun fallbackLocation(location: String): GeocodedLocation {
-        val hash = abs(location.lowercase().hashCode())
-        val latBase = 33.5 + (hash % 80) * 0.08
-        val lngBase = -121.5 + (hash % 60) * 0.08
-        val capitalized = location.replaceFirstChar { it.uppercase() }
-        return GeocodedLocation(LocationCoords(lat = latBase, lng = lngBase), capitalized)
     }
 }
