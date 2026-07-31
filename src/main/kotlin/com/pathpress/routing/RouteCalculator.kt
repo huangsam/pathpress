@@ -158,7 +158,7 @@ class RouteCalculator(
         )
     }
 
-    private fun extractLegsFromResponse(
+    internal fun extractLegsFromResponse(
         path: com.graphhopper.ResponsePath,
         days: Int,
         dayTitles: List<String>,
@@ -308,10 +308,19 @@ class RouteCalculator(
 
             val legReq =
                 GHRequest(legStart.lat, legStart.lng, legEnd.lat, legEnd.lng).setProfile("car")
-            val legRes = graphHopper.route(legReq)
+            val legRes =
+                try {
+                    graphHopper.route(legReq)
+                } catch (e: Exception) {
+                    logger.warn(
+                        "Per-leg route calculation failed for day ${dayIndex + 1}: ${e.message}",
+                        e,
+                    )
+                    null
+                }
 
             val (dist, dur, legPoints) =
-                if (!legRes.hasErrors() && legRes.best.points.size() > 0) {
+                if (legRes != null && !legRes.hasErrors() && legRes.best.points.size() > 0) {
                     val p = legRes.best.points
                     val coords =
                         (0 until p.size()).map { LocationCoords(p.getLat(it), p.getLon(it)) }
@@ -413,6 +422,7 @@ class RouteCalculator(
             val carAccess = graphHopper.encodingManager.getBooleanEncodedValue("car_access")
             com.graphhopper.routing.util.DefaultSnapFilter(weighting, carAccess)
         } catch (e: Exception) {
+            logger.warn("Failed to initialize snapFilter, falling back to ALL_EDGES", e)
             com.graphhopper.routing.util.EdgeFilter.ALL_EDGES
         }
     }
