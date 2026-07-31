@@ -57,7 +57,8 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             Theme/Preferences: $promptDetail.$townRecsStr
 
             CRITICAL ROUTING INSTRUCTION:
-            If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).
+            1. If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).
+            2. Incorporate iconic regional landmarks and historical milestones along the route into the day-by-day narratives ("legStories") and overall narrative.
 
             Provide a JSON response with:
             {
