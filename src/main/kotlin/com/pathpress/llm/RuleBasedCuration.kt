@@ -10,7 +10,7 @@ import com.pathpress.poi.PoiDescriptionFormatter
  * network latency, and immunity to LLM hallucinations.
  */
 object RuleBasedCuration {
-    fun curate(leg: RouteLeg, userPrompt: String? = null): CuratedLegResult {
+    fun curate(leg: RouteLeg): CuratedLegResult {
         val legTitle = leg.endTownName?.let { "Drive to $it" } ?: "Day ${leg.dayNumber} Scenic Leg"
         val story =
             leg.legStory.takeIf { !it.isNullOrBlank() }

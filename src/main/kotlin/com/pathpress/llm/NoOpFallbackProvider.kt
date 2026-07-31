@@ -31,6 +31,6 @@ class NoOpFallbackProvider : LlmProvider {
     }
 
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
-        return RuleBasedCuration.curate(leg, userPrompt)
+        return RuleBasedCuration.curate(leg)
     }
 }

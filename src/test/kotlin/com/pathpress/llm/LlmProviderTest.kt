@@ -138,6 +138,16 @@ class LlmProviderTest {
                 }
             }
 
+        val poi =
+            POI(
+                id = "poi-1",
+                name = "Coastal Viewpoint",
+                lat = 36.6,
+                lng = -121.9,
+                tags = mapOf("tourism" to "viewpoint", "description" to "Scenic ocean overlook"),
+                type = "viewpoint",
+            )
+
         val leg =
             RouteLeg(
                 startLat = 37.7,
@@ -149,13 +159,27 @@ class LlmProviderTest {
                 endTownName = "Monterey",
                 distanceMeters = 50000.0,
                 durationSeconds = 3600.0,
-                pois = emptyList(),
+                pois = listOf(poi),
             )
 
-        val result = provider.curateLegPois(leg, userPrompt = "Family coastal trip")
+        // Test with different prompts to ensure pure deterministic rule-based output unaffected by
+        // prompt
+        val result1 = provider.curateLegPois(leg, userPrompt = "Family coastal trip with toddlers")
+        val result2 = provider.curateLegPois(leg, userPrompt = "Strenuous mountain hike")
+        val resultNull = provider.curateLegPois(leg, userPrompt = null)
 
-        assertFalse(completeCalled, "complete() must not be called when curating POIs")
-        assertTrue(result.legStory.contains("Monterey"))
+        assertFalse(completeCalled, "complete() must never be invoked during POI curation")
+        assertEquals(
+            result1,
+            result2,
+            "Rule-based curation must be deterministic and prompt-independent",
+        )
+        assertEquals(result1, resultNull, "Rule-based curation must be prompt-independent")
+
+        // Confirm rule-based OSM tag derivation
+        assertEquals(1, result1.curatedPois.size)
+        assertEquals("Scenic ocean overlook", result1.curatedPois[0].description)
+        assertTrue(result1.legStory.contains("Monterey"))
     }
 
     @Test

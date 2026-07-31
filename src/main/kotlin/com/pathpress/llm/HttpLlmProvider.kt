@@ -182,6 +182,6 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
      * claims.
      */
     final override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
-        return RuleBasedCuration.curate(leg, userPrompt)
+        return RuleBasedCuration.curate(leg)
     }
 }
