@@ -434,8 +434,6 @@ object PoiExtractor {
         config: Config = Config.current,
         rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
         excludePoiIds: Set<String> = emptySet(),
-        minGapMeters: Double = config.minPoiGapMeters,
-        minGapProgressFraction: Double = config.minPoiGapProgressFraction,
     ): List<POI> {
         if (legPoints.isEmpty()) {
             return emptyList()
@@ -496,8 +494,6 @@ object PoiExtractor {
             legPoints,
             evalContext,
             rulesEngine,
-            minGapMeters,
-            minGapProgressFraction,
         )
     }
 
@@ -771,50 +767,14 @@ object PoiExtractor {
     internal data class ScoredPoi(val poi: POI, val progress: Double, val quality: Double)
 
     /**
-     * Verifies if candidate POI satisfies minimum spatial and route progress gap thresholds
-     * relative to all currently selected POIs in a leg.
-     */
-    internal fun satisfiesMinGap(
-        candPoi: POI,
-        candProgress: Double,
-        selected: List<ScoredPoi>,
-        minGapMeters: Double,
-        minGapProgressFraction: Double,
-        totalLegDistanceMeters: Double = 0.0,
-    ): Boolean {
-        if (selected.isEmpty()) return true
-        for (item in selected) {
-            val progressDiff = Math.abs(candProgress - item.progress)
-            if (minGapProgressFraction > 0.0 && progressDiff < minGapProgressFraction) {
-                return false
-            }
-            if (
-                minGapMeters > 0.0 &&
-                    totalLegDistanceMeters > 0.0 &&
-                    (progressDiff * totalLegDistanceMeters) < minGapMeters
-            ) {
-                return false
-            }
-            if (minGapMeters > 0.0) {
-                val spatialDist =
-                    haversineMeters(candPoi.lat, candPoi.lng, item.poi.lat, item.poi.lng)
-                if (spatialDist < minGapMeters) {
-                    return false
-                }
-            }
-        }
-        return true
-    }
-
-    /**
      * Rank and select up to [limit] POIs from [candidates].
      *
      * When [legPoints] is provided the selection is **segment-based**: the route is divided into
-     * [limit] equal progress buckets (0.0 → 1.0) and the best POI is chosen from each bucket. This
-     * prevents start-city POIs from dominating simply because they are near the route origin.
-     * Minimum spacing between POIs is enforced via [minGapMeters] and [minGapProgressFraction].
+     * [limit] equal progress buckets (0.0 → 1.0) and the best POI is chosen from each bucket.
+     * A minimum progress gap of `(1/limit) * 0.65` is enforced between selected POIs to prevent
+     * clustering in a single city at the start or end of the leg.
      *
-     * Without [legPoints] the distance-only two-pass logic with spatial min-gap is used.
+     * Without [legPoints] the original distance-only two-pass logic is used.
      */
     internal fun rankAndSelectPois(
         candidates: List<POI>,
@@ -822,8 +782,6 @@ object PoiExtractor {
         legPoints: List<LocationCoords> = emptyList(),
         evalContext: PoiEvaluationContext = PoiEvaluationContext(),
         rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-        minGapMeters: Double = Config.current.minPoiGapMeters,
-        minGapProgressFraction: Double = Config.current.minPoiGapProgressFraction,
     ): List<POI> {
         if (candidates.isEmpty() || limit <= 0) return emptyList()
 
@@ -839,24 +797,15 @@ object PoiExtractor {
 
         // Use segment-based selection when we have route geometry
         if (legPoints.size >= 2) {
-            return selectBySegments(
-                distinctByName,
-                limit,
-                legPoints,
-                evalContext,
-                rulesEngine,
-                minGapMeters,
-                minGapProgressFraction,
-            )
+            return selectBySegments(distinctByName, limit, legPoints, evalContext, rulesEngine)
         }
 
-        // Fallback: distance-based two-pass selection with spatial min-gap
+        // Fallback: original distance-based two-pass selection
         return applyTypeDiversity(
             distinctByName.sortedByDescending {
                 rulesEngine.calculatePoiQualityScore(it, evalContext)
             },
             limit,
-            minGapMeters,
         )
     }
 
@@ -866,8 +815,6 @@ object PoiExtractor {
         legPoints: List<LocationCoords>,
         userPrompt: String?,
         rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-        minGapMeters: Double = Config.current.minPoiGapMeters,
-        minGapProgressFraction: Double = Config.current.minPoiGapProgressFraction,
     ): List<POI> =
         rankAndSelectPois(
             candidates,
@@ -875,8 +822,6 @@ object PoiExtractor {
             legPoints,
             PoiEvaluationContext(userPrompt = userPrompt),
             rulesEngine,
-            minGapMeters,
-            minGapProgressFraction,
         )
 
     internal fun calculatePoiQualityScore(
@@ -943,9 +888,11 @@ object PoiExtractor {
 
     /**
      * Divides the route into [limit] equal progress buckets and picks the highest quality,
-     * type-diverse POI from each bucket while enforcing [minGapMeters] and
-     * [minGapProgressFraction]. Any unfilled bucket slots are backfilled from the global pool while
-     * respecting min-gap constraints, with graceful relaxation if candidate availability is sparse.
+     * type-diverse POI from each bucket.
+     *
+     * A minimum progress gap of `bucketSize * 0.65` (i.e. `(1/limit) * 0.65`) is enforced between
+     * all selected POIs, preventing the set from clustering in a single city. Backfill passes
+     * gracefully relax the gap when the candidate pool is sparse.
      */
     private fun selectBySegments(
         candidates: List<POI>,
@@ -953,8 +900,6 @@ object PoiExtractor {
         legPoints: List<LocationCoords>,
         evalContext: PoiEvaluationContext,
         rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-        minGapMeters: Double = Config.current.minPoiGapMeters,
-        minGapProgressFraction: Double = Config.current.minPoiGapProgressFraction,
     ): List<POI> {
         val scored =
             candidates
@@ -967,26 +912,17 @@ object PoiExtractor {
                 }
                 .sortedBy { it.progress }
 
-        val totalLegDistance =
-            legPoints.zipWithNext { a, b -> haversineMeters(a.lat, a.lng, b.lat, b.lng) }.sum()
+        val bucketSize = 1.0 / limit
+        // Minimum progress gap = 65% of one bucket width, so POIs can't pile up in the same city.
+        val minGapProgressFraction = bucketSize * 0.65
 
         val selected = mutableListOf<ScoredPoi>()
         val typeCounts = mutableMapOf<String, Int>()
-        val bucketSize = 1.0 / limit
 
-        fun canPick(item: ScoredPoi, gapMeters: Double, gapFraction: Double): Boolean {
-            return satisfiesMinGap(
-                candPoi = item.poi,
-                candProgress = item.progress,
-                selected = selected,
-                minGapMeters = gapMeters,
-                minGapProgressFraction = gapFraction,
-                totalLegDistanceMeters = totalLegDistance,
-            )
-        }
+        fun clearOfSelected(item: ScoredPoi, gap: Double): Boolean =
+            selected.none { Math.abs(it.progress - item.progress) < gap }
 
-        // Pass 1: one best POI per progress bucket (highest quality score first, respecting type
-        // diversity & min gap)
+        // Pass 1: one best POI per progress bucket (type diversity + min progress gap)
         for (bucket in 0 until limit) {
             val lo = bucket * bucketSize
             val hi = (bucket + 1) * bucketSize
@@ -996,13 +932,13 @@ object PoiExtractor {
                     .sortedByDescending { it.quality }
                     .firstOrNull {
                         typeCounts.getOrDefault(it.poi.type, 0) < 1 &&
-                            canPick(it, minGapMeters, minGapProgressFraction)
+                            clearOfSelected(it, minGapProgressFraction)
                     }
                     ?: inBucket
                         .sortedByDescending { it.quality }
                         .firstOrNull {
                             typeCounts.getOrDefault(it.poi.type, 0) < 2 &&
-                                canPick(it, minGapMeters, minGapProgressFraction)
+                                clearOfSelected(it, minGapProgressFraction)
                         }
 
             if (pick != null) {
@@ -1011,37 +947,20 @@ object PoiExtractor {
             }
         }
 
-        // Pass 2: backfill empty buckets from global pool (highest quality first, respecting type
-        // diversity & min gap)
+        // Pass 2: backfill from global pool with min-gap still applied
         if (selected.size < limit) {
             val remaining = scored.filter { it !in selected }.sortedByDescending { it.quality }
             for (scoredItem in remaining) {
                 if (selected.size >= limit) break
                 val count = typeCounts.getOrDefault(scoredItem.poi.type, 0)
-                if (count < 2 && canPick(scoredItem, minGapMeters, minGapProgressFraction)) {
+                if (count < 2 && clearOfSelected(scoredItem, minGapProgressFraction)) {
                     selected.add(scoredItem)
                     typeCounts[scoredItem.poi.type] = count + 1
                 }
             }
         }
 
-        // Pass 3 (Relaxed min-gap fallback): If strict min gap left empty slots, try with halved
-        // min-gap
-        if (selected.size < limit && (minGapMeters > 0.0 || minGapProgressFraction > 0.0)) {
-            val relaxedMeters = minGapMeters * 0.5
-            val relaxedFraction = minGapProgressFraction * 0.5
-            val remaining = scored.filter { it !in selected }.sortedByDescending { it.quality }
-            for (scoredItem in remaining) {
-                if (selected.size >= limit) break
-                val count = typeCounts.getOrDefault(scoredItem.poi.type, 0)
-                if (count < 2 && canPick(scoredItem, relaxedMeters, relaxedFraction)) {
-                    selected.add(scoredItem)
-                    typeCounts[scoredItem.poi.type] = count + 1
-                }
-            }
-        }
-
-        // Pass 4 (Final unconstrained safety fallback): Fill any remaining slots if needed
+        // Pass 3 (unconstrained safety fallback): fill remaining slots ignoring gap if pool is sparse
         if (selected.size < limit) {
             val remaining = scored.filter { it !in selected }.sortedByDescending { it.quality }
             for (scoredItem in remaining) {
@@ -1057,42 +976,18 @@ object PoiExtractor {
         return selected.sortedBy { it.progress }.map { it.poi }
     }
 
-    /**
-     * Two-pass type-diverse selection sorted by proximity to route with spatial min-gap filtering.
-     */
-    private fun applyTypeDiversity(
-        sortedCandidates: List<POI>,
-        limit: Int,
-        minGapMeters: Double = Config.current.minPoiGapMeters,
-    ): List<POI> {
+    /** Two-pass type-diverse selection sorted by proximity to route (no spatial spread). */
+    private fun applyTypeDiversity(sortedCandidates: List<POI>, limit: Int): List<POI> {
         val typeCounts = mutableMapOf<String, Int>()
         val selected = mutableListOf<POI>()
 
-        fun passesSpatialGap(poi: POI, gapMeters: Double): Boolean {
-            if (gapMeters <= 0.0) return true
-            return selected.none { haversineMeters(poi.lat, poi.lng, it.lat, it.lng) < gapMeters }
-        }
-
         for (poi in sortedCandidates) {
             val count = typeCounts.getOrDefault(poi.type, 0)
-            if (count < 1 && passesSpatialGap(poi, minGapMeters)) {
+            if (count < 1) {
                 selected.add(poi)
                 typeCounts[poi.type] = count + 1
             }
             if (selected.size >= limit) break
-        }
-
-        if (selected.size < limit) {
-            for (poi in sortedCandidates) {
-                if (poi !in selected) {
-                    val count = typeCounts.getOrDefault(poi.type, 0)
-                    if (count < 2 && passesSpatialGap(poi, minGapMeters)) {
-                        selected.add(poi)
-                        typeCounts[poi.type] = count + 1
-                    }
-                }
-                if (selected.size >= limit) break
-            }
         }
 
         if (selected.size < limit) {

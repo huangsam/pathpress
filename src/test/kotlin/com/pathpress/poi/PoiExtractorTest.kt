@@ -594,7 +594,7 @@ class PoiExtractorTest {
                 LocationCoords(37.77, -122.41), // San Francisco
             )
 
-        // Cluster in San Jose (progress ~0.0 to ~0.05)
+        // Cluster in San Jose (progress ~0.0 to ~0.05 of leg)
         val sj1 =
             POI(
                 id = "sj1",
@@ -638,7 +638,7 @@ class PoiExtractorTest {
                 distanceFromRouteMeters = 100.0,
             )
 
-        // POIs in San Francisco (progress ~0.95 to 1.0)
+        // POI in San Francisco (progress ~1.0)
         val sf1 =
             POI(
                 id = "sf1",
@@ -650,133 +650,51 @@ class PoiExtractorTest {
                 distanceFromRouteMeters = 80.0,
             )
 
-        val candidates = listOf(sj1, sj2, sj3, pa1, sf1)
-
-        // With a min gap of 10 km (10000m) or progress gap 0.15, sj2 and sj3 should be filtered out
-        // in favor of pa1 and sf1
+        // Min-gap = (1/3) * 0.65 ≈ 0.22 of leg progress; sj1/sj2/sj3 are all within ~0.01 progress
+        // of each other, so only one of them should be picked alongside pa1 and sf1.
         val selected =
             PoiExtractor.rankAndSelectPois(
-                candidates = candidates,
+                candidates = listOf(sj1, sj2, sj3, pa1, sf1),
                 limit = 3,
                 legPoints = legPoints,
-                minGapMeters = 10000.0,
-                minGapProgressFraction = 0.15,
             )
 
         assertEquals(3, selected.size)
-        // Ensure sj2 and sj3 were not picked together with sj1
         val sjPoisSelected = selected.filter { it.id.startsWith("sj") }
         assertEquals(
             1,
             sjPoisSelected.size,
-            "Expected only 1 POI from San Jose cluster due to min-gap spacing",
+            "Expected only 1 POI from San Jose cluster due to (1/limit)*0.65 min-gap spacing",
         )
         assertTrue(selected.any { it.id == "pa1" }, "Expected Palo Alto POI to be selected")
         assertTrue(selected.any { it.id == "sf1" }, "Expected San Francisco POI to be selected")
     }
 
     @Test
-    fun `satisfiesMinGap correctly identifies progress and spatial distance violations`() {
-        val poiA =
-            POI(
-                id = "a",
-                name = "POI A",
-                lat = 37.0,
-                lng = -122.0,
-                tags = emptyMap(),
-                type = "cafe",
-            )
-        val poiB =
-            POI(
-                id = "b",
-                name = "POI B",
-                lat = 37.01,
-                lng = -122.01,
-                tags = emptyMap(),
-                type = "park",
-            )
-        val poiC =
-            POI(
-                id = "c",
-                name = "POI C",
-                lat = 38.0,
-                lng = -122.0,
-                tags = emptyMap(),
-                type = "museum",
-            )
-
-        val scoredA = PoiExtractor.ScoredPoi(poiA, progress = 0.10, quality = 80.0)
-
-        // poiB is close in progress (0.12 vs 0.10, diff 0.02) and spatial distance (< 2km)
-        assertFalse(
-            PoiExtractor.satisfiesMinGap(
-                candPoi = poiB,
-                candProgress = 0.12,
-                selected = listOf(scoredA),
-                minGapMeters = 5000.0,
-                minGapProgressFraction = 0.05,
-            )
-        )
-
-        // poiC is far in progress (0.80 vs 0.10) and spatial distance (> 100km)
-        assertTrue(
-            PoiExtractor.satisfiesMinGap(
-                candPoi = poiC,
-                candProgress = 0.80,
-                selected = listOf(scoredA),
-                minGapMeters = 5000.0,
-                minGapProgressFraction = 0.05,
-            )
-        )
-    }
-
-    @Test
     fun `rankAndSelectPois relaxes min-gap when candidate pool is sparse`() {
         val legPoints = listOf(LocationCoords(37.0, -122.0), LocationCoords(37.1, -122.0))
 
-        // 3 POIs very close to each other (e.g. 500m apart)
+        // 3 POIs very close together — the (1/limit)*0.65 gap will initially filter some,
+        // but the unconstrained safety fallback must still fill all requested slots.
         val p1 =
-            POI(
-                id = "1",
-                name = "Spot 1",
-                lat = 37.001,
-                lng = -122.0,
-                tags = emptyMap(),
-                type = "cafe",
-            )
+            POI(id = "1", name = "Spot 1", lat = 37.001, lng = -122.0, tags = emptyMap(), type = "cafe")
         val p2 =
-            POI(
-                id = "2",
-                name = "Spot 2",
-                lat = 37.005,
-                lng = -122.0,
-                tags = emptyMap(),
-                type = "park",
-            )
+            POI(id = "2", name = "Spot 2", lat = 37.005, lng = -122.0, tags = emptyMap(), type = "park")
         val p3 =
-            POI(
-                id = "3",
-                name = "Spot 3",
-                lat = 37.010,
-                lng = -122.0,
-                tags = emptyMap(),
-                type = "museum",
-            )
+            POI(id = "3", name = "Spot 3", lat = 37.010, lng = -122.0, tags = emptyMap(), type = "museum")
 
-        // Ask for 3 POIs with strict 20km min gap (which none natively satisfy)
         val selected =
             PoiExtractor.rankAndSelectPois(
                 candidates = listOf(p1, p2, p3),
                 limit = 3,
                 legPoints = legPoints,
-                minGapMeters = 20000.0,
-                minGapProgressFraction = 0.20,
             )
 
         assertEquals(
             3,
             selected.size,
-            "Expected fallback relaxation to fill all 3 requested slots when candidates exist",
+            "Expected safety fallback to fill all 3 requested slots even when pool is tightly clustered",
         )
     }
 }
+

@@ -36,8 +36,6 @@ data class Config(
     val hotelWeight: Int = DEFAULT_HOTEL_WEIGHT,
     val familyWeight: Int = DEFAULT_FAMILY_WEIGHT,
     val diningWeight: Int = DEFAULT_DINING_WEIGHT,
-    val minPoiGapMeters: Double = DEFAULT_MIN_POI_GAP_METERS,
-    val minPoiGapProgressFraction: Double = DEFAULT_MIN_POI_GAP_PROGRESS_FRACTION,
 ) {
     val httpLlmConnectTimeout: Duration
         get() = Duration.ofSeconds(httpLlmTimeoutSeconds)
@@ -90,18 +88,6 @@ data class Config(
         /** Scoring multiplier for dining options when evaluating overnight towns. */
         const val DEFAULT_DINING_WEIGHT: Int = 1
 
-        /**
-         * Default minimum spatial/route gap distance in meters between selected POIs on a leg (5.0
-         * km).
-         */
-        const val DEFAULT_MIN_POI_GAP_METERS: Double = 5000.0
-
-        /**
-         * Default minimum route progress fraction (0.0 to 1.0) gap between selected POIs on a leg
-         * (5% of leg).
-         */
-        const val DEFAULT_MIN_POI_GAP_PROGRESS_FRACTION: Double = 0.05
-
         /** Loads configuration populated with optional environment variable overrides. */
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
             return Config(
@@ -132,11 +118,6 @@ data class Config(
                 hotelWeight = env["TOWN_HOTEL_WEIGHT"]?.toIntOrNull() ?: DEFAULT_HOTEL_WEIGHT,
                 familyWeight = env["TOWN_FAMILY_WEIGHT"]?.toIntOrNull() ?: DEFAULT_FAMILY_WEIGHT,
                 diningWeight = env["TOWN_DINING_WEIGHT"]?.toIntOrNull() ?: DEFAULT_DINING_WEIGHT,
-                minPoiGapMeters =
-                    env["MIN_POI_GAP_METERS"]?.toDoubleOrNull() ?: DEFAULT_MIN_POI_GAP_METERS,
-                minPoiGapProgressFraction =
-                    env["MIN_POI_GAP_PROGRESS_FRACTION"]?.toDoubleOrNull()
-                        ?: DEFAULT_MIN_POI_GAP_PROGRESS_FRACTION,
             )
         }
 
