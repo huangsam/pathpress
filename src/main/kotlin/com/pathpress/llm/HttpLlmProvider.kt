@@ -67,8 +67,8 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             Provide a JSON response with:
             {
               "legStories": [
-                "1 concise sentence engaging description of driving Day 1.",
-                "1 concise sentence engaging description of driving Day 2."
+                "1 short sentence (max 30 words) engaging description of driving Day 1.",
+                "1 short sentence (max 30 words) engaging description of driving Day 2."
               ],
               "waypoints": [
                 {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
@@ -137,9 +137,9 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
             Output ONLY valid raw JSON with this exact structure:
             {
-              "legStory": "1 concise sentence engaging description of driving this leg toward $legRegion.",
+              "legStory": "1 short sentence (max 30 words) engaging description of driving this leg toward $legRegion.",
               "poiDescriptions": {
-                 "<POI Name>": "1-2 sentence atmosphere/vibe description. No invented facts."
+                 "<POI Name>": "1 short sentence (max 15 words) atmosphere/vibe description. No invented facts."
               }
             }
         """
