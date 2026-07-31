@@ -134,6 +134,34 @@ class PdfExporterTest {
     }
 
     @Test
+    fun `generateHtml omits appendix map card when tiles are unavailable`() {
+        val leg =
+            RouteLeg(
+                startLat = 37.7749,
+                startLng = -122.4194,
+                endLat = 36.6002,
+                endLng = -121.8947,
+                dayNumber = 1,
+                totalDays = 1,
+                dayTitle = "Coastal Hwy 1",
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+                geometry = emptyList(),
+            )
+        val route =
+            Route(legs = listOf(leg), totalDistanceMeters = 50000.0, totalDurationSeconds = 3600.0)
+
+        val html = PdfExporter.generateHtml(route, "San Francisco", "Monterey")
+
+        assertTrue(
+            !html.contains("class=\"qr-card qr-card-left\""),
+            "Appendix map card (qr-card qr-card-left) should be omitted when map tile is unavailable",
+        )
+    }
+
+    @Test
     fun `QrCodeGenerator creates non-empty Base64 PNG data URI`() {
         val uri = QrCodeGenerator.generateQrCodeDataUri("https://maps.google.com")
         assertTrue(uri.startsWith("data:image/png;base64,"))

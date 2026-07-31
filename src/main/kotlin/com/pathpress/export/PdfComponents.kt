@@ -298,9 +298,9 @@ internal fun FlowContent.navigationAppendix(route: Route) {
 
                 div("appendix-card-pair") {
                     // Left Card: Route Overview Map
-                    div("qr-card qr-card-left") {
-                        div("qr-card-header") { +"Route Overview Map" }
-                        if (mapDataUri.isNotBlank()) {
+                    if (mapDataUri.isNotBlank()) {
+                        div("qr-card qr-card-left") {
+                            div("qr-card-header") { +"Route Overview Map" }
                             img(src = mapDataUri, alt = "Route Map", classes = "appendix-map-img")
                         }
                     }
