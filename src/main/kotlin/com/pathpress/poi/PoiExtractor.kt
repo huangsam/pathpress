@@ -452,11 +452,14 @@ object PoiExtractor {
                 excludeIndustrial = excludeIndustrial,
             )
 
-        val bufferDeg = (maxDistanceMeters / 111000.0) + 0.02
-        val minLat = legPoints.minOf { it.lat } - bufferDeg
-        val maxLat = legPoints.maxOf { it.lat } + bufferDeg
-        val minLng = legPoints.minOf { it.lng } - bufferDeg
-        val maxLng = legPoints.maxOf { it.lng } + bufferDeg
+        val bufferLatDeg = (maxDistanceMeters / 111000.0) + 0.02
+        val refLat = legPoints.map { it.lat }.average()
+        val cosRefLat = cos(Math.toRadians(refLat)).coerceAtLeast(0.01)
+        val bufferLngDeg = (maxDistanceMeters / (111000.0 * cosRefLat)) + 0.02
+        val minLat = legPoints.minOf { it.lat } - bufferLatDeg
+        val maxLat = legPoints.maxOf { it.lat } + bufferLatDeg
+        val minLng = legPoints.minOf { it.lng } - bufferLngDeg
+        val maxLng = legPoints.maxOf { it.lng } + bufferLngDeg
 
         val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
         val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
@@ -577,11 +580,13 @@ object PoiExtractor {
         val cacheStore = getOrBuildCache(pbfPath)
         if (cacheStore.towns.isEmpty()) return emptyList()
 
-        val bufferDeg = (maxDistanceMeters / 111000.0)
-        val minLat = targetLat - bufferDeg
-        val maxLat = targetLat + bufferDeg
-        val minLng = targetLng - bufferDeg
-        val maxLng = targetLng + bufferDeg
+        val bufferLatDeg = maxDistanceMeters / 111000.0
+        val cosTargetLat = cos(Math.toRadians(targetLat)).coerceAtLeast(0.01)
+        val bufferLngDeg = maxDistanceMeters / (111000.0 * cosTargetLat)
+        val minLat = targetLat - bufferLatDeg
+        val maxLat = targetLat + bufferLatDeg
+        val minLng = targetLng - bufferLngDeg
+        val maxLng = targetLng + bufferLngDeg
 
         val minLatCell = floor(minLat / Config.current.gridCellSizeDeg).toInt()
         val maxLatCell = floor(maxLat / Config.current.gridCellSizeDeg).toInt()
@@ -681,13 +686,15 @@ object PoiExtractor {
         val sampledPoints = targetPointCoords.ifEmpty { routePoints }
 
         val candidateTowns = mutableSetOf<TownInfo>()
-        val bufferDeg = (maxDistanceMeters / 111000.0)
+        val bufferLatDeg = maxDistanceMeters / 111000.0
 
         for (pt in sampledPoints) {
-            val minLat = pt.lat - bufferDeg
-            val maxLat = pt.lat + bufferDeg
-            val minLng = pt.lng - bufferDeg
-            val maxLng = pt.lng + bufferDeg
+            val cosLat = cos(Math.toRadians(pt.lat)).coerceAtLeast(0.01)
+            val bufferLngDeg = maxDistanceMeters / (111000.0 * cosLat)
+            val minLat = pt.lat - bufferLatDeg
+            val maxLat = pt.lat + bufferLatDeg
+            val minLng = pt.lng - bufferLngDeg
+            val maxLng = pt.lng + bufferLngDeg
 
             val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
             val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()

@@ -2,6 +2,7 @@ package com.pathpress.poi
 
 import com.pathpress.config.Config
 import com.pathpress.model.POI
+import kotlin.math.cos
 import kotlin.math.floor
 
 /**
@@ -69,12 +70,14 @@ object TownScorer {
         // Convert radius in miles to meters and derive lat/lng bounding box degree offset
         // (~111,000m per degree)
         val maxDistMeters = radiusMiles * 1609.34
-        val bufferDeg = (maxDistMeters / 111000.0) + 0.01
+        val bufferLatDeg = (maxDistMeters / 111000.0) + 0.01
+        val cosLat = cos(Math.toRadians(town.lat)).coerceAtLeast(0.01)
+        val bufferLngDeg = (maxDistMeters / (111000.0 * cosLat)) + 0.01
 
-        val minLat = town.lat - bufferDeg
-        val maxLat = town.lat + bufferDeg
-        val minLng = town.lng - bufferDeg
-        val maxLng = town.lng + bufferDeg
+        val minLat = town.lat - bufferLatDeg
+        val maxLat = town.lat + bufferLatDeg
+        val minLng = town.lng - bufferLngDeg
+        val maxLng = town.lng + bufferLngDeg
 
         // Determine spatial grid cell indices covering the search bounding box
         val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
