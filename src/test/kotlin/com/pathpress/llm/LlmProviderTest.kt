@@ -168,15 +168,26 @@ class LlmProviderTest {
         val result2 = provider.curateLegPois(leg, userPrompt = "Strenuous mountain hike")
         val resultNull = provider.curateLegPois(leg, userPrompt = null)
 
+        val expectedRuleBased = RuleBasedCuration.curate(leg)
+
         assertFalse(completeCalled, "complete() must never be invoked during POI curation")
         assertEquals(
+            expectedRuleBased,
             result1,
-            result2,
-            "Rule-based curation must be deterministic and prompt-independent",
+            "curateLegPois must equal RuleBasedCuration output",
         )
-        assertEquals(result1, resultNull, "Rule-based curation must be prompt-independent")
+        assertEquals(
+            expectedRuleBased,
+            result2,
+            "curateLegPois must equal RuleBasedCuration output",
+        )
+        assertEquals(
+            expectedRuleBased,
+            resultNull,
+            "curateLegPois must equal RuleBasedCuration output",
+        )
 
-        // Confirm rule-based OSM tag derivation
+        // Confirm rule-based OSM tag derivation details
         assertEquals(1, result1.curatedPois.size)
         assertEquals("Scenic ocean overlook", result1.curatedPois[0].description)
         assertTrue(result1.legStory.contains("Monterey"))
