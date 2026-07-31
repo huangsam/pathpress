@@ -4,7 +4,7 @@ import com.pathpress.model.RouteLeg
 import com.pathpress.poi.PoiDescriptionFormatter
 
 /**
- * Deterministic POI curation and leg story generation derived from OSM tags.
+ * Deterministic POI curation derived from OSM tags.
  *
  * Product Decision: POI curation explicitly does NOT use LLMs to ensure factual accuracy, zero
  * network latency, and immunity to LLM hallucinations.
