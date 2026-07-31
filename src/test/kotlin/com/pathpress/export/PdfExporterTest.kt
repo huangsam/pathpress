@@ -346,4 +346,27 @@ class PdfExporterTest {
             }
         }
     }
+
+    @Test
+    fun `appendix card pair uses table layout to equalize heights`() {
+        val css = PdfExporter::class.java.getResource("/pdf-styles.css")?.readText() ?: ""
+        val cardPairIndex = css.indexOf(".appendix-card-pair")
+        assertTrue(cardPairIndex != -1, "pdf-styles.css should define .appendix-card-pair")
+
+        val cardPairBlock = css.substring(cardPairIndex, css.indexOf("}", cardPairIndex))
+        assertTrue(
+            cardPairBlock.contains("display: table") || cardPairBlock.contains("display:table"),
+            ".appendix-card-pair must use display: table to equalize card heights",
+        )
+
+        val qrCardIndex = css.indexOf(".qr-card {")
+        if (qrCardIndex != -1) {
+            val qrCardBlock = css.substring(qrCardIndex, css.indexOf("}", qrCardIndex))
+            assertTrue(
+                qrCardBlock.contains("display: table-cell") ||
+                    qrCardBlock.contains("display:table-cell"),
+                ".qr-card must use display: table-cell to equalize card heights",
+            )
+        }
+    }
 }

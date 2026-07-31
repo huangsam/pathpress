@@ -296,7 +296,10 @@ internal fun FlowContent.navigationAppendix(route: Route) {
             div("appendix-leg-row") {
                 div("appendix-leg-header") { +"Day ${leg.dayNumber}: ${sanitizeText(cleanTitle)}" }
 
-                div("appendix-card-pair") {
+                val containerClass =
+                    if (mapDataUri.isNotBlank()) "appendix-card-pair"
+                    else "appendix-card-pair single-card"
+                div(containerClass) {
                     // Left Card: Route Overview Map
                     if (mapDataUri.isNotBlank()) {
                         div("qr-card qr-card-left") {

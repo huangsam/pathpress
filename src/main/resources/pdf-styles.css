@@ -377,12 +377,20 @@ h3,
   padding-bottom: 4px;
 }
 .appendix-card-pair {
+  display: table;
   width: 100%;
+  table-layout: fixed;
+  border-spacing: 16px 0;
+}
+.appendix-card-pair.single-card {
+  display: block;
+  text-align: center;
+  border-spacing: 0;
 }
 .qr-card {
-  display: inline-block;
+  display: table-cell;
   vertical-align: top;
-  width: 46%;
+  width: 50%;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -391,8 +399,12 @@ h3,
   box-sizing: border-box;
   page-break-inside: avoid;
 }
+.appendix-card-pair.single-card .qr-card {
+  display: inline-block;
+  width: 48%;
+}
 .qr-card-left {
-  margin-right: 4%;
+  margin-right: 0;
 }
 .qr-card-header {
   font-size: 13px;
