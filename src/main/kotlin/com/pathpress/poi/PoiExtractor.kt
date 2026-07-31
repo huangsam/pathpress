@@ -1,6 +1,8 @@
 package com.pathpress.poi
 
+import com.carrotsearch.hppc.LongArrayList
 import com.carrotsearch.hppc.LongDoubleHashMap
+import com.carrotsearch.hppc.LongHashSet
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.graphhopper.reader.ReaderElement
@@ -25,6 +27,13 @@ import org.slf4j.LoggerFactory
 
 /** Container for town location attributes parsed from OpenStreetMap nodes. */
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
+
+/** Container for way POI candidates during 2-pass OSM extraction. */
+internal data class WayPoiCandidate(
+    val id: Long,
+    val tags: Map<String, String>,
+    val nodeIds: LongArrayList,
+)
 
 /**
  * 2D spatial grid cell index used for $O(1)$ spatial binning and fast bounding box candidate
@@ -201,17 +210,52 @@ object PoiExtractor {
         val startTime = System.currentTimeMillis()
         val pois = mutableListOf<POI>()
         val towns = mutableListOf<TownInfo>()
-        val nodeLats = LongDoubleHashMap()
-        val nodeLons = LongDoubleHashMap()
+
+        val neededNodeIds = LongHashSet()
+        val wayCandidates = mutableListOf<WayPoiCandidate>()
+
+        // Pass 1: Read WAYS first to collect member node IDs of relevant POI ways
+        try {
+            val osmInput1 = OSMInputFile(pbfFile).open()
+            while (true) {
+                val elem = osmInput1.getNext() ?: break
+                if (elem.type == ReaderElement.Type.WAY) {
+                    val way = elem as ReaderWay
+                    val tags = extractTags(way)
+                    val name = tags["name"]
+                    if (!name.isNullOrBlank() && isRelevantPoi(tags)) {
+                        val wayNodes = way.nodes
+                        val nodeCount = wayNodes.size()
+                        val nodeIds = LongArrayList(nodeCount)
+                        for (i in 0 until nodeCount) {
+                            val nodeId = wayNodes.get(i)
+                            nodeIds.add(nodeId)
+                            neededNodeIds.add(nodeId)
+                        }
+                        wayCandidates.add(WayPoiCandidate(way.id, tags, nodeIds))
+                    }
+                }
+            }
+            osmInput1.close()
+        } catch (e: Exception) {
+            logger.warn("Error in Pass 1 (ways) reading OSM PBF: {}", e.message)
+        }
+
+        // Pass 2: Read NODES second to parse node POIs/towns and store coordinates for
+        // neededNodeIds
+        val neededNodeLats = LongDoubleHashMap()
+        val neededNodeLons = LongDoubleHashMap()
 
         try {
-            val osmInput = OSMInputFile(pbfFile).open()
+            val osmInput2 = OSMInputFile(pbfFile).open()
             while (true) {
-                val elem = osmInput.getNext() ?: break
+                val elem = osmInput2.getNext() ?: break
                 if (elem.type == ReaderElement.Type.NODE) {
                     val node = elem as ReaderNode
-                    nodeLats.put(node.id, node.lat)
-                    nodeLons.put(node.id, node.lon)
+                    if (neededNodeIds.contains(node.id)) {
+                        neededNodeLats.put(node.id, node.lat)
+                        neededNodeLons.put(node.id, node.lon)
+                    }
 
                     val tags = extractTags(node)
                     val name = tags["name"]
@@ -233,40 +277,55 @@ object PoiExtractor {
                         }
                     }
                 } else if (elem.type == ReaderElement.Type.WAY) {
-                    val way = elem as ReaderWay
-                    val tags = extractTags(way)
-                    val name = tags["name"]
-                    if (!name.isNullOrBlank() && isRelevantPoi(tags)) {
-                        val wayNodes = way.nodes
-                        var sumLat = 0.0
-                        var sumLon = 0.0
-                        var count = 0
-                        val nodeCount = wayNodes.size()
-                        for (i in 0 until nodeCount) {
-                            val nodeId = wayNodes.get(i)
-                            if (nodeLats.containsKey(nodeId)) {
-                                sumLat += nodeLats.get(nodeId)
-                                sumLon += nodeLons.get(nodeId)
-                                count++
-                            }
-                        }
-                        if (count > 0) {
-                            val poi =
-                                POI.fromOsm(
-                                    id = "w${way.id}",
-                                    lat = sumLat / count,
-                                    lng = sumLon / count,
-                                    tags = tags,
-                                    distanceFromRouteMeters = null,
-                                )
-                            pois.add(poi)
-                        }
-                    }
+                    // All NODE elements precede WAY elements in OSM PBF format, break early!
+                    break
                 }
             }
-            osmInput.close()
+            osmInput2.close()
         } catch (e: Exception) {
-            logger.warn("Error reading OSM PBF for cache creation: {}", e.message)
+            logger.warn("Error in Pass 2 (nodes) reading OSM PBF: {}", e.message)
+        }
+
+        // Post-processing: Compute centroids for way candidates
+        for (candidate in wayCandidates) {
+            var sumLat = 0.0
+            var sumLon = 0.0
+            var resolvedCount = 0
+            var unresolvableCount = 0
+            val totalNodes = candidate.nodeIds.size()
+
+            for (i in 0 until totalNodes) {
+                val nodeId = candidate.nodeIds.get(i)
+                if (neededNodeLats.containsKey(nodeId)) {
+                    sumLat += neededNodeLats.get(nodeId)
+                    sumLon += neededNodeLons.get(nodeId)
+                    resolvedCount++
+                } else {
+                    unresolvableCount++
+                }
+            }
+
+            if (unresolvableCount > 0) {
+                logger.warn(
+                    "Way {} ('{}') has {} unresolvable node member(s) out of {}",
+                    candidate.id,
+                    candidate.tags["name"] ?: "unnamed",
+                    unresolvableCount,
+                    totalNodes,
+                )
+            }
+
+            if (resolvedCount > 0) {
+                val poi =
+                    POI.fromOsm(
+                        id = "w${candidate.id}",
+                        lat = sumLat / resolvedCount,
+                        lng = sumLon / resolvedCount,
+                        tags = candidate.tags,
+                        distanceFromRouteMeters = null,
+                    )
+                pois.add(poi)
+            }
         }
 
         val store = PoiCacheStore(pois = pois, towns = towns)

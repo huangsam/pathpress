@@ -608,4 +608,48 @@ class PoiExtractorTest {
         assertEquals(-121.0, wayPoi.lng, 0.001)
         assertEquals("park", wayPoi.type)
     }
+
+    @Test
+    fun `centroid calculation tracks unresolvable node members gracefully`() {
+        val nodeLats = com.carrotsearch.hppc.LongDoubleHashMap()
+        val nodeLons = com.carrotsearch.hppc.LongDoubleHashMap()
+
+        // Only 2 of 3 nodes are in the lookup map
+        nodeLats.put(1L, 37.0)
+        nodeLons.put(1L, -122.0)
+        nodeLats.put(2L, 39.0)
+        nodeLons.put(2L, -120.0)
+        // Node 3L is missing/unresolvable
+
+        val candidate =
+            WayPoiCandidate(
+                id = 888L,
+                tags = mapOf("name" to "Partial Way Park", "leisure" to "park"),
+                nodeIds = com.carrotsearch.hppc.LongArrayList.from(1L, 2L, 3L),
+            )
+
+        var sumLat = 0.0
+        var sumLon = 0.0
+        var resolvedCount = 0
+        var unresolvableCount = 0
+        val totalNodes = candidate.nodeIds.size()
+
+        for (i in 0 until totalNodes) {
+            val nodeId = candidate.nodeIds.get(i)
+            if (nodeLats.containsKey(nodeId)) {
+                sumLat += nodeLats.get(nodeId)
+                sumLon += nodeLons.get(nodeId)
+                resolvedCount++
+            } else {
+                unresolvableCount++
+            }
+        }
+
+        assertEquals(2, resolvedCount)
+        assertEquals(1, unresolvableCount)
+        val centroidLat = sumLat / resolvedCount
+        val centroidLon = sumLon / resolvedCount
+        assertEquals(38.0, centroidLat, 0.001)
+        assertEquals(-121.0, centroidLon, 0.001)
+    }
 }
