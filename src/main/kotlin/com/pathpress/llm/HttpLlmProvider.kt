@@ -149,7 +149,8 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                     }
                     .orEmpty()
             TripPlanResponse(waypoints = waypoints, narrative = narrative, legStories = legStories)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logger.warn("Failed to parse LLM trip plan response: {}", e.message, e)
             TripPlanResponse(
                 waypoints = emptyList(),
                 narrative = narrativeFallback ?: "",

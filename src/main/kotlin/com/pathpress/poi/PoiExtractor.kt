@@ -216,15 +216,20 @@ object PoiExtractor {
         // Pass 1: Read WAYS first to collect member node IDs of relevant POI ways
         try {
             val osmInput1 = OSMInputFile(pbfFile).open()
-            while (true) {
-                val elem = osmInput1.getNext() ?: break
-                if (elem.type == ReaderElement.Type.WAY) {
-                    processWayElementPass1(elem as ReaderWay, neededNodeIds, wayCandidates)
+            try {
+                while (true) {
+                    val elem = osmInput1.getNext() ?: break
+                    if (elem.type == ReaderElement.Type.WAY) {
+                        processWayElementPass1(elem as ReaderWay, neededNodeIds, wayCandidates)
+                    }
                 }
+            } finally {
+                try {
+                    osmInput1.close()
+                } catch (_: Exception) {}
             }
-            osmInput1.close()
         } catch (e: Exception) {
-            logger.warn("Error in Pass 1 (ways) reading OSM PBF: {}", e.message)
+            logger.warn("Error in Pass 1 (ways) reading OSM PBF: {}", e.message, e)
         }
 
         // Pass 2: Read NODES second to parse node POIs/towns and store coordinates for
@@ -234,25 +239,30 @@ object PoiExtractor {
 
         try {
             val osmInput2 = OSMInputFile(pbfFile).open()
-            while (true) {
-                val elem = osmInput2.getNext() ?: break
-                if (elem.type == ReaderElement.Type.NODE) {
-                    processNodeElementPass2(
-                        elem as ReaderNode,
-                        neededNodeIds,
-                        neededNodeLats,
-                        neededNodeLons,
-                        pois,
-                        towns,
-                    )
-                } else if (elem.type == ReaderElement.Type.WAY) {
-                    // All NODE elements precede WAY elements in OSM PBF format, break early!
-                    break
+            try {
+                while (true) {
+                    val elem = osmInput2.getNext() ?: break
+                    if (elem.type == ReaderElement.Type.NODE) {
+                        processNodeElementPass2(
+                            elem as ReaderNode,
+                            neededNodeIds,
+                            neededNodeLats,
+                            neededNodeLons,
+                            pois,
+                            towns,
+                        )
+                    } else if (elem.type == ReaderElement.Type.WAY) {
+                        // All NODE elements precede WAY elements in OSM PBF format, break early!
+                        break
+                    }
                 }
+            } finally {
+                try {
+                    osmInput2.close()
+                } catch (_: Exception) {}
             }
-            osmInput2.close()
         } catch (e: Exception) {
-            logger.warn("Error in Pass 2 (nodes) reading OSM PBF: {}", e.message)
+            logger.warn("Error in Pass 2 (nodes) reading OSM PBF: {}", e.message, e)
         }
 
         // Post-processing: Compute centroids for way candidates
@@ -271,7 +281,7 @@ object PoiExtractor {
                 elapsed,
             )
         } catch (e: Exception) {
-            logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message)
+            logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message, e)
         }
 
         cachedStore = store

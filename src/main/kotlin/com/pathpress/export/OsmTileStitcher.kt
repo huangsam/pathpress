@@ -19,6 +19,7 @@ import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.tan
+import org.slf4j.LoggerFactory
 
 /**
  * Publication-grade minimalist line-shape map tile renderer for PathPress PDF export.
@@ -29,6 +30,7 @@ import kotlin.math.tan
  */
 object OsmTileStitcher {
 
+    private val logger = LoggerFactory.getLogger(OsmTileStitcher::class.java)
     private const val TILE_SIZE = 256
     private val cacheDir = File(".map_cache").apply { mkdirs() }
 
@@ -48,7 +50,9 @@ object OsmTileStitcher {
         if (cacheFile.exists()) {
             try {
                 return ImageIO.read(cacheFile)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                logger.warn("Failed to read cached tile {}: {}", cacheFile, e.message, e)
+            }
         }
 
         // CartoDB Voyager travel tiles
@@ -67,11 +71,15 @@ object OsmTileStitcher {
                 if (image != null) {
                     try {
                         ImageIO.write(image, "png", cacheFile)
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        logger.warn("Failed to write tile cache {}: {}", cacheFile, e.message, e)
+                    }
                     return image
                 }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            logger.warn("Failed to fetch map tile ($zoom/$x/$y): {}", e.message, e)
+        }
         return null
     }
 
