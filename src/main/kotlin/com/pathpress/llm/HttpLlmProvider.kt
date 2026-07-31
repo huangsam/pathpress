@@ -31,6 +31,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
     protected val client: HttpClient =
         HttpClient.newBuilder().connectTimeout(config.httpLlmConnectTimeout).build()
     protected val mapper = jacksonObjectMapper()
+    private val logger = org.slf4j.LoggerFactory.getLogger(javaClass)
+
+    /** Executes a generic completion prompt against the underlying LLM HTTP API. */
+    protected abstract fun complete(prompt: String): String?
 
     /**
      * Builds structured prompt for high-level trip planning. Instructs the LLM to output day
@@ -207,7 +211,37 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             .takeValidText()
     }
 
+    override fun planTrip(
+        startName: String,
+        endName: String,
+        startCoords: LocationCoords,
+        endCoords: LocationCoords,
+        days: Int,
+        userPrompt: String?,
+    ): TripPlanResponse {
+        try {
+            val promptText = buildPrompt(startName, endName, days, userPrompt)
+            val text = complete(promptText)
+            if (!text.isNullOrBlank()) {
+                return parseTripPlan(text, days)
+            }
+        } catch (e: Exception) {
+            logger.warn("{} warning: {}", javaClass.simpleName, e.message)
+        }
+        return NoOpFallbackProvider()
+            .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
+    }
+
     override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
+        try {
+            val promptText = buildCurationPrompt(leg, userPrompt)
+            val text = complete(promptText)
+            if (!text.isNullOrBlank()) {
+                return parseCurationResponse(text, leg)
+            }
+        } catch (e: Exception) {
+            logger.warn("{} warning: {}", javaClass.simpleName, e.message)
+        }
         return NoOpFallbackProvider().curateLegPois(leg, userPrompt)
     }
 

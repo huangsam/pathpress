@@ -2,7 +2,6 @@ package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
-import com.pathpress.model.LocationCoords
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -27,55 +26,37 @@ class OpenAiCompatibleProvider(
         if (endpoint.contains("localhost")) apiKey
         else apiKey.validateApiKey(LlmProviderType.OPENAI)
 
-    override fun planTrip(
-        startName: String,
-        endName: String,
-        startCoords: LocationCoords,
-        endCoords: LocationCoords,
-        days: Int,
-        userPrompt: String?,
-    ): TripPlanResponse {
-        try {
-            val promptText = buildPrompt(startName, endName, days, userPrompt)
-            val requestBody =
-                mapper.writeValueAsString(
-                    mapOf(
-                        "model" to modelName,
-                        "messages" to
-                            listOf(
-                                mapOf(
-                                    "role" to "system",
-                                    "content" to
-                                        "You are a helpful travel planner that outputs JSON.",
-                                ),
-                                mapOf("role" to "user", "content" to promptText),
+    override fun complete(prompt: String): String? {
+        val requestBody =
+            mapper.writeValueAsString(
+                mapOf(
+                    "model" to modelName,
+                    "messages" to
+                        listOf(
+                            mapOf(
+                                "role" to "system",
+                                "content" to "You are a helpful travel planner that outputs JSON.",
                             ),
-                    )
+                            mapOf("role" to "user", "content" to prompt),
+                        ),
                 )
+            )
 
-            val uri = URI.create(endpoint)
-            val builder =
-                HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
-            if (apiKey.isNotBlank()) {
-                builder.header("Authorization", "Bearer $apiKey")
-            }
-            val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-
-            if (response.statusCode() == 200) {
-                val root: Map<String, Any> = mapper.readValue(response.body())
-                val choices = root["choices"] as? List<*>
-                val firstChoice = choices?.firstOrNull() as? Map<*, *>
-                val message = firstChoice?.get("message") as? Map<*, *>
-                val text = message?.get("content") as? String
-                if (!text.isNullOrBlank()) {
-                    return parseTripPlan(text, days)
-                }
-            }
-        } catch (e: Exception) {
-            logger.warn("OpenAI Provider warning: {}", e.message)
+        val uri = URI.create(endpoint)
+        val builder = HttpRequest.newBuilder().uri(uri).header("Content-Type", "application/json")
+        if (apiKey.isNotBlank()) {
+            builder.header("Authorization", "Bearer $apiKey")
         }
-        return NoOpFallbackProvider()
-            .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
+        val request = builder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build()
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+
+        if (response.statusCode() == 200) {
+            val root: Map<String, Any> = mapper.readValue(response.body())
+            val choices = root["choices"] as? List<*>
+            val firstChoice = choices?.firstOrNull() as? Map<*, *>
+            val message = firstChoice?.get("message") as? Map<*, *>
+            return message?.get("content") as? String
+        }
+        return null
     }
 }
