@@ -584,4 +584,199 @@ class PoiExtractorTest {
         assertEquals(38.0, parkPoi.lat, 0.001)
         assertEquals(-121.0, parkPoi.lng, 0.001)
     }
+
+    @Test
+    fun `rankAndSelectPois enforces min-gap spacing to prevent clustering in one city`() {
+        val legPoints =
+            listOf(
+                LocationCoords(37.33, -121.89), // San Jose
+                LocationCoords(37.45, -122.15), // Palo Alto
+                LocationCoords(37.77, -122.41), // San Francisco
+            )
+
+        // Cluster in San Jose (progress ~0.0 to ~0.05)
+        val sj1 =
+            POI(
+                id = "sj1",
+                name = "San Jose Museum",
+                lat = 37.331,
+                lng = -121.891,
+                tags = mapOf("tourism" to "museum"),
+                type = "museum",
+                distanceFromRouteMeters = 50.0,
+            )
+        val sj2 =
+            POI(
+                id = "sj2",
+                name = "San Jose Park",
+                lat = 37.332,
+                lng = -121.892,
+                tags = mapOf("leisure" to "park"),
+                type = "park",
+                distanceFromRouteMeters = 60.0,
+            )
+        val sj3 =
+            POI(
+                id = "sj3",
+                name = "San Jose Bakery",
+                lat = 37.333,
+                lng = -121.893,
+                tags = mapOf("amenity" to "cafe"),
+                type = "cafe",
+                distanceFromRouteMeters = 70.0,
+            )
+
+        // POI in Palo Alto (progress ~0.4)
+        val pa1 =
+            POI(
+                id = "pa1",
+                name = "Stanford Dish",
+                lat = 37.452,
+                lng = -122.152,
+                tags = mapOf("tourism" to "attraction"),
+                type = "attraction",
+                distanceFromRouteMeters = 100.0,
+            )
+
+        // POIs in San Francisco (progress ~0.95 to 1.0)
+        val sf1 =
+            POI(
+                id = "sf1",
+                name = "SF Cable Car",
+                lat = 37.771,
+                lng = -122.411,
+                tags = mapOf("tourism" to "attraction"),
+                type = "attraction",
+                distanceFromRouteMeters = 80.0,
+            )
+
+        val candidates = listOf(sj1, sj2, sj3, pa1, sf1)
+
+        // With a min gap of 10 km (10000m) or progress gap 0.15, sj2 and sj3 should be filtered out
+        // in favor of pa1 and sf1
+        val selected =
+            PoiExtractor.rankAndSelectPois(
+                candidates = candidates,
+                limit = 3,
+                legPoints = legPoints,
+                minGapMeters = 10000.0,
+                minGapProgressFraction = 0.15,
+            )
+
+        assertEquals(3, selected.size)
+        // Ensure sj2 and sj3 were not picked together with sj1
+        val sjPoisSelected = selected.filter { it.id.startsWith("sj") }
+        assertEquals(
+            1,
+            sjPoisSelected.size,
+            "Expected only 1 POI from San Jose cluster due to min-gap spacing",
+        )
+        assertTrue(selected.any { it.id == "pa1" }, "Expected Palo Alto POI to be selected")
+        assertTrue(selected.any { it.id == "sf1" }, "Expected San Francisco POI to be selected")
+    }
+
+    @Test
+    fun `satisfiesMinGap correctly identifies progress and spatial distance violations`() {
+        val poiA =
+            POI(
+                id = "a",
+                name = "POI A",
+                lat = 37.0,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+        val poiB =
+            POI(
+                id = "b",
+                name = "POI B",
+                lat = 37.01,
+                lng = -122.01,
+                tags = emptyMap(),
+                type = "park",
+            )
+        val poiC =
+            POI(
+                id = "c",
+                name = "POI C",
+                lat = 38.0,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "museum",
+            )
+
+        val scoredA = PoiExtractor.ScoredPoi(poiA, progress = 0.10, quality = 80.0)
+
+        // poiB is close in progress (0.12 vs 0.10, diff 0.02) and spatial distance (< 2km)
+        assertFalse(
+            PoiExtractor.satisfiesMinGap(
+                candPoi = poiB,
+                candProgress = 0.12,
+                selected = listOf(scoredA),
+                minGapMeters = 5000.0,
+                minGapProgressFraction = 0.05,
+            )
+        )
+
+        // poiC is far in progress (0.80 vs 0.10) and spatial distance (> 100km)
+        assertTrue(
+            PoiExtractor.satisfiesMinGap(
+                candPoi = poiC,
+                candProgress = 0.80,
+                selected = listOf(scoredA),
+                minGapMeters = 5000.0,
+                minGapProgressFraction = 0.05,
+            )
+        )
+    }
+
+    @Test
+    fun `rankAndSelectPois relaxes min-gap when candidate pool is sparse`() {
+        val legPoints = listOf(LocationCoords(37.0, -122.0), LocationCoords(37.1, -122.0))
+
+        // 3 POIs very close to each other (e.g. 500m apart)
+        val p1 =
+            POI(
+                id = "1",
+                name = "Spot 1",
+                lat = 37.001,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+        val p2 =
+            POI(
+                id = "2",
+                name = "Spot 2",
+                lat = 37.005,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "park",
+            )
+        val p3 =
+            POI(
+                id = "3",
+                name = "Spot 3",
+                lat = 37.010,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "museum",
+            )
+
+        // Ask for 3 POIs with strict 20km min gap (which none natively satisfy)
+        val selected =
+            PoiExtractor.rankAndSelectPois(
+                candidates = listOf(p1, p2, p3),
+                limit = 3,
+                legPoints = legPoints,
+                minGapMeters = 20000.0,
+                minGapProgressFraction = 0.20,
+            )
+
+        assertEquals(
+            3,
+            selected.size,
+            "Expected fallback relaxation to fill all 3 requested slots when candidates exist",
+        )
+    }
 }
