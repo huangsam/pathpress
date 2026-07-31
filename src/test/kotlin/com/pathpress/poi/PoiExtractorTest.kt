@@ -586,91 +586,6 @@ class PoiExtractorTest {
     }
 
     @Test
-    fun `rankAndSelectPois enforces min-gap spacing to prevent clustering in one city`() {
-        val legPoints =
-            listOf(
-                LocationCoords(37.33, -121.89), // San Jose
-                LocationCoords(37.45, -122.15), // Palo Alto
-                LocationCoords(37.77, -122.41), // San Francisco
-            )
-
-        // Cluster in San Jose (progress ~0.0 to ~0.05 of leg)
-        val sj1 =
-            POI(
-                id = "sj1",
-                name = "San Jose Museum",
-                lat = 37.331,
-                lng = -121.891,
-                tags = mapOf("tourism" to "museum"),
-                type = "museum",
-                distanceFromRouteMeters = 50.0,
-            )
-        val sj2 =
-            POI(
-                id = "sj2",
-                name = "San Jose Park",
-                lat = 37.332,
-                lng = -121.892,
-                tags = mapOf("leisure" to "park"),
-                type = "park",
-                distanceFromRouteMeters = 60.0,
-            )
-        val sj3 =
-            POI(
-                id = "sj3",
-                name = "San Jose Bakery",
-                lat = 37.333,
-                lng = -121.893,
-                tags = mapOf("amenity" to "cafe"),
-                type = "cafe",
-                distanceFromRouteMeters = 70.0,
-            )
-
-        // POI in Palo Alto (progress ~0.4)
-        val pa1 =
-            POI(
-                id = "pa1",
-                name = "Stanford Dish",
-                lat = 37.452,
-                lng = -122.152,
-                tags = mapOf("tourism" to "attraction"),
-                type = "attraction",
-                distanceFromRouteMeters = 100.0,
-            )
-
-        // POI in San Francisco (progress ~1.0)
-        val sf1 =
-            POI(
-                id = "sf1",
-                name = "SF Cable Car",
-                lat = 37.771,
-                lng = -122.411,
-                tags = mapOf("tourism" to "attraction"),
-                type = "attraction",
-                distanceFromRouteMeters = 80.0,
-            )
-
-        // Min-gap = (1/3) * 0.65 ≈ 0.22 of leg progress; sj1/sj2/sj3 are all within ~0.01 progress
-        // of each other, so only one of them should be picked alongside pa1 and sf1.
-        val selected =
-            PoiExtractor.rankAndSelectPois(
-                candidates = listOf(sj1, sj2, sj3, pa1, sf1),
-                limit = 3,
-                legPoints = legPoints,
-            )
-
-        assertEquals(3, selected.size)
-        val sjPoisSelected = selected.filter { it.id.startsWith("sj") }
-        assertEquals(
-            1,
-            sjPoisSelected.size,
-            "Expected only 1 POI from San Jose cluster due to (1/limit)*0.65 min-gap spacing",
-        )
-        assertTrue(selected.any { it.id == "pa1" }, "Expected Palo Alto POI to be selected")
-        assertTrue(selected.any { it.id == "sf1" }, "Expected San Francisco POI to be selected")
-    }
-
-    @Test
     fun `rankAndSelectPois relaxes min-gap when candidate pool is sparse`() {
         val legPoints = listOf(LocationCoords(37.0, -122.0), LocationCoords(37.1, -122.0))
 
@@ -715,6 +630,77 @@ class PoiExtractorTest {
             3,
             selected.size,
             "Expected safety fallback to fill all 3 requested slots even when pool is tightly clustered",
+        )
+    }
+
+    @Test
+    fun `rankAndSelectPois rejects POI in adjacent bucket if too close in progress`() {
+        // A straight line north, where 1 degree lat ~ 1.0 progress.
+        val legPoints = listOf(LocationCoords(37.0, -122.0), LocationCoords(38.0, -122.0))
+        // limit = 3 -> bucket size = 0.333 -> min gap = 0.333 * 0.65 = 0.216 progress (i.e. ~0.216
+        // deg lat)
+
+        // P1 in Bucket 0 (0-0.33)
+        val p1 =
+            POI(id = "1", name = "P1", lat = 37.32, lng = -122.0, tags = emptyMap(), type = "cafe")
+        // P2 in Bucket 1 (0.33-0.66) but very close to P1 (0.35 - 0.32 = 0.03 < 0.216 gap)
+        val p2 =
+            POI(id = "2", name = "P2", lat = 37.35, lng = -122.0, tags = emptyMap(), type = "park")
+        // P3 in Bucket 2 (0.66-1.0)
+        val p3 =
+            POI(
+                id = "3",
+                name = "P3",
+                lat = 37.80,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "museum",
+            )
+        // P4 in Bucket 0, far enough backwards from P1 (0.32 - 0.10 = 0.22 > 0.216 gap)
+        val p4 =
+            POI(
+                id = "4",
+                name = "P4",
+                lat = 37.10,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "restaurant",
+            )
+
+        // Force quality score to be strictly equal to latitude so we guarantee processing order:
+        // P3 (37.80) > P2 (37.35) > P1 (37.32) > P4 (37.10)
+        val rulesEngine =
+            com.pathpress.poi.rules.PoiRulesEngine(
+                filterRules = emptyList(),
+                scoringRules =
+                    listOf(
+                        object : com.pathpress.poi.rules.PoiScoringRule {
+                            override fun calculateScore(
+                                poi: POI,
+                                context: PoiEvaluationContext,
+                            ): Double = poi.lat
+                        }
+                    ),
+            )
+
+        val selected =
+            PoiExtractor.rankAndSelectPois(
+                candidates = listOf(p1, p2, p3, p4),
+                limit = 3,
+                legPoints = legPoints,
+                rulesEngine = rulesEngine,
+            )
+
+        assertEquals(3, selected.size)
+        assertTrue(selected.any { it.id == "1" }, "P1 should be selected for Bucket 0")
+        assertTrue(selected.any { it.id == "3" }, "P3 should be selected for Bucket 2")
+        assertTrue(
+            selected.any { it.id == "4" },
+            "P4 should be selected in backfill, because P2 was rejected by min-gap",
+        )
+        assertFalse(
+            selected.any { it.id == "2" },
+            "P2 should be rejected despite being in Bucket 1 because it is too close to P1",
         )
     }
 }
