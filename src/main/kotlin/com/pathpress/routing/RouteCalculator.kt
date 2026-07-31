@@ -190,6 +190,7 @@ class RouteCalculator(
                         limitPerLeg = limitPerLeg,
                         userPrompt = userPrompt,
                     )
+                    // Fall back to empty list if no OSM POIs match
                     .ifEmpty {
                         filterNearbyPois(
                             pointsList.getLat(pointsList.size() / 2),
@@ -348,6 +349,7 @@ class RouteCalculator(
                         userPrompt = userPrompt,
                         excludePoiIds = usedPoiIds,
                     )
+                    // Fall back to empty list if no OSM POIs match
                     .ifEmpty {
                         filterNearbyPois(
                             (legStart.lat + legEnd.lat) / 2,
@@ -400,7 +402,14 @@ class RouteCalculator(
         return legs
     }
 
-    /** Fallback POIs if PBF has no match. Always returns empty list per AGENTS.md Rule 1. */
+    /**
+     * Fallback POI lookup when OSM extraction yields no matches for a route leg.
+     *
+     * This fallback strictly returns an empty list rather than generating synthetic placeholder
+     * POIs. As a result, routes traversing regions with no matching OSM POIs will contain an empty
+     * POI list, which may leave leg recommendations appearing minimal/unfinished, but guarantees
+     * data provenance integrity.
+     */
     fun filterNearbyPois(lat: Double, lng: Double, radiusMeters: Double = 5000.0): List<POI> {
         return emptyList()
     }
