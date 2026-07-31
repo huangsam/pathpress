@@ -156,12 +156,6 @@ h3,
 .leg-page-break {
   page-break-before: always;
 }
-.leg-top-grid {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 18px;
-  page-break-inside: avoid;
-}
 .day-badge {
   color: #0284c7;
   font-size: 11px;
@@ -268,13 +262,6 @@ h3,
   text-align: right;
   width: 65px;
 }
-.poi-card-header {
-  font-size: 13px;
-  font-weight: bold;
-  color: #334155;
-  margin-bottom: 6px;
-  line-height: 1.5;
-}
 .poi-name-link {
   color: #0284c7;
   text-decoration: none;
@@ -336,27 +323,6 @@ h3,
   font-weight: 500;
   line-height: 1.3;
   vertical-align: 2px;
-}
-.info-card {
-  margin-top: 18px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  padding: 16px 18px;
-  border-radius: 10px;
-  page-break-inside: avoid;
-}
-.info-card-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: #92400e;
-  margin-bottom: 10px;
-  line-height: 1.4;
-}
-.info-card-item {
-  font-size: 12px;
-  color: #92400e;
-  margin-bottom: 6px;
-  line-height: 1.5;
 }
 .appendix-page {
   page-break-before: always;
