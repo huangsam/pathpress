@@ -134,6 +134,8 @@ class LlmProviderTest {
                 fun testCurationPrompt(leg: RouteLeg, userPrompt: String?) =
                     buildCurationPrompt(leg, userPrompt)
 
+                override fun complete(prompt: String): String? = error("Not implemented")
+
                 override fun planTrip(
                     startName: String,
                     endName: String,
@@ -226,6 +228,8 @@ class LlmProviderTest {
             object : HttpLlmProvider() {
                 fun testParse(json: String, days: Int) = parseTripPlan(json, days)
 
+                override fun complete(prompt: String): String? = error("Not implemented")
+
                 override fun planTrip(
                     startName: String,
                     endName: String,
@@ -279,6 +283,8 @@ class LlmProviderTest {
             object : HttpLlmProvider() {
                 fun testPrompt(start: String, end: String, days: Int, prompt: String?) =
                     buildPrompt(start, end, days, prompt)
+
+                override fun complete(prompt: String): String? = error("Not implemented")
 
                 override fun planTrip(
                     startName: String,
