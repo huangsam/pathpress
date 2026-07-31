@@ -770,8 +770,8 @@ object PoiExtractor {
      * Rank and select up to [limit] POIs from [candidates].
      *
      * When [legPoints] is provided the selection is **segment-based**: the route is divided into
-     * [limit] equal progress buckets (0.0 → 1.0) and the best POI is chosen from each bucket.
-     * A minimum progress gap of `(1/limit) * 0.65` is enforced between selected POIs to prevent
+     * [limit] equal progress buckets (0.0 → 1.0) and the best POI is chosen from each bucket. A
+     * minimum progress gap of `(1/limit) * 0.65` is enforced between selected POIs to prevent
      * clustering in a single city at the start or end of the leg.
      *
      * Without [legPoints] the original distance-only two-pass logic is used.
@@ -919,8 +919,9 @@ object PoiExtractor {
         val selected = mutableListOf<ScoredPoi>()
         val typeCounts = mutableMapOf<String, Int>()
 
-        fun clearOfSelected(item: ScoredPoi, gap: Double): Boolean =
-            selected.none { Math.abs(it.progress - item.progress) < gap }
+        fun clearOfSelected(item: ScoredPoi, gap: Double): Boolean = selected.none {
+            Math.abs(it.progress - item.progress) < gap
+        }
 
         // Pass 1: one best POI per progress bucket (type diversity + min progress gap)
         for (bucket in 0 until limit) {
@@ -960,7 +961,8 @@ object PoiExtractor {
             }
         }
 
-        // Pass 3 (unconstrained safety fallback): fill remaining slots ignoring gap if pool is sparse
+        // Pass 3 (unconstrained safety fallback): fill remaining slots ignoring gap if pool is
+        // sparse
         if (selected.size < limit) {
             val remaining = scored.filter { it !in selected }.sortedByDescending { it.quality }
             for (scoredItem in remaining) {

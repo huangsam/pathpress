@@ -677,11 +677,32 @@ class PoiExtractorTest {
         // 3 POIs very close together — the (1/limit)*0.65 gap will initially filter some,
         // but the unconstrained safety fallback must still fill all requested slots.
         val p1 =
-            POI(id = "1", name = "Spot 1", lat = 37.001, lng = -122.0, tags = emptyMap(), type = "cafe")
+            POI(
+                id = "1",
+                name = "Spot 1",
+                lat = 37.001,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "cafe",
+            )
         val p2 =
-            POI(id = "2", name = "Spot 2", lat = 37.005, lng = -122.0, tags = emptyMap(), type = "park")
+            POI(
+                id = "2",
+                name = "Spot 2",
+                lat = 37.005,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "park",
+            )
         val p3 =
-            POI(id = "3", name = "Spot 3", lat = 37.010, lng = -122.0, tags = emptyMap(), type = "museum")
+            POI(
+                id = "3",
+                name = "Spot 3",
+                lat = 37.010,
+                lng = -122.0,
+                tags = emptyMap(),
+                type = "museum",
+            )
 
         val selected =
             PoiExtractor.rankAndSelectPois(
@@ -697,4 +718,3 @@ class PoiExtractorTest {
         )
     }
 }
-
