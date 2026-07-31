@@ -117,14 +117,23 @@ class RouteCalculator(
                                 snappedEnd.lng,
                             )
                             .setProfile("car")
-                    graphHopper.route(directReq)
+                    try {
+                        graphHopper.route(directReq)
+                    } catch (e2: Exception) {
+                        null
+                    }
                 }
-            if (fallbackRes.hasErrors() && validWaypoints.isNotEmpty()) {
+            if ((fallbackRes == null || fallbackRes.hasErrors()) && validWaypoints.isNotEmpty()) {
                 val directReq =
                     GHRequest(snappedStart.lat, snappedStart.lng, snappedEnd.lat, snappedEnd.lng)
                         .setProfile("car")
-                val directRes = graphHopper.route(directReq)
-                if (directRes.hasErrors()) {
+                val directRes =
+                    try {
+                        graphHopper.route(directReq)
+                    } catch (e: Exception) {
+                        null
+                    }
+                if (directRes == null || directRes.hasErrors()) {
                     throw IllegalStateException("Route calculation failed: ${response.errors}")
                 }
                 return extractLegsFromResponse(
@@ -135,7 +144,7 @@ class RouteCalculator(
                     limitPerLeg,
                     userPrompt,
                 )
-            } else if (fallbackRes.hasErrors()) {
+            } else if (fallbackRes == null || fallbackRes.hasErrors()) {
                 throw IllegalStateException("Route calculation failed: ${response.errors}")
             }
             return extractLegsFromResponse(
