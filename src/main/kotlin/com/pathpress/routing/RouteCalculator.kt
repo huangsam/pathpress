@@ -400,29 +400,9 @@ class RouteCalculator(
         return legs
     }
 
-    /** Fallback POIs if PBF has no match. */
+    /** Fallback POIs if PBF has no match. Always returns empty list per AGENTS.md Rule 1. */
     fun filterNearbyPois(lat: Double, lng: Double, radiusMeters: Double = 5000.0): List<POI> {
-        return listOf(
-            POI(
-                id = "poi-viewpoint-${lat.hashCode()}",
-                name = "Scenic Viewpoint & Photo Stop",
-                lat = lat + 0.005,
-                lng = lng + 0.005,
-                tags = mapOf("tourism" to "viewpoint"),
-                type = "viewpoint",
-                distanceFromRouteMeters = 300.0,
-            ),
-            POI(
-                id = "poi-cafe-${lng.hashCode()}",
-                name = "Local Artisan Cafe & Bakery",
-                lat = lat - 0.003,
-                lng = lng - 0.003,
-                tags = mapOf("amenity" to "cafe"),
-                type = "cafe",
-                distanceFromRouteMeters = 150.0,
-                isFoodOrCoffee = true,
-            ),
-        )
+        return emptyList()
     }
 
     private val snapFilter: com.graphhopper.routing.util.EdgeFilter by lazy {
