@@ -56,6 +56,8 @@ body {
   padding: 0;
   line-height: 1.6;
   font-size: 12px;
+  orphans: 2;
+  widows: 2;
 }
 h1,
 h2,
@@ -141,6 +143,7 @@ h3,
   margin-bottom: 20px;
   font-weight: bold;
   line-height: 1.4;
+  page-break-after: avoid;
 }
 .leg {
   margin-bottom: 32px;
@@ -174,6 +177,7 @@ h3,
   color: #0f172a;
   margin: 0 0 10px 0;
   line-height: 1.3;
+  page-break-after: avoid;
 }
 .meta-pills {
   margin-top: 4px;
@@ -240,6 +244,7 @@ h3,
   border-bottom: 2px solid #e2e8f0;
   padding-bottom: 8px;
   line-height: 1.4;
+  page-break-after: avoid;
 }
 .poi-card {
   background: #f8fafc;
@@ -375,6 +380,7 @@ h3,
   margin-bottom: 12px;
   border-bottom: 1px solid #cbd5e1;
   padding-bottom: 4px;
+  page-break-after: avoid;
 }
 .appendix-card-pair {
   display: table;
@@ -411,6 +417,7 @@ h3,
   font-weight: bold;
   color: #0f172a;
   margin-bottom: 12px;
+  page-break-after: avoid;
 }
 .appendix-qr-img {
   width: 175px;
