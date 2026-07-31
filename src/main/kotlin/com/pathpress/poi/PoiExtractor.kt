@@ -220,20 +220,7 @@ object PoiExtractor {
             while (true) {
                 val elem = osmInput1.getNext() ?: break
                 if (elem.type == ReaderElement.Type.WAY) {
-                    val way = elem as ReaderWay
-                    val tags = extractTags(way)
-                    val name = tags["name"]
-                    if (!name.isNullOrBlank() && isRelevantPoi(tags)) {
-                        val wayNodes = way.nodes
-                        val nodeCount = wayNodes.size()
-                        val nodeIds = LongArrayList(nodeCount)
-                        for (i in 0 until nodeCount) {
-                            val nodeId = wayNodes.get(i)
-                            nodeIds.add(nodeId)
-                            neededNodeIds.add(nodeId)
-                        }
-                        wayCandidates.add(WayPoiCandidate(way.id, tags, nodeIds))
-                    }
+                    processWayElementPass1(elem as ReaderWay, neededNodeIds, wayCandidates)
                 }
             }
             osmInput1.close()
@@ -251,31 +238,14 @@ object PoiExtractor {
             while (true) {
                 val elem = osmInput2.getNext() ?: break
                 if (elem.type == ReaderElement.Type.NODE) {
-                    val node = elem as ReaderNode
-                    if (neededNodeIds.contains(node.id)) {
-                        neededNodeLats.put(node.id, node.lat)
-                        neededNodeLons.put(node.id, node.lon)
-                    }
-
-                    val tags = extractTags(node)
-                    val name = tags["name"]
-                    if (!name.isNullOrBlank()) {
-                        if (isRelevantPoi(tags)) {
-                            val poi =
-                                POI.fromOsm(
-                                    id = "n${node.id}",
-                                    lat = node.lat,
-                                    lng = node.lon,
-                                    tags = tags,
-                                    distanceFromRouteMeters = null,
-                                )
-                            pois.add(poi)
-                        }
-                        val placeType = tags["place"]
-                        if (placeType in RELEVANT_PLACES) {
-                            towns.add(TownInfo(name, node.lat, node.lon, placeType!!))
-                        }
-                    }
+                    processNodeElementPass2(
+                        elem as ReaderNode,
+                        neededNodeIds,
+                        neededNodeLats,
+                        neededNodeLons,
+                        pois,
+                        towns,
+                    )
                 } else if (elem.type == ReaderElement.Type.WAY) {
                     // All NODE elements precede WAY elements in OSM PBF format, break early!
                     break
@@ -287,6 +257,129 @@ object PoiExtractor {
         }
 
         // Post-processing: Compute centroids for way candidates
+        resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, pois)
+
+        val store = PoiCacheStore(pois = pois, towns = towns)
+        try {
+            cacheFile.parentFile?.mkdirs()
+            mapper.writeValue(cacheFile, store)
+            val elapsed = System.currentTimeMillis() - startTime
+            logger.info(
+                "Saved POI cache to {} with {} POIs and {} towns in {} ms",
+                resolvedCachePath,
+                pois.size,
+                towns.size,
+                elapsed,
+            )
+        } catch (e: Exception) {
+            logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message)
+        }
+
+        cachedStore = store
+        cachedPbfPath = pbfPath
+        return store
+    }
+
+    /**
+     * Builds a [PoiCacheStore] directly from an in-memory collection of [ReaderElement]s. Useful
+     * for testing the 2-pass extraction algorithm with synthetic nodes and ways.
+     */
+    fun buildCacheFromElements(elements: Iterable<ReaderElement>): PoiCacheStore {
+        val neededNodeIds = LongHashSet()
+        val wayCandidates = mutableListOf<WayPoiCandidate>()
+
+        // Pass 1: WAYS
+        for (elem in elements) {
+            if (elem.type == ReaderElement.Type.WAY) {
+                processWayElementPass1(elem as ReaderWay, neededNodeIds, wayCandidates)
+            }
+        }
+
+        // Pass 2: NODES
+        val pois = mutableListOf<POI>()
+        val towns = mutableListOf<TownInfo>()
+        val neededNodeLats = LongDoubleHashMap()
+        val neededNodeLons = LongDoubleHashMap()
+
+        for (elem in elements) {
+            if (elem.type == ReaderElement.Type.NODE) {
+                processNodeElementPass2(
+                    elem as ReaderNode,
+                    neededNodeIds,
+                    neededNodeLats,
+                    neededNodeLons,
+                    pois,
+                    towns,
+                )
+            }
+        }
+
+        // Post-processing: Centroids
+        resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, pois)
+
+        return PoiCacheStore(pois = pois, towns = towns)
+    }
+
+    internal fun processWayElementPass1(
+        way: ReaderWay,
+        neededNodeIds: LongHashSet,
+        wayCandidates: MutableList<WayPoiCandidate>,
+    ) {
+        val tags = extractTags(way)
+        val name = tags["name"]
+        if (!name.isNullOrBlank() && isRelevantPoi(tags)) {
+            val wayNodes = way.nodes
+            val nodeCount = wayNodes.size()
+            val nodeIds = LongArrayList(nodeCount)
+            for (i in 0 until nodeCount) {
+                val nodeId = wayNodes.get(i)
+                nodeIds.add(nodeId)
+                neededNodeIds.add(nodeId)
+            }
+            wayCandidates.add(WayPoiCandidate(way.id, tags, nodeIds))
+        }
+    }
+
+    internal fun processNodeElementPass2(
+        node: ReaderNode,
+        neededNodeIds: LongHashSet,
+        neededNodeLats: LongDoubleHashMap,
+        neededNodeLons: LongDoubleHashMap,
+        pois: MutableList<POI>,
+        towns: MutableList<TownInfo>,
+    ) {
+        if (neededNodeIds.contains(node.id)) {
+            neededNodeLats.put(node.id, node.lat)
+            neededNodeLons.put(node.id, node.lon)
+        }
+
+        val tags = extractTags(node)
+        val name = tags["name"]
+        if (!name.isNullOrBlank()) {
+            if (isRelevantPoi(tags)) {
+                val poi =
+                    POI.fromOsm(
+                        id = "n${node.id}",
+                        lat = node.lat,
+                        lng = node.lon,
+                        tags = tags,
+                        distanceFromRouteMeters = null,
+                    )
+                pois.add(poi)
+            }
+            val placeType = tags["place"]
+            if (placeType in RELEVANT_PLACES) {
+                towns.add(TownInfo(name, node.lat, node.lon, placeType!!))
+            }
+        }
+    }
+
+    internal fun resolveWayCentroids(
+        wayCandidates: List<WayPoiCandidate>,
+        neededNodeLats: LongDoubleHashMap,
+        neededNodeLons: LongDoubleHashMap,
+        pois: MutableList<POI>,
+    ) {
         for (candidate in wayCandidates) {
             var sumLat = 0.0
             var sumLon = 0.0
@@ -327,26 +420,6 @@ object PoiExtractor {
                 pois.add(poi)
             }
         }
-
-        val store = PoiCacheStore(pois = pois, towns = towns)
-        try {
-            cacheFile.parentFile?.mkdirs()
-            mapper.writeValue(cacheFile, store)
-            val elapsed = System.currentTimeMillis() - startTime
-            logger.info(
-                "Saved POI cache to {} with {} POIs and {} towns in {} ms",
-                resolvedCachePath,
-                pois.size,
-                towns.size,
-                elapsed,
-            )
-        } catch (e: Exception) {
-            logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message)
-        }
-
-        cachedStore = store
-        cachedPbfPath = pbfPath
-        return store
     }
 
     /** Extract real POIs along a route leg polyline within a corridor buffer. */

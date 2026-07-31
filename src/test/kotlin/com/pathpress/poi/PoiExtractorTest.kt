@@ -530,126 +530,58 @@ class PoiExtractorTest {
     }
 
     @Test
-    fun `node and way POI IDs are correctly prefixed with n and w`() {
-        val nodePoi =
-            POI.fromOsm(
-                id = "n12345",
-                lat = 37.77,
-                lng = -122.41,
-                tags = mapOf("name" to "Cafe", "amenity" to "cafe"),
-            )
-        val wayPoi =
-            POI.fromOsm(
-                id = "w67890",
-                lat = 37.78,
-                lng = -122.42,
-                tags = mapOf("name" to "Park", "leisure" to "park"),
-            )
+    fun `buildCacheFromElements processes synthetic nodes and ways with n and w ID prefixes`() {
+        val cafeNode = com.graphhopper.reader.ReaderNode(12345L, 37.77, -122.41)
+        cafeNode.setTag("name", "Cafe Blue")
+        cafeNode.setTag("amenity", "cafe")
 
-        assertEquals("n12345", nodePoi.id)
-        assertEquals("w67890", wayPoi.id)
+        // Way nodes
+        val n1 = com.graphhopper.reader.ReaderNode(1L, 37.0, -122.0)
+        val n2 = com.graphhopper.reader.ReaderNode(2L, 37.0, -120.0)
+        val n3 = com.graphhopper.reader.ReaderNode(3L, 39.0, -120.0)
+        val n4 = com.graphhopper.reader.ReaderNode(4L, 39.0, -122.0)
+
+        val parkWay = com.graphhopper.reader.ReaderWay(67890L)
+        parkWay.nodes.add(1L)
+        parkWay.nodes.add(2L)
+        parkWay.nodes.add(3L)
+        parkWay.nodes.add(4L)
+        parkWay.setTag("name", "Yosemite Area Park")
+        parkWay.setTag("leisure", "park")
+
+        val store = PoiExtractor.buildCacheFromElements(listOf(cafeNode, n1, n2, n3, n4, parkWay))
+
+        val cafePoi = store.pois.find { it.name == "Cafe Blue" }
+        val parkPoi = store.pois.find { it.name == "Yosemite Area Park" }
+
+        kotlin.test.assertNotNull(cafePoi, "Expected node POI for Cafe Blue")
+        kotlin.test.assertNotNull(parkPoi, "Expected way POI for Yosemite Area Park")
+
+        assertEquals("n12345", cafePoi.id)
+        assertEquals("w67890", parkPoi.id)
+        assertEquals(38.0, parkPoi.lat, 0.001)
+        assertEquals(-121.0, parkPoi.lng, 0.001)
     }
 
     @Test
-    fun `extracts area-mapped POI ways calculating centroid from node coordinates`() {
-        val nodeLats = com.carrotsearch.hppc.LongDoubleHashMap()
-        val nodeLons = com.carrotsearch.hppc.LongDoubleHashMap()
+    fun `buildCacheFromElements calculates centroid and handles unresolvable member nodes`() {
+        val n1 = com.graphhopper.reader.ReaderNode(1L, 37.0, -122.0)
+        val n2 = com.graphhopper.reader.ReaderNode(2L, 39.0, -120.0)
+        // Node 3L is not provided in synthetic elements (unresolvable)
 
-        // 4 corner nodes of a square area-mapped park
-        nodeLats.put(1L, 37.0)
-        nodeLons.put(1L, -122.0)
+        val partialWay = com.graphhopper.reader.ReaderWay(888L)
+        partialWay.nodes.add(1L)
+        partialWay.nodes.add(2L)
+        partialWay.nodes.add(3L)
+        partialWay.setTag("name", "Partial Park")
+        partialWay.setTag("leisure", "park")
 
-        nodeLats.put(2L, 37.0)
-        nodeLons.put(2L, -120.0)
+        val store = PoiExtractor.buildCacheFromElements(listOf(n1, n2, partialWay))
 
-        nodeLats.put(3L, 39.0)
-        nodeLons.put(3L, -120.0)
-
-        nodeLats.put(4L, 39.0)
-        nodeLons.put(4L, -122.0)
-
-        val way = com.graphhopper.reader.ReaderWay(999L)
-        way.nodes.add(1L)
-        way.nodes.add(2L)
-        way.nodes.add(3L)
-        way.nodes.add(4L)
-        way.setTag("name", "Yosemite Area Park")
-        way.setTag("leisure", "park")
-
-        var sumLat = 0.0
-        var sumLon = 0.0
-        var count = 0
-        for (i in 0 until way.nodes.size()) {
-            val nId = way.nodes.get(i)
-            if (nodeLats.containsKey(nId)) {
-                sumLat += nodeLats.get(nId)
-                sumLon += nodeLons.get(nId)
-                count++
-            }
-        }
-
-        val centroidLat = sumLat / count
-        val centroidLon = sumLon / count
-
-        assertEquals(38.0, centroidLat, 0.001)
-        assertEquals(-121.0, centroidLon, 0.001)
-
-        val wayPoi =
-            POI.fromOsm(
-                id = "w${way.id}",
-                lat = centroidLat,
-                lng = centroidLon,
-                tags = mapOf("name" to way.getTag("name"), "leisure" to way.getTag("leisure")),
-            )
-
-        assertEquals("w999", wayPoi.id)
-        assertEquals("Yosemite Area Park", wayPoi.name)
-        assertEquals(38.0, wayPoi.lat, 0.001)
-        assertEquals(-121.0, wayPoi.lng, 0.001)
-        assertEquals("park", wayPoi.type)
-    }
-
-    @Test
-    fun `centroid calculation tracks unresolvable node members gracefully`() {
-        val nodeLats = com.carrotsearch.hppc.LongDoubleHashMap()
-        val nodeLons = com.carrotsearch.hppc.LongDoubleHashMap()
-
-        // Only 2 of 3 nodes are in the lookup map
-        nodeLats.put(1L, 37.0)
-        nodeLons.put(1L, -122.0)
-        nodeLats.put(2L, 39.0)
-        nodeLons.put(2L, -120.0)
-        // Node 3L is missing/unresolvable
-
-        val candidate =
-            WayPoiCandidate(
-                id = 888L,
-                tags = mapOf("name" to "Partial Way Park", "leisure" to "park"),
-                nodeIds = com.carrotsearch.hppc.LongArrayList.from(1L, 2L, 3L),
-            )
-
-        var sumLat = 0.0
-        var sumLon = 0.0
-        var resolvedCount = 0
-        var unresolvableCount = 0
-        val totalNodes = candidate.nodeIds.size()
-
-        for (i in 0 until totalNodes) {
-            val nodeId = candidate.nodeIds.get(i)
-            if (nodeLats.containsKey(nodeId)) {
-                sumLat += nodeLats.get(nodeId)
-                sumLon += nodeLons.get(nodeId)
-                resolvedCount++
-            } else {
-                unresolvableCount++
-            }
-        }
-
-        assertEquals(2, resolvedCount)
-        assertEquals(1, unresolvableCount)
-        val centroidLat = sumLat / resolvedCount
-        val centroidLon = sumLon / resolvedCount
-        assertEquals(38.0, centroidLat, 0.001)
-        assertEquals(-121.0, centroidLon, 0.001)
+        val parkPoi = store.pois.find { it.name == "Partial Park" }
+        kotlin.test.assertNotNull(parkPoi, "Expected way POI for Partial Park")
+        assertEquals("w888", parkPoi.id)
+        assertEquals(38.0, parkPoi.lat, 0.001)
+        assertEquals(-121.0, parkPoi.lng, 0.001)
     }
 }
