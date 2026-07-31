@@ -2,13 +2,9 @@ package com.pathpress.llm
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
-import com.pathpress.model.LocationCoords
 import java.net.URI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import org.slf4j.LoggerFactory
-
-private val logger = LoggerFactory.getLogger(OllamaProvider::class.java)
 
 /**
  * [HttpLlmProvider] implementation targeting local Ollama REST instances
@@ -23,56 +19,47 @@ class OllamaProvider(
     config: Config = Config.current,
     val modelName: String = config.defaultOllamaModel,
 ) : HttpLlmProvider(config) {
-    override fun planTrip(
-        startName: String,
-        endName: String,
-        startCoords: LocationCoords,
-        endCoords: LocationCoords,
-        days: Int,
-        userPrompt: String?,
-    ): TripPlanResponse {
-        try {
-            val promptText = buildPrompt(startName, endName, days, userPrompt)
-            val requestBody =
-                mapper.writeValueAsString(
-                    mapOf(
-                        "model" to modelName,
-                        "messages" to
-                            listOf(
-                                mapOf(
-                                    "role" to "system",
-                                    "content" to
-                                        "You are a helpful travel planner that outputs JSON.",
-                                ),
-                                mapOf("role" to "user", "content" to promptText),
+    override fun complete(prompt: String): String? {
+        val requestBody =
+            mapper.writeValueAsString(
+                mapOf(
+                    "model" to modelName,
+                    "messages" to
+                        listOf(
+                            mapOf(
+                                "role" to "system",
+                                "content" to "You are a helpful travel planner that outputs JSON.",
                             ),
-                        "stream" to false,
-                        "format" to "json",
-                        "options" to mapOf("temperature" to 0.1),
-                    )
+                            mapOf("role" to "user", "content" to prompt),
+                        ),
+                    "stream" to false,
+                    "format" to "json",
+                    "options" to mapOf("temperature" to 0.1),
                 )
+            )
 
-            val uri = URI.create(endpoint)
-            val request =
-                HttpRequest.newBuilder()
-                    .uri(uri)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build()
+        val uri = URI.create(endpoint)
+        val request =
+            HttpRequest.newBuilder()
+                .uri(uri)
+                .timeout(config.httpLlmConnectTimeout)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build()
 
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() == 200) {
-                val root: Map<String, Any> = mapper.readValue(response.body())
-                val message = root["message"] as? Map<*, *>
-                val responseText = message?.get("content") as? String
-                if (!responseText.isNullOrBlank()) {
-                    return parseTripPlan(responseText, days)
-                }
-            }
-        } catch (e: Exception) {
-            logger.warn("Ollama Provider warning: {}", e.message)
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        if (response.statusCode() == 200) {
+            val root: Map<String, Any> = mapper.readValue(response.body())
+            val message = root["message"] as? Map<*, *>
+            val responseText = message?.get("content") as? String
+            return if (!responseText.isNullOrBlank()) responseText else null
+        } else {
+            logger.warn(
+                "Ollama API returned status code {}: {}",
+                response.statusCode(),
+                response.body().take(200),
+            )
+            return null
         }
-        return NoOpFallbackProvider()
-            .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
     }
 }

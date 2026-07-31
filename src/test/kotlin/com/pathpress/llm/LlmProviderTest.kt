@@ -128,43 +128,28 @@ class LlmProviderTest {
     }
 
     @Test
-    fun `HttpLlmProvider buildCurationPrompt includes explicit accessibility instructions`() {
+    fun `HttpLlmProvider planTrip uses complete template method and falls back on null response`() {
+        var completeCalled = false
         val dummyProvider =
             object : HttpLlmProvider() {
-                fun testCurationPrompt(leg: RouteLeg, userPrompt: String?) =
-                    buildCurationPrompt(leg, userPrompt)
-
-                override fun planTrip(
-                    startName: String,
-                    endName: String,
-                    startCoords: LocationCoords,
-                    endCoords: LocationCoords,
-                    days: Int,
-                    userPrompt: String?,
-                ): TripPlanResponse = error("Not implemented")
-
-                override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult =
-                    error("Not implemented")
+                override fun complete(prompt: String): String? {
+                    completeCalled = true
+                    return null
+                }
             }
 
-        val leg =
-            RouteLeg(
-                startLat = 37.7,
-                startLng = -122.4,
-                endLat = 36.2,
-                endLng = -121.8,
-                dayNumber = 1,
-                totalDays = 1,
-                endTownName = "Monterey",
-                distanceMeters = 50000.0,
-                durationSeconds = 3600.0,
-                pois = emptyList(),
+        val response =
+            dummyProvider.planTrip(
+                startName = "San Francisco",
+                endName = "Los Angeles",
+                startCoords = LocationCoords(37.7749, -122.4194),
+                endCoords = LocationCoords(34.0522, -118.2437),
+                days = 2,
+                userPrompt = "Scenic",
             )
 
-        val prompt = dummyProvider.testCurationPrompt(leg, "Family trip with toddlers")
-        assertTrue(prompt.contains("ACCESSIBILITY & SUITABILITY"))
-        assertTrue(prompt.contains("toddlers, kids, or family"))
-        assertTrue(prompt.contains("reject any POIs requiring strenuous hiking"))
+        assertTrue(completeCalled)
+        assertTrue(response.narrative.isNotBlank())
     }
 
     @Test
@@ -224,19 +209,9 @@ class LlmProviderTest {
     fun `HttpLlmProvider parseTripPlan handles string list waypoints and object list waypoints`() {
         val dummyProvider =
             object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = null
+
                 fun testParse(json: String, days: Int) = parseTripPlan(json, days)
-
-                override fun planTrip(
-                    startName: String,
-                    endName: String,
-                    startCoords: LocationCoords,
-                    endCoords: LocationCoords,
-                    days: Int,
-                    userPrompt: String?,
-                ): TripPlanResponse = error("Not implemented")
-
-                override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult =
-                    error("Not implemented")
             }
 
         val stringWaypointsJson =
@@ -277,20 +252,10 @@ class LlmProviderTest {
     fun `HttpLlmProvider buildPrompt includes critical routing instructions for waypoints`() {
         val dummyProvider =
             object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = null
+
                 fun testPrompt(start: String, end: String, days: Int, prompt: String?) =
                     buildPrompt(start, end, days, prompt)
-
-                override fun planTrip(
-                    startName: String,
-                    endName: String,
-                    startCoords: LocationCoords,
-                    endCoords: LocationCoords,
-                    days: Int,
-                    userPrompt: String?,
-                ): TripPlanResponse = error("Not implemented")
-
-                override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult =
-                    error("Not implemented")
             }
 
         val prompt = dummyProvider.testPrompt("San Jose", "Los Angeles", 2, "coastal scenic points")
