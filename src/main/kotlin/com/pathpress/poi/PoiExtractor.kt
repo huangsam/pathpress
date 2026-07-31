@@ -20,8 +20,6 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 import org.slf4j.LoggerFactory
@@ -877,15 +875,9 @@ object PoiExtractor {
             val p2 = sampled[i + 1]
             val segLen = segLengths[i]
 
-            val dx = p2.lat - p1.lat
-            val dy = p2.lng - p1.lng
-            val l2 = dx * dx + dy * dy
-            val t =
-                if (l2 == 0.0) 0.0
-                else ((poiLat - p1.lat) * dx + (poiLng - p1.lng) * dy).div(l2).coerceIn(0.0, 1.0)
-
-            val projLat = p1.lat + t * dx
-            val projLng = p1.lng + t * dy
+            val t = segmentProjectionParam(poiLat, poiLng, p1.lat, p1.lng, p2.lat, p2.lng)
+            val projLat = p1.lat + t * (p2.lat - p1.lat)
+            val projLng = p1.lng + t * (p2.lng - p1.lng)
             val dist = haversineMeters(poiLat, poiLng, projLat, projLng)
 
             if (dist < minDist) {
@@ -1051,23 +1043,42 @@ object PoiExtractor {
         return minDist
     }
 
-    internal fun pointToSegmentDistanceMeters(
-        px: Double,
-        py: Double,
-        ax: Double,
-        ay: Double,
-        bx: Double,
-        by: Double,
+    private fun segmentProjectionParam(
+        pLat: Double,
+        pLng: Double,
+        aLat: Double,
+        aLng: Double,
+        bLat: Double,
+        bLng: Double,
     ): Double {
-        val l2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay)
-        if (l2 == 0.0) return haversineMeters(px, py, ax, ay)
+        val midLat = (aLat + bLat) / 2.0
+        val cosLat = cos(Math.toRadians(midLat)).coerceAtLeast(0.01)
 
-        var t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2
-        t = max(0.0, min(1.0, t))
+        val dLat = bLat - aLat
+        val dLng = (bLng - aLng) * cosLat
+        val l2 = dLat * dLat + dLng * dLng
 
-        val projLat = ax + t * (bx - ax)
-        val projLng = ay + t * (by - ay)
+        if (l2 == 0.0) return 0.0
 
-        return haversineMeters(px, py, projLat, projLng)
+        val pLatOffset = pLat - aLat
+        val pLngOffset = (pLng - aLng) * cosLat
+
+        val t = (pLatOffset * dLat + pLngOffset * dLng) / l2
+        return t.coerceIn(0.0, 1.0)
+    }
+
+    internal fun pointToSegmentDistanceMeters(
+        pLat: Double,
+        pLng: Double,
+        aLat: Double,
+        aLng: Double,
+        bLat: Double,
+        bLng: Double,
+    ): Double {
+        val t = segmentProjectionParam(pLat, pLng, aLat, aLng, bLat, bLng)
+        val projLat = aLat + t * (bLat - aLat)
+        val projLng = aLng + t * (bLng - aLng)
+
+        return haversineMeters(pLat, pLng, projLat, projLng)
     }
 }

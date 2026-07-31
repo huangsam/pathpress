@@ -42,28 +42,39 @@ class PoiExtractorTest {
         // Test point beyond start point (37.0, -123.0) -> t < 0
         val distBefore =
             PoiExtractor.pointToSegmentDistanceMeters(
-                px = 37.0,
-                py = -123.0,
-                ax = 37.0,
-                ay = -122.0,
-                bx = 37.0,
-                by = -121.0,
+                pLat = 37.0,
+                pLng = -123.0,
+                aLat = 37.0,
+                aLng = -122.0,
+                bLat = 37.0,
+                bLng = -121.0,
             )
         val distStart = PoiExtractor.haversineMeters(37.0, -123.0, 37.0, -122.0)
         assertEquals(distStart, distBefore, 0.1)
 
-        // Zero-length segment (ax=bx, ay=by)
+        // Zero-length segment (aLat=bLat, aLng=bLng)
         val distZeroSeg =
             PoiExtractor.pointToSegmentDistanceMeters(
-                px = 37.5,
-                py = -122.5,
-                ax = 37.0,
-                ay = -122.0,
-                bx = 37.0,
-                by = -122.0,
+                pLat = 37.5,
+                pLng = -122.5,
+                aLat = 37.0,
+                aLng = -122.0,
+                bLat = 37.0,
+                bLng = -122.0,
             )
         val distPointToPoint = PoiExtractor.haversineMeters(37.5, -122.5, 37.0, -122.0)
         assertEquals(distPointToPoint, distZeroSeg, 0.1)
+    }
+
+    @Test
+    fun `pointToSegmentDistanceMeters uses cosine latitude scaling for California projection`() {
+        // Diagonal segment in California from (37.0, -122.0) to (38.0, -120.0)
+        // Point at (38.0, -121.5)
+        // Unscaled t is 0.4000 -> dist ~ 71385m
+        // Scaled t is ~0.4632 -> dist ~ 70491m
+        val dist =
+            PoiExtractor.pointToSegmentDistanceMeters(38.0, -121.5, 37.0, -122.0, 38.0, -120.0)
+        assertEquals(70490.77, dist, 1.0)
     }
 
     @Test
