@@ -79,6 +79,15 @@ class PoiExtractorTest {
     }
 
     @Test
+    fun `isRelevantPoi recognizes heritage and nrhp tags`() {
+        assertTrue(PoiExtractor.isRelevantPoi(mapOf("nrhp:nhl" to "yes")))
+        assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage" to "2")))
+        assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage:operator" to "nps")))
+
+        assertFalse(PoiExtractor.isRelevantPoi(mapOf("heritage" to "3")))
+    }
+
+    @Test
     fun `rankAndSelectPois handles empty list and zero limit`() {
         assertTrue(PoiExtractor.rankAndSelectPois(emptyList(), limit = 5).isEmpty())
         val cafe =

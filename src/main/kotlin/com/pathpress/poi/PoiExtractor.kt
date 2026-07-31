@@ -761,7 +761,10 @@ object PoiExtractor {
             tourism in RELEVANT_TOURISM ||
             natural in RELEVANT_NATURAL ||
             historic in RELEVANT_HISTORIC ||
-            leisure in RELEVANT_LEISURE
+            leisure in RELEVANT_LEISURE ||
+            tags.containsKey("nrhp:nhl") ||
+            tags["heritage"] == "2" ||
+            tags.containsKey("heritage:operator")
     }
 
     internal data class ScoredPoi(val poi: POI, val progress: Double, val quality: Double)
