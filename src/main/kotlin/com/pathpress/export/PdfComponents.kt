@@ -223,7 +223,7 @@ internal fun FlowContent.legCard(
 internal fun FlowContent.poiSection(pois: List<POI>, unit: DistanceUnit = DistanceUnit.METRIC) {
     div("poi-section") {
         div("poi-title") {
-            unsafe { raw(LucideIcon.camera("#0284c7", 16)) }
+            unsafe { raw(LucideIcon.map("#0284c7", 16)) }
             span { +" Along the Route" }
         }
         pois.forEachIndexed { idx, poi -> poiCard(poi, index = idx + 1, unit = unit) }
