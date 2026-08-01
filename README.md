@@ -1,5 +1,8 @@
 # PathPress
 
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/huangsam/pathpress/ci.yml)](https://github.com/huangsam/pathpress/actions)
+[![License](https://img.shields.io/github/license/huangsam/pathpress)](https://github.com/huangsam/pathpress/blob/main/LICENSE)
+
 **PathPress** is an AI-powered road trip planner that turns trip ideas into accurate, multi-day itineraries and publication-ready PDF travel guides using real map data.
 
 <img src="images/roadtrip.png" alt="PathPress Sample Itinerary" width="600" />
