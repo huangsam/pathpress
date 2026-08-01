@@ -83,8 +83,26 @@ class RouteCalculator(
             request.addPoint(GHPoint(snappedEnd.lat, snappedEnd.lng))
             return try {
                 val res = graphHopper.route(request)
-                if (res != null && !res.hasErrors()) res else null
+                if (res != null && !res.hasErrors()) {
+                    res
+                } else {
+                    if (res != null && res.hasErrors()) {
+                        logger.warn(
+                            "Route request for profile '{}' with {} waypoint(s) returned errors: {}",
+                            p,
+                            wps.size,
+                            res.errors,
+                        )
+                    }
+                    null
+                }
             } catch (e: Exception) {
+                logger.warn(
+                    "Route request for profile '{}' with {} waypoint(s) failed with exception: {}",
+                    p,
+                    wps.size,
+                    e.message,
+                )
                 null
             }
         }
@@ -117,7 +135,7 @@ class RouteCalculator(
                 )
             }
 
-            successfulResponse = executeRoute(survivors)
+            if (pruned.isNotEmpty()) successfulResponse = executeRoute(survivors)
 
             if (successfulResponse == null && survivors.size > 1) {
                 // Phase 2: Sequential trim from the tail (<= N-1 calls).
