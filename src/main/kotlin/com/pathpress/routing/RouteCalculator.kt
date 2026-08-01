@@ -99,46 +99,49 @@ class RouteCalculator(
             return null
         }
 
-        fun <T> combinations(list: List<T>, k: Int): List<List<T>> {
-            if (k == 0) return listOf(emptyList())
-            if (list.isEmpty()) return emptyList()
-            val head = list.first()
-            val tail = list.drop(1)
-            val withHead = combinations(tail, k - 1).map { listOf(head) + it }
-            val withoutHead = combinations(tail, k)
-            return withHead + withoutHead
-        }
+        var workingWaypoints = validWaypoints.toList()
+        var successfulResponse: com.graphhopper.GHResponse? = null
 
-        var successfulResponse: com.graphhopper.GHResponse? = executeRoute(validWaypoints)
-
-        if (successfulResponse == null && validWaypoints.isNotEmpty()) {
-            logger.warn(
-                "Primary route calculation failed with ${validWaypoints.size} waypoints. Starting incremental waypoint pruning..."
-            )
-            for (size in validWaypoints.size - 1 downTo 1) {
-                val candidates = combinations(validWaypoints, size)
-                for (candidate in candidates) {
-                    val res = executeRoute(candidate)
-                    if (res != null) {
-                        successfulResponse = res
-                        val pruned = validWaypoints.filter { it !in candidate }
-                        logger.warn(
-                            "Waypoint routing failed. Pruned {} failing waypoint(s): {}. Routing via remaining {} waypoint(s).",
-                            pruned.size,
-                            pruned.joinToString { wp -> wp.name ?: "(${wp.lat}, ${wp.lng})" },
-                            candidate.size,
-                        )
-                        break
-                    }
-                }
-                if (successfulResponse != null) break
+        while (workingWaypoints.isNotEmpty()) {
+            val fullRes = executeRoute(workingWaypoints)
+            if (fullRes != null) {
+                successfulResponse = fullRes
+                break
             }
+
+            var foundWorkingCandidate = false
+            for (i in workingWaypoints.indices) {
+                val candidate = workingWaypoints.filterIndexed { index, _ -> index != i }
+                val res = executeRoute(candidate)
+                if (res != null) {
+                    val pruned = workingWaypoints[i]
+                    logger.warn(
+                        "Waypoint routing failed. Pruned failing waypoint: {}. Routing via remaining {} waypoint(s).",
+                        pruned.name ?: "(${pruned.lat}, ${pruned.lng})",
+                        candidate.size,
+                    )
+                    successfulResponse = res
+                    foundWorkingCandidate = true
+                    break
+                }
+            }
+
+            if (foundWorkingCandidate) {
+                break
+            }
+
+            val removed = workingWaypoints.first()
+            logger.warn(
+                "Multiple waypoint failures detected. Pruning waypoint {} and retrying...",
+                removed.name ?: "(${removed.lat}, ${removed.lng})",
+            )
+            workingWaypoints = workingWaypoints.drop(1)
         }
 
         if (successfulResponse == null) {
             if (validWaypoints.isNotEmpty()) {
                 logger.warn(
-                    "All intermediate waypoint combinations failed. Falling back to direct route from start to destination."
+                    "All intermediate waypoint attempts failed. Falling back to direct route from start to destination."
                 )
             }
             successfulResponse = executeRoute(emptyList())
