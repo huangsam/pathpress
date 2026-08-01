@@ -168,8 +168,8 @@ class RouteCalculatorTest {
     }
 
     @Test
-    fun `calculateRouteWithLegs prunes single failing waypoint and routes through remaining waypoints`() {
-        class PruningTestGraphHopper : GraphHopper() {
+    fun `calculateRouteWithLegs phase-1 prunes unroutable waypoint and routes through survivors`() {
+        class Phase1TestGraphHopper : GraphHopper() {
             override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
                 val points = request.points
                 val containsFailingPoint = points.any { kotlin.math.abs(it.lat - 36.2704) < 0.001 }
@@ -190,11 +190,11 @@ class RouteCalculatorTest {
         }
 
         val calculator =
-            RouteCalculator(graphHopper = PruningTestGraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(graphHopper = Phase1TestGraphHopper(), pbfFilePath = "dummy.pbf")
         val waypoints =
             listOf(
                 LocationCoords(36.6002, -121.8947), // Monterey
-                LocationCoords(36.2704, -121.8081), // Big Sur (failing)
+                LocationCoords(36.2704, -121.8081), // Big Sur (unroutable — phase-1 offender)
                 LocationCoords(35.3658, -120.8499), // Morro Bay
                 LocationCoords(34.4208, -119.6982), // Santa Barbara
             )
@@ -210,13 +210,70 @@ class RouteCalculatorTest {
             )
 
         assertEquals(1, legs.size)
-        // 5 points in total: start + 3 surviving waypoints (Monterey, Morro Bay, Santa Barbara) +
-        // end
+        // start + Monterey + Morro Bay + Santa Barbara + end = 5 points
         assertEquals(5, legs[0].geometry.size)
         val lats = legs[0].geometry.map { it.lat }
-        // Big Sur (36.2704) should be pruned
-        assertEquals(false, lats.any { kotlin.math.abs(it - 36.2704) < 0.001 })
-        // Monterey (36.6002) should be retained
-        assertEquals(true, lats.any { kotlin.math.abs(it - 36.6002) < 0.001 })
+        assertEquals(false, lats.any { kotlin.math.abs(it - 36.2704) < 0.001 }) // Big Sur pruned
+        assertEquals(true, lats.any { kotlin.math.abs(it - 36.6002) < 0.001 }) // Monterey kept
+    }
+
+    @Test
+    fun `calculateRouteWithLegs phase-2 trims trailing waypoint when sequence fails despite individual routability`() {
+        // All waypoints route individually but the full sequence fails.
+        // Only removing the last waypoint makes the sequence succeed.
+        class Phase2TestGraphHopper : GraphHopper() {
+            override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
+                val points = request.points
+                val response = com.graphhopper.GHResponse()
+                val lats = points.map { it.lat }
+
+                // Full 4-waypoint sequence fails; any subset of ≤3 waypoints (including all
+                // single-waypoint probes) succeeds.
+                val hasSequenceBreaker =
+                    lats.any { kotlin.math.abs(it - 35.3658) < 0.001 } &&
+                        lats.any { kotlin.math.abs(it - 34.4208) < 0.001 }
+                if (points.size > 4 && hasSequenceBreaker) {
+                    response.addError(
+                        RuntimeException("Connectivity gap between Morro Bay and Santa Barbara")
+                    )
+                    return response
+                }
+
+                val path = ResponsePath()
+                val pl = PointList()
+                points.forEach { pl.add(it.lat, it.lon) }
+                path.points = pl
+                path.distance = 600000.0
+                path.time = 22000000L
+                response.add(path)
+                return response
+            }
+        }
+
+        val calculator =
+            RouteCalculator(graphHopper = Phase2TestGraphHopper(), pbfFilePath = "dummy.pbf")
+        val waypoints =
+            listOf(
+                LocationCoords(36.6002, -121.8947), // Monterey
+                LocationCoords(36.2704, -121.8081), // Big Sur
+                LocationCoords(35.3658, -120.8499), // Morro Bay
+                LocationCoords(34.4208, -119.6982), // Santa Barbara (trailing, causes gap)
+            )
+
+        val legs =
+            calculator.calculateRouteWithLegs(
+                startLat = 37.7749,
+                startLng = -122.4194,
+                endLat = 34.0522,
+                endLng = -118.2437,
+                days = 1,
+                waypoints = waypoints,
+            )
+
+        assertEquals(1, legs.size)
+        val lats = legs[0].geometry.map { it.lat }
+        // Santa Barbara must be trimmed; Monterey and Big Sur must be retained
+        assertEquals(false, lats.any { kotlin.math.abs(it - 34.4208) < 0.001 }) // SB trimmed
+        assertEquals(true, lats.any { kotlin.math.abs(it - 36.6002) < 0.001 }) // Monterey kept
     }
 }

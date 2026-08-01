@@ -99,43 +99,41 @@ class RouteCalculator(
             return null
         }
 
-        var workingWaypoints = validWaypoints.toList()
-        var successfulResponse: com.graphhopper.GHResponse? = null
+        var successfulResponse: com.graphhopper.GHResponse? = executeRoute(validWaypoints)
 
-        while (workingWaypoints.isNotEmpty()) {
-            val fullRes = executeRoute(workingWaypoints)
-            if (fullRes != null) {
-                successfulResponse = fullRes
-                break
+        if (successfulResponse == null && validWaypoints.isNotEmpty()) {
+            // Phase 1: Probe each waypoint individually (N calls).
+            // A waypoint that cannot be reached alone (start → wp → end) is a definite offender.
+            // Drop all offenders immediately and retry the survivors in one shot.
+            val survivors = validWaypoints.filter { wp -> executeRoute(listOf(wp)) != null }
+
+            val pruned = validWaypoints - survivors.toSet()
+            if (pruned.isNotEmpty()) {
+                logger.warn(
+                    "Phase-1 probe pruned {} unroutable waypoint(s): {}. Retrying with {} survivor(s).",
+                    pruned.size,
+                    pruned.joinToString { it.name ?: "(${it.lat}, ${it.lng})" },
+                    survivors.size,
+                )
             }
 
-            var foundWorkingCandidate = false
-            for (i in workingWaypoints.indices) {
-                val candidate = workingWaypoints.filterIndexed { index, _ -> index != i }
-                val res = executeRoute(candidate)
-                if (res != null) {
-                    val pruned = workingWaypoints[i]
+            successfulResponse = executeRoute(survivors)
+
+            if (successfulResponse == null && survivors.size > 1) {
+                // Phase 2: Sequential trim from the tail (<= N-1 calls).
+                // Every waypoint here is individually routable but the ordered sequence still
+                // fails — most likely a connectivity gap between two consecutive waypoints.
+                // Trim from the end one at a time until the prefix routes cleanly.
+                var trimmed = survivors.toMutableList()
+                while (trimmed.size > 1 && successfulResponse == null) {
+                    val dropped = trimmed.removeLast()
                     logger.warn(
-                        "Waypoint routing failed. Pruned failing waypoint: {}. Routing via remaining {} waypoint(s).",
-                        pruned.name ?: "(${pruned.lat}, ${pruned.lng})",
-                        candidate.size,
+                        "Phase-2 trim: sequence still fails. Dropping trailing waypoint: {}.",
+                        dropped.name ?: "(${dropped.lat}, ${dropped.lng})",
                     )
-                    successfulResponse = res
-                    foundWorkingCandidate = true
-                    break
+                    successfulResponse = executeRoute(trimmed)
                 }
             }
-
-            if (foundWorkingCandidate) {
-                break
-            }
-
-            val removed = workingWaypoints.first()
-            logger.warn(
-                "Multiple waypoint failures detected. Pruning waypoint {} and retrying...",
-                removed.name ?: "(${removed.lat}, ${removed.lng})",
-            )
-            workingWaypoints = workingWaypoints.drop(1)
         }
 
         if (successfulResponse == null) {
