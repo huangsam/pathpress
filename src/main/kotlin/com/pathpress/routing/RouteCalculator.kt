@@ -76,88 +76,82 @@ class RouteCalculator(
             )
         }
 
-        fun createGHRequest(p: String): GHRequest {
+        fun tryRoute(wps: List<LocationCoords>, p: String): com.graphhopper.GHResponse? {
             val request = GHRequest().setProfile(p)
             request.addPoint(GHPoint(snappedStart.lat, snappedStart.lng))
-            validWaypoints.forEach { wp -> request.addPoint(GHPoint(wp.lat, wp.lng)) }
+            wps.forEach { wp -> request.addPoint(GHPoint(wp.lat, wp.lng)) }
             request.addPoint(GHPoint(snappedEnd.lat, snappedEnd.lng))
-            return request
+            return try {
+                val res = graphHopper.route(request)
+                if (res != null && !res.hasErrors()) res else null
+            } catch (e: Exception) {
+                null
+            }
         }
 
-        val req = createGHRequest(profile)
-        val response =
-            try {
-                graphHopper.route(req)
-            } catch (e: Exception) {
-                logger.warn(
-                    "Primary route request failed (${e.message}). Retrying with direct start/end route..."
-                )
-                val directReq =
-                    GHRequest(snappedStart.lat, snappedStart.lng, snappedEnd.lat, snappedEnd.lng)
-                        .setProfile("car")
-                try {
-                    graphHopper.route(directReq)
-                } catch (e2: Exception) {
-                    throw IllegalStateException("Route calculation failed: ${e2.message}", e2)
-                }
+        fun executeRoute(wps: List<LocationCoords>): com.graphhopper.GHResponse? {
+            val primaryRes = tryRoute(wps, profile)
+            if (primaryRes != null) return primaryRes
+            if (profile != "car") {
+                val fallbackRes = tryRoute(wps, "car")
+                if (fallbackRes != null) return fallbackRes
             }
+            return null
+        }
 
-        if (response.hasErrors()) {
-            val fallbackReq = createGHRequest("car")
-            val fallbackRes =
-                try {
-                    graphHopper.route(fallbackReq)
-                } catch (e: Exception) {
-                    val directReq =
-                        GHRequest(
-                                snappedStart.lat,
-                                snappedStart.lng,
-                                snappedEnd.lat,
-                                snappedEnd.lng,
-                            )
-                            .setProfile("car")
-                    try {
-                        graphHopper.route(directReq)
-                    } catch (e2: Exception) {
-                        null
+        fun <T> combinations(list: List<T>, k: Int): List<List<T>> {
+            if (k == 0) return listOf(emptyList())
+            if (list.isEmpty()) return emptyList()
+            val head = list.first()
+            val tail = list.drop(1)
+            val withHead = combinations(tail, k - 1).map { listOf(head) + it }
+            val withoutHead = combinations(tail, k)
+            return withHead + withoutHead
+        }
+
+        var successfulResponse: com.graphhopper.GHResponse? = executeRoute(validWaypoints)
+
+        if (successfulResponse == null && validWaypoints.isNotEmpty()) {
+            logger.warn(
+                "Primary route calculation failed with ${validWaypoints.size} waypoints. Starting incremental waypoint pruning..."
+            )
+            for (size in validWaypoints.size - 1 downTo 1) {
+                val candidates = combinations(validWaypoints, size)
+                for (candidate in candidates) {
+                    val res = executeRoute(candidate)
+                    if (res != null) {
+                        successfulResponse = res
+                        val pruned = validWaypoints.filter { it !in candidate }
+                        logger.warn(
+                            "Waypoint routing failed. Pruned {} failing waypoint(s): {}. Routing via remaining {} waypoint(s).",
+                            pruned.size,
+                            pruned.joinToString { wp -> wp.name ?: "(${wp.lat}, ${wp.lng})" },
+                            candidate.size,
+                        )
+                        break
                     }
                 }
-            if ((fallbackRes == null || fallbackRes.hasErrors()) && validWaypoints.isNotEmpty()) {
-                val directReq =
-                    GHRequest(snappedStart.lat, snappedStart.lng, snappedEnd.lat, snappedEnd.lng)
-                        .setProfile("car")
-                val directRes =
-                    try {
-                        graphHopper.route(directReq)
-                    } catch (e: Exception) {
-                        null
-                    }
-                if (directRes == null || directRes.hasErrors()) {
-                    throw IllegalStateException("Route calculation failed: ${response.errors}")
-                }
-                return extractLegsFromResponse(
-                    directRes.best,
-                    days,
-                    dayTitles,
-                    profile,
-                    limitPerLeg,
-                    userPrompt,
-                )
-            } else if (fallbackRes == null || fallbackRes.hasErrors()) {
-                throw IllegalStateException("Route calculation failed: ${response.errors}")
+                if (successfulResponse != null) break
             }
-            return extractLegsFromResponse(
-                fallbackRes.best,
-                days,
-                dayTitles,
-                profile,
-                limitPerLeg,
-                userPrompt,
+        }
+
+        if (successfulResponse == null) {
+            if (validWaypoints.isNotEmpty()) {
+                logger.warn(
+                    "All intermediate waypoint combinations failed. Falling back to direct route from start to destination."
+                )
+            }
+            successfulResponse = executeRoute(emptyList())
+        }
+
+        if (successfulResponse == null || successfulResponse.hasErrors()) {
+            throw IllegalStateException(
+                "Route calculation failed: unable to calculate route from start to end"
             )
         }
 
         return extractLegsFromResponse(
-            response.best,
+            successfulResponse.best,
             days,
             dayTitles,
             profile,

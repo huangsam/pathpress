@@ -166,4 +166,57 @@ class RouteCalculatorTest {
         assertEquals(1500.5, townSnap.snapDistanceMeters)
         assertEquals("San Francisco", townSnap.snappedToTown)
     }
+
+    @Test
+    fun `calculateRouteWithLegs prunes single failing waypoint and routes through remaining waypoints`() {
+        class PruningTestGraphHopper : GraphHopper() {
+            override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
+                val points = request.points
+                val containsFailingPoint = points.any { kotlin.math.abs(it.lat - 36.2704) < 0.001 }
+                val response = com.graphhopper.GHResponse()
+                if (containsFailingPoint) {
+                    response.addError(RuntimeException("Bridge closed at Big Sur"))
+                    return response
+                }
+                val path = ResponsePath()
+                val pl = PointList()
+                points.forEach { pl.add(it.lat, it.lon) }
+                path.points = pl
+                path.distance = 700000.0
+                path.time = 25000000L
+                response.add(path)
+                return response
+            }
+        }
+
+        val calculator =
+            RouteCalculator(graphHopper = PruningTestGraphHopper(), pbfFilePath = "dummy.pbf")
+        val waypoints =
+            listOf(
+                LocationCoords(36.6002, -121.8947), // Monterey
+                LocationCoords(36.2704, -121.8081), // Big Sur (failing)
+                LocationCoords(35.3658, -120.8499), // Morro Bay
+                LocationCoords(34.4208, -119.6982), // Santa Barbara
+            )
+
+        val legs =
+            calculator.calculateRouteWithLegs(
+                startLat = 37.7749,
+                startLng = -122.4194,
+                endLat = 34.0522,
+                endLng = -118.2437,
+                days = 1,
+                waypoints = waypoints,
+            )
+
+        assertEquals(1, legs.size)
+        // 5 points in total: start + 3 surviving waypoints (Monterey, Morro Bay, Santa Barbara) +
+        // end
+        assertEquals(5, legs[0].geometry.size)
+        val lats = legs[0].geometry.map { it.lat }
+        // Big Sur (36.2704) should be pruned
+        assertEquals(false, lats.any { kotlin.math.abs(it - 36.2704) < 0.001 })
+        // Monterey (36.6002) should be retained
+        assertEquals(true, lats.any { kotlin.math.abs(it - 36.6002) < 0.001 })
+    }
 }
