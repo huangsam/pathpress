@@ -133,4 +133,27 @@ class PoiRulesEngineTest {
         val score = engine.calculatePoiQualityScore(richPark, context)
         assertTrue(score > 25.0, "Expected rich park score to be > 25.0 but got $score")
     }
+
+    @Test
+    fun `CategoryAndPersonaScoringRule gives higher score bonus to high engagement toddler spots over generic museums`() {
+        val zoo =
+            createTestPoi("1", name = "City Zoo", tags = mapOf("tourism" to "zoo"), type = "zoo")
+        val artMuseum =
+            createTestPoi(
+                "2",
+                name = "Art Museum",
+                tags = mapOf("tourism" to "museum"),
+                type = "museum",
+            )
+
+        val toddlerContext = PoiEvaluationContext(userPrompt = "toddler friendly trip")
+
+        val zooScore = CategoryAndPersonaScoringRule.calculateScore(zoo, toddlerContext)
+        val museumScore = CategoryAndPersonaScoringRule.calculateScore(artMuseum, toddlerContext)
+
+        assertTrue(
+            zooScore > museumScore,
+            "Expected zoo score ($zooScore) to be strictly greater than generic museum score ($museumScore) for toddler prompt",
+        )
+    }
 }

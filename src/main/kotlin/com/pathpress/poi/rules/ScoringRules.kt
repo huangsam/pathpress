@@ -164,10 +164,18 @@ object CategoryAndPersonaScoringRule : PoiScoringRule {
         var score = 0.0
         val tags = poi.tags
 
-        val isChildOrFamilyFriendly =
-            poi.type in setOf("playground", "park", "zoo", "museum", "cafe") ||
-                tags["leisure"] in setOf("playground", "park") ||
-                tags["tourism"] in setOf("zoo", "museum") ||
+        val isHighEngagementKidSpot =
+            poi.type in
+                setOf("playground", "zoo", "aquarium", "theme_park", "water_park", "beach") ||
+                tags["leisure"] in setOf("playground", "water_park", "amusement_park") ||
+                tags["tourism"] in setOf("zoo", "aquarium", "theme_park") ||
+                tags["natural"] == "beach"
+
+        val isGeneralFamilyFriendly =
+            isHighEngagementKidSpot ||
+                poi.type in setOf("park", "museum", "cafe") ||
+                tags["leisure"] == "park" ||
+                tags["tourism"] == "museum" ||
                 tags["amenity"] == "cafe"
 
         if (
@@ -186,15 +194,15 @@ object CategoryAndPersonaScoringRule : PoiScoringRule {
                     "playground",
                     "zoo",
                     "cafe",
-                ) || isChildOrFamilyFriendly
+                ) || isGeneralFamilyFriendly
         ) {
             score += 8.0
         }
 
-        if (isChildOrFamilyFriendly) {
+        if (isGeneralFamilyFriendly) {
             score += 2.0 // Prioritization bonus
             if (context.isFamilyOrToddlerOrQuickBreak) {
-                score += 5.0 // Persona bonus
+                score += if (isHighEngagementKidSpot) 8.0 else 2.0 // Tiered persona bonus
             }
         }
 
