@@ -343,6 +343,15 @@ class RouteCalculator(
             segIndices[k] = idx
         }
 
+        // Boundary vertex index for day k (0..days): unlike segIndices[days], this always points
+        // at the true final polyline vertex so per-leg distances below telescope to totalPolyDist.
+        fun dayBoundaryIndex(k: Int): Int =
+            when (k) {
+                0 -> 0
+                days -> allCoords.size - 1
+                else -> segIndices[k]
+            }
+
         fun areCoordsClose(c1: LocationCoords, c2: LocationCoords): Boolean =
             kotlin.math.abs(c1.lat - c2.lat) < 1e-6 && kotlin.math.abs(c1.lng - c2.lng) < 1e-6
 
@@ -403,8 +412,17 @@ class RouteCalculator(
             val legPoints = perLegPoints[dayIndex]
             val isApproximate = perLegApproximate[dayIndex]
 
-            val dist = path.distance / days
-            val dur = (path.time / 1000.0) / days
+            val legPolylineDistance =
+                dCum[dayBoundaryIndex(dayIndex + 1)] - dCum[dayBoundaryIndex(dayIndex)]
+            val dist =
+                if (!isApproximate && totalPolyDist > 0) legPolylineDistance
+                else path.distance / days
+            val dur =
+                if (!isApproximate && totalPolyDist > 0) {
+                    (legPolylineDistance / totalPolyDist) * (path.time / 1000.0)
+                } else {
+                    (path.time / 1000.0) / days
+                }
 
             if (isApproximate) {
                 logger.warn(
