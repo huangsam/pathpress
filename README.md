@@ -38,7 +38,7 @@ java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end
 java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end "San Diego, CA" --days 2 --pbf data/california-latest.osm.pbf --llm-provider ollama --prompt "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay" --units imperial
 ```
 
-> 💡 **Tip**: Run `java -jar build/libs/pathpress-0.1.0-standalone.jar --help` to view all available CLI flags, default values, and usage options.
+> **Tip**: Run `java -jar build/libs/pathpress-0.1.0-standalone.jar --help` to view all available CLI flags, default values, and usage options.
 
 ### 3. Downloading Map Data for Other US States
 PathPress includes a helper script to fetch free OpenStreetMap data for any US state on demand:
