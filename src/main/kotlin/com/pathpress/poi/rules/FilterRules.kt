@@ -23,7 +23,7 @@ object ThemeParkFilterRule : PoiFilterRule {
         val website = (poi.tags["website"] ?: "").lowercase()
         if (
             website.contains("sixflags.com") ||
-                website.contains("disney.go.com") ||
+                website.contains("disney") ||
                 website.contains("seaworld.com") ||
                 website.contains("knotts.com") ||
                 website.contains("universalstudios.com")
