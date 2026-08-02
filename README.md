@@ -17,10 +17,10 @@ Pure LLM travel planners frequently suffer from "spatial amnesia"—hallucinatin
 
 ## Key Features
 
-- 🗺️ **Deterministic Spatial Engine**: OpenStreetMap corridor filtering and GraphHopper leg splitting with zero geographic hallucinations.
-- 🧠 **Pluggable LLM Architecture**: Enriches verified POIs using Gemini, Claude, OpenAI, local Ollama, or offline fallback.
-- 📄 **Publication-Ready PDF Export**: Self-contained itineraries rendered with custom styling and turn-by-turn QR navigation links.
-- 🚘 **Fuzzy Geocoding & Scenic Profiles**: Automatic location resolution and custom weighting for scenic or coastal drives.
+- **Deterministic Spatial Engine**: Real map data with zero geographic hallucinations.
+- **Pluggable LLM Architecture**: Supports Gemini, Claude, OpenAI, Ollama, or offline mode.
+- **Publication-Ready PDF Export**: Custom-styled itineraries with turn-by-turn QR links.
+- **Fuzzy Geocoding & Scenic Profiles**: Smart location resolution with scenic routing options.
 
 ## Quick Start
 
