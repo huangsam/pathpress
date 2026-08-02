@@ -38,8 +38,9 @@ class RunMetrics:
     run_index: int
     elapsed_sec: float
     passed_first_try: bool
-    required_retry: bool
-    triggered_fallback: bool
+    passed_retry: bool
+    validator_rejected: bool
+    coastal_fallback: bool
     waypoints: list[str] = field(default_factory=list)
     raw_output: str = ""
 
@@ -50,7 +51,8 @@ class ModelSummary:
     total_runs: int
     first_try_passes: int
     retry_passes: int
-    fallbacks: int
+    validator_rejections: int
+    coastal_fallbacks: int
     avg_latency_sec: float
     waypoint_counts: dict[str, int] = field(default_factory=dict)
 
@@ -113,16 +115,23 @@ def run_single_iteration(
         unique_wps = list(dict.fromkeys(waypoints))
 
     required_retry = "Retrying trip planning with LLM" in output
-    passed_retry = "Retry attempt produced valid waypoints!" in output
-    triggered_fallback = "Injecting default CA coastal anchor" in output or "Clearing invalid waypoints" in output
+    passed_retry = required_retry and ("Retry attempt produced " in output or bool(re.search(r"Retry attempt produced \d+ valid waypoint", output)))
+    validator_rejected = "Clearing invalid waypoints" in output
+    coastal_fallback = (
+        "Injecting default CA coastal anchor" in output or "Coastal prompt detected with empty LLM waypoints" in output
+    ) and not validator_rejected
 
-    passed_first_try = not required_retry and not triggered_fallback
+    passed_first_try = not required_retry and not validator_rejected and not coastal_fallback and len(unique_wps) > 0
 
     status_str = "FIRST-TRY VALID"
-    if required_retry and passed_retry:
+    if passed_retry:
         status_str = "RETRY PASSED"
-    elif triggered_fallback:
-        status_str = "FALLBACK TRIGGERED"
+    elif validator_rejected:
+        status_str = "VALIDATOR REJECTED"
+    elif coastal_fallback:
+        status_str = "COASTAL FALLBACK"
+    elif not passed_first_try:
+        status_str = "NO WAYPOINTS"
 
     wp_str = ", ".join(unique_wps) if unique_wps else "(None)"
     print(f" {elapsed:.1f}s -> {status_str} | Waypoints: {wp_str}")
@@ -131,8 +140,9 @@ def run_single_iteration(
         run_index=run_idx,
         elapsed_sec=elapsed,
         passed_first_try=passed_first_try,
-        required_retry=required_retry and passed_retry,
-        triggered_fallback=triggered_fallback,
+        passed_retry=passed_retry,
+        validator_rejected=validator_rejected,
+        coastal_fallback=coastal_fallback,
         waypoints=unique_wps,
         raw_output=output,
     )
@@ -163,8 +173,9 @@ def benchmark_model(
             waypoint_counts[wp] = waypoint_counts.get(wp, 0) + 1
 
     first_try_passes = sum(1 for r in results if r.passed_first_try)
-    retry_passes = sum(1 for r in results if r.required_retry)
-    fallbacks = sum(1 for r in results if r.triggered_fallback)
+    retry_passes = sum(1 for r in results if r.passed_retry)
+    validator_rejections = sum(1 for r in results if r.validator_rejected)
+    coastal_fallbacks = sum(1 for r in results if r.coastal_fallback)
     avg_latency = sum(r.elapsed_sec for r in results) / max(1, len(results))
 
     if stop_after:
@@ -175,7 +186,8 @@ def benchmark_model(
         total_runs=runs,
         first_try_passes=first_try_passes,
         retry_passes=retry_passes,
-        fallbacks=fallbacks,
+        validator_rejections=validator_rejections,
+        coastal_fallbacks=coastal_fallbacks,
         avg_latency_sec=avg_latency,
         waypoint_counts=waypoint_counts,
     )
@@ -183,26 +195,27 @@ def benchmark_model(
 
 def print_summary_table(summaries: list[ModelSummary]):
     """Prints a clear summary comparison table across all models."""
-    print("\n" + "=" * 90)
+    print("\n" + "=" * 105)
     print(" BENCHMARK SUMMARY & RELIABILITY COMPARISON REPORT")
-    print("=" * 90)
+    print("=" * 105)
 
-    header = f"{'MODEL':<20} | {'1ST TRY PASS':<12} | {'RETRY PASS':<10} | {'FALLBACK':<10} | {'AVG LATENCY':<12} | {'TOP WAYPOINTS'}"
+    header = f"{'MODEL':<20} | {'1ST TRY PASS':<12} | {'RETRY PASS':<10} | {'VAL REJECT':<10} | {'COASTAL FB':<10} | {'AVG LATENCY':<12} | {'TOP WAYPOINTS'}"
     print(header)
-    print("-" * 90)
+    print("-" * 105)
 
     for s in summaries:
         first_pass_pct = f"{s.first_try_passes}/{s.total_runs} ({int(s.first_try_passes / s.total_runs * 100)}%)"
         retry_pct = f"{s.retry_passes}/{s.total_runs}"
-        fallback_pct = f"{s.fallbacks}/{s.total_runs}"
+        val_reject_pct = f"{s.validator_rejections}/{s.total_runs}"
+        coastal_fb_pct = f"{s.coastal_fallbacks}/{s.total_runs}"
         latency_str = f"{s.avg_latency_sec:.2f}s"
 
         top_wps = sorted(s.waypoint_counts.items(), key=lambda x: x[1], reverse=True)[:3]
         top_wp_str = ", ".join(f"{name} ({cnt})" for name, cnt in top_wps) if top_wps else "None"
 
-        print(f"{s.model_name:<20} | {first_pass_pct:<12} | {retry_pct:<10} | {fallback_pct:<10} | {latency_str:<12} | {top_wp_str}")
+        print(f"{s.model_name:<20} | {first_pass_pct:<12} | {retry_pct:<10} | {val_reject_pct:<10} | {coastal_fb_pct:<10} | {latency_str:<12} | {top_wp_str}")
 
-    print("=" * 90 + "\n")
+    print("=" * 105 + "\n")
 
 
 def main():
