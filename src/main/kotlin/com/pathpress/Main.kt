@@ -12,9 +12,11 @@ import com.pathpress.config.Config
 import com.pathpress.export.PdfExporter
 import com.pathpress.export.PdfExporter.formatDuration
 import com.pathpress.llm.LlmProvider
+import com.pathpress.llm.TripPlanResponse
 import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.Route
+import com.pathpress.routing.GeocodedLocation
 import com.pathpress.routing.Geocoder
 import com.pathpress.routing.RouteCalculator
 import com.pathpress.routing.WaypointValidator
@@ -155,134 +157,17 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 userPrompt = prompt,
             )
 
-        // Helper to geocode and resolve intermediate waypoints from LLM
-        fun geocodeWaypoints(rawWaypoints: List<LocationCoords>): MutableList<LocationCoords> {
-            return rawWaypoints
-                .mapNotNull { wp ->
-                    if (wp.lat != 0.0 || wp.lng != 0.0) {
-                        wp
-                    } else if (!wp.name.isNullOrBlank()) {
-                        try {
-                            logger.info("Geocoding intermediate waypoint '${wp.name}'...")
-                            val geo = Geocoder.geocode(wp.name)
-                            if (geo != null) {
-                                LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
-                            } else {
-                                logger.warn("Could not geocode LLM waypoint '${wp.name}'")
-                                null
-                            }
-                        } catch (e: Exception) {
-                            logger.warn("Could not geocode LLM waypoint '${wp.name}': ${e.message}")
-                            null
-                        }
-                    } else {
-                        null
-                    }
-                }
-                .toMutableList()
-        }
-
-        var resolvedWaypoints = geocodeWaypoints(tripPlan.waypoints)
-
-        // Validate waypoints against direct route corridor
-        if (resolvedWaypoints.isNotEmpty()) {
-            val valResult =
-                WaypointValidator.validateWaypoints(
-                    resolvedWaypoints,
-                    startGeo.coords,
-                    endGeo.coords,
-                )
-
-            if (!valResult.isValid) {
-                if (valResult.validWaypoints.isNotEmpty()) {
-                    // Partial rejection: keep the in-corridor subset rather than discarding
-                    // everything.
-                    logger.warn(
-                        "LLM waypoint validation failed: ${valResult.reason}. " +
-                            "Accepting the ${valResult.validWaypoints.size} valid waypoint(s) and dropping the rest."
-                    )
-                    resolvedWaypoints = valResult.validWaypoints.toMutableList()
-                } else {
-                    logger.warn(
-                        "LLM waypoint validation failed: ${valResult.reason}. " +
-                            "Retrying trip planning with LLM (attempt 2/2)..."
-                    )
-                    val retryTripPlan =
-                        llm.planTrip(
-                            startName = startGeo.displayName,
-                            endName = endGeo.displayName,
-                            startCoords = startGeo.coords,
-                            endCoords = endGeo.coords,
-                            days = days,
-                            userPrompt = prompt,
-                        )
-                    val retryWaypoints = geocodeWaypoints(retryTripPlan.waypoints)
-                    val retryValResult =
-                        WaypointValidator.validateWaypoints(
-                            retryWaypoints,
-                            startGeo.coords,
-                            endGeo.coords,
-                        )
-
-                    if (retryValResult.validWaypoints.isNotEmpty()) {
-                        logger.info(
-                            "Retry attempt produced ${retryValResult.validWaypoints.size} valid waypoint(s)."
-                        )
-                        resolvedWaypoints = retryValResult.validWaypoints.toMutableList()
-                        tripPlan = retryTripPlan
-                    } else {
-                        logger.warn(
-                            "LLM waypoint validation failed on retry attempt. " +
-                                "Clearing invalid waypoints and using deterministic route fallback."
-                        )
-                        resolvedWaypoints.clear()
-                    }
-                }
-            }
-        }
-
-        // Fallback injection if waypoints are empty and prompt specifies coastal in California
-        // region
-        val isCoastalPrompt =
-            prompt?.let { p ->
-                listOf("coastal", "coast", "beach", "ocean", "highway 1", "pacific coast").any { k
-                    ->
-                    p.contains(k, ignoreCase = true)
-                }
-            } ?: false
-
-        if (resolvedWaypoints.isEmpty() && isCoastalPrompt) {
-            val isCaRegion =
-                listOf(startGeo.displayName, endGeo.displayName).any {
-                    it.contains("California", ignoreCase = true) ||
-                        it.contains("CA", ignoreCase = true) ||
-                        it.contains("San Francisco", ignoreCase = true) ||
-                        it.contains("San Jose", ignoreCase = true) ||
-                        it.contains("Los Angeles", ignoreCase = true) ||
-                        it.contains("San Diego", ignoreCase = true)
-                }
-            if (isCaRegion) {
-                logger.info(
-                    "Coastal prompt detected with empty LLM waypoints. Injecting default CA coastal anchor waypoints (Monterey & Pismo Beach)..."
-                )
-                try {
-                    val mty = Geocoder.geocode("Monterey, CA")
-                    val psb = Geocoder.geocode("Pismo Beach, CA")
-                    if (mty != null) {
-                        resolvedWaypoints.add(
-                            LocationCoords(mty.coords.lat, mty.coords.lng, mty.displayName)
-                        )
-                    }
-                    if (psb != null) {
-                        resolvedWaypoints.add(
-                            LocationCoords(psb.coords.lat, psb.coords.lng, psb.displayName)
-                        )
-                    }
-                } catch (e: Exception) {
-                    logger.warn("Fallback coastal waypoint geocoding error: ${e.message}")
-                }
-            }
-        }
+        val resolution =
+            resolveAndValidateWaypoints(
+                initialTripPlan = tripPlan,
+                startGeo = startGeo,
+                endGeo = endGeo,
+                days = days,
+                prompt = prompt,
+                llm = llm,
+            )
+        var resolvedWaypoints = resolution.waypoints.toMutableList()
+        tripPlan = resolution.tripPlan
 
         if (resolvedWaypoints.isNotEmpty()) {
             logger.info(
@@ -432,3 +317,100 @@ fun defaultPbfPath(): String {
 }
 
 fun main(args: Array<String>) = PathPressCommand().main(args)
+
+internal data class WaypointResolution(
+    val waypoints: List<LocationCoords>,
+    val tripPlan: TripPlanResponse,
+)
+
+internal fun resolveAndValidateWaypoints(
+    initialTripPlan: TripPlanResponse,
+    startGeo: GeocodedLocation,
+    endGeo: GeocodedLocation,
+    days: Int,
+    prompt: String?,
+    llm: LlmProvider,
+): WaypointResolution {
+    val logger = LoggerFactory.getLogger("com.pathpress.Main")
+
+    fun geocodeWaypoints(rawWaypoints: List<LocationCoords>): MutableList<LocationCoords> {
+        return rawWaypoints
+            .mapNotNull { wp ->
+                if (wp.lat != 0.0 || wp.lng != 0.0) {
+                    wp
+                } else if (!wp.name.isNullOrBlank()) {
+                    try {
+                        logger.info("Geocoding intermediate waypoint '${wp.name}'...")
+                        val geo = Geocoder.geocode(wp.name)
+                        if (geo != null) {
+                            LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
+                        } else {
+                            logger.warn("Could not geocode LLM waypoint '${wp.name}'")
+                            null
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Could not geocode LLM waypoint '${wp.name}': ${e.message}")
+                        null
+                    }
+                } else {
+                    null
+                }
+            }
+            .toMutableList()
+    }
+
+    var currentTripPlan = initialTripPlan
+    var resolvedWaypoints = geocodeWaypoints(currentTripPlan.waypoints)
+
+    if (resolvedWaypoints.isNotEmpty()) {
+        val valResult =
+            WaypointValidator.validateWaypoints(resolvedWaypoints, startGeo.coords, endGeo.coords)
+
+        if (!valResult.isValid) {
+            if (valResult.validWaypoints.isNotEmpty()) {
+                logger.warn(
+                    "LLM waypoint validation failed: ${valResult.reason}. " +
+                        "Accepting the ${valResult.validWaypoints.size} valid waypoint(s) and dropping the rest."
+                )
+                resolvedWaypoints = valResult.validWaypoints.toMutableList()
+            } else {
+                logger.warn(
+                    "LLM waypoint validation failed: ${valResult.reason}. " +
+                        "Retrying trip planning with LLM (attempt 2/2)..."
+                )
+                val retryTripPlan =
+                    llm.planTrip(
+                        startName = startGeo.displayName,
+                        endName = endGeo.displayName,
+                        startCoords = startGeo.coords,
+                        endCoords = endGeo.coords,
+                        days = days,
+                        userPrompt = prompt,
+                    )
+                val retryWaypoints = geocodeWaypoints(retryTripPlan.waypoints)
+                val retryValResult =
+                    WaypointValidator.validateWaypoints(
+                        retryWaypoints,
+                        startGeo.coords,
+                        endGeo.coords,
+                    )
+
+                if (retryValResult.validWaypoints.isNotEmpty()) {
+                    logger.info(
+                        "Retry attempt produced ${retryValResult.validWaypoints.size} valid waypoint(s)."
+                    )
+                    resolvedWaypoints = retryValResult.validWaypoints.toMutableList()
+                    currentTripPlan = retryTripPlan
+                } else {
+                    logger.warn(
+                        "LLM waypoint validation failed on retry attempt. " +
+                            "Clearing invalid waypoints and using deterministic route fallback."
+                    )
+                    resolvedWaypoints.clear()
+                }
+            }
+        }
+    }
+
+    return WaypointResolution(resolvedWaypoints, currentTripPlan)
+}

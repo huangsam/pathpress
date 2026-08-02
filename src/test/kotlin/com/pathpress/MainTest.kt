@@ -26,4 +26,36 @@ class MainTest {
         command.parse(listOf("--start", "SF", "--end", "LA", "--llm-model", "custom-model"))
         assertEquals("custom-model", command.llmModel)
     }
+
+    @Test
+    fun `empty waypoints for coastal prompt does not inject hardcoded fallback waypoints`() {
+        val startGeo =
+            com.pathpress.routing.GeocodedLocation(
+                com.pathpress.model.LocationCoords(37.7749, -122.4194),
+                "San Francisco, CA",
+            )
+        val endGeo =
+            com.pathpress.routing.GeocodedLocation(
+                com.pathpress.model.LocationCoords(34.0522, -118.2437),
+                "Los Angeles, CA",
+            )
+        val emptyTripPlan =
+            com.pathpress.llm.TripPlanResponse(narrative = "Coastal trip", waypoints = emptyList())
+        val llm = com.pathpress.llm.NoOpFallbackProvider()
+
+        val resolution =
+            resolveAndValidateWaypoints(
+                initialTripPlan = emptyTripPlan,
+                startGeo = startGeo,
+                endGeo = endGeo,
+                days = 2,
+                prompt = "coastal highway 1 trip",
+                llm = llm,
+            )
+
+        kotlin.test.assertTrue(
+            resolution.waypoints.isEmpty(),
+            "Expected empty waypoints but got hardcoded injection: ${resolution.waypoints.map { it.name }}",
+        )
+    }
 }
