@@ -142,51 +142,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 )
             }
 
-        // 3. Probe a cheap direct (waypoint-free) route corridor so real overnight towns can be
-        // ranked *before* the LLM plans the trip. Ordering matters: findCandidateTownsAlongRoute
-        // needs a route polyline, but planTrip normally runs before any route is calculated -
-        // so a throwaway direct route is computed here purely to surface verified town names.
-        val recommendedTowns =
-            if (days > 1) {
-                val directRoutePoints =
-                    try {
-                        routeCalculator.calculateDirectRoutePolyline(
-                            startLat = startGeo.coords.lat,
-                            startLng = startGeo.coords.lng,
-                            endLat = endGeo.coords.lat,
-                            endLng = endGeo.coords.lng,
-                            profile = mappedProfile,
-                        )
-                    } catch (e: Exception) {
-                        logger.warn("Direct corridor probe failed: ${e.message}")
-                        emptyList()
-                    }
-
-                if (directRoutePoints.size >= 2) {
-                    (1 until days)
-                        .mapNotNull { dayIndex ->
-                            com.pathpress.poi.PoiExtractor.findCandidateTownsAlongRoute(
-                                    pbfPath = pbfPath,
-                                    routePoints = directRoutePoints,
-                                    targetProgressFraction = dayIndex.toDouble() / days,
-                                    userPrompt = prompt,
-                                )
-                                .firstOrNull()
-                                ?.town
-                                ?.name
-                        }
-                        .distinct()
-                } else {
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
-        if (recommendedTowns.isNotEmpty()) {
-            logger.info("Verified overnight town candidates for LLM grounding: $recommendedTowns")
-        }
-
-        // 4. Initialize AI Trip Planner & Plan Trip Concept
+        // 3. Initialize AI Trip Planner & Plan Trip Concept
         logger.info("Initializing AI Trip Planner ($llmProviderName)...")
         val llm = LlmProvider.create(llmProviderName, llmKey, llmUrl, llmModel)
         var tripPlan =
@@ -197,7 +153,6 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 endCoords = endGeo.coords,
                 days = days,
                 userPrompt = prompt,
-                recommendedTowns = recommendedTowns,
             )
 
         // Helper to geocode and resolve intermediate waypoints from LLM
@@ -260,7 +215,6 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                             endCoords = endGeo.coords,
                             days = days,
                             userPrompt = prompt,
-                            recommendedTowns = recommendedTowns,
                         )
                     val retryWaypoints = geocodeWaypoints(retryTripPlan.waypoints)
                     val retryValResult =
@@ -336,7 +290,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
             )
         }
 
-        // 5. Calculate Driving Route & Extract Real Corridor POIs
+        // 4. Calculate Driving Route & Extract Real Corridor POIs
         logger.info("Calculating driving route & extracting real OSM corridor POIs...")
         val rawLegs =
             routeCalculator.calculateRouteWithLegs(
@@ -351,7 +305,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 waypoints = resolvedWaypoints,
             )
 
-        // 6. Curate POIs & Apply Leg Storytelling
+        // 5. Curate POIs & Apply Leg Storytelling
         logger.info("Curating POIs & applying leg storytelling...")
         val curatedLegs = rawLegs.mapIndexed { idx, leg ->
             val storyFromPlan = tripPlan.legStories.getOrNull(idx)
@@ -371,7 +325,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
         )
         logger.info("  Estimated duration: ${formatDuration(route.totalDurationSeconds)}")
 
-        // 7. Print Verbose Detailed POI Breakdown to Terminal if requested
+        // 6. Print Verbose Detailed POI Breakdown to Terminal if requested
         if (verbose) {
             logger.info("=".repeat(65))
             logger.info("DETAILED POI CORRIDOR BREAKDOWN & CURATION (--verbose)")
@@ -417,7 +371,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
             logger.info("=".repeat(65))
         }
 
-        // 8. Render HTML & Export to PDF
+        // 7. Render HTML & Export to PDF
         logger.info("Exporting itinerary to PDF ($outputFile)...")
         val htmlContent =
             PdfExporter.generateHtml(

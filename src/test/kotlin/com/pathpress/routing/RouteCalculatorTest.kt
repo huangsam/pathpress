@@ -317,4 +317,38 @@ class RouteCalculatorTest {
         assertEquals(false, lats.any { kotlin.math.abs(it - 34.4208) < 0.001 }) // SB trimmed
         assertEquals(true, lats.any { kotlin.math.abs(it - 36.6002) < 0.001 }) // Monterey kept
     }
+
+    @Test
+    fun `calculateDirectRoutePolyline returns polyline coordinates when routing succeeds`() {
+        class DirectPolylineGraphHopper : GraphHopper() {
+            override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
+                val response = com.graphhopper.GHResponse()
+                val path = ResponsePath()
+                val pl = PointList()
+                request.points.forEach { pl.add(it.lat, it.lon) }
+                path.points = pl
+                path.distance = 100000.0
+                path.time = 3600000L
+                response.add(path)
+                return response
+            }
+        }
+
+        val calculator =
+            RouteCalculator(graphHopper = DirectPolylineGraphHopper(), pbfFilePath = "dummy.pbf")
+        val result =
+            calculator.calculateDirectRoutePolyline(
+                startLat = 37.7749,
+                startLng = -122.4194,
+                endLat = 34.0522,
+                endLng = -118.2437,
+                profile = "car",
+            )
+
+        assertEquals(2, result.size)
+        assertEquals(37.7749, result[0].lat)
+        assertEquals(-122.4194, result[0].lng)
+        assertEquals(34.0522, result[1].lat)
+        assertEquals(-118.2437, result[1].lng)
+    }
 }

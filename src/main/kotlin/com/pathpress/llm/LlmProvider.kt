@@ -53,15 +53,7 @@ enum class LlmProviderType(val id: String, val requiresApiKey: Boolean, val envV
 
 /** Interface for LLM providers generating trip plans, waypoints, and POI narratives. */
 interface LlmProvider {
-    /**
-     * Generate high-level trip plan with day themes, intermediate waypoints, and narrative.
-     *
-     * @param recommendedTowns Real, verified overnight-town names ranked along the direct
-     *   start-to-end corridor (see [com.pathpress.poi.TownScorer]). Callers must compute these from
-     *   an actual route polyline *before* invoking planTrip, since no route exists yet at this
-     *   point in the pipeline. Grounding the LLM in these names steers it away from inventing
-     *   waypoints that [com.pathpress.routing.WaypointValidator] would later reject.
-     */
+    /** Generate high-level trip plan with day themes, intermediate waypoints, and narrative. */
     fun planTrip(
         startName: String,
         endName: String,
@@ -69,7 +61,6 @@ interface LlmProvider {
         endCoords: LocationCoords,
         days: Int,
         userPrompt: String?,
-        recommendedTowns: List<String> = emptyList(),
     ): TripPlanResponse
 
     /** Generate leg stories and curated POI descriptions grounded in real OSM tags. */

@@ -55,10 +55,9 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         endCoords: LocationCoords,
         days: Int,
         userPrompt: String?,
-        recommendedTowns: List<String>,
     ): TripPlanResponse {
         try {
-            val promptText = buildPrompt(startName, endName, days, userPrompt, recommendedTowns)
+            val promptText = buildPrompt(startName, endName, days, userPrompt)
             val responseText = complete(promptText)
             if (!responseText.isNullOrBlank()) {
                 return parseTripPlan(responseText, days)
@@ -67,15 +66,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             logger.warn("LLM Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
-            .planTrip(
-                startName,
-                endName,
-                startCoords,
-                endCoords,
-                days,
-                userPrompt,
-                recommendedTowns,
-            )
+            .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
     }
 
     /**
@@ -87,20 +78,13 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         endName: String,
         days: Int,
         userPrompt: String?,
-        recommendedTowns: List<String> = emptyList(),
     ): String {
         val promptDetail =
             userPrompt ?: "Scenic road trip highlighting nature, coastal views, and local cafes."
-        val townRecsStr =
-            if (recommendedTowns.isNotEmpty()) {
-                "\nRECOMMENDED OVERNIGHT STOPS (ranked by verified family & lodging amenity density):\n" +
-                    recommendedTowns.joinToString(", ") +
-                    "\n"
-            } else ""
 
         return """
             You are a master road trip planner. Design a $days-day road trip from $startName to $endName.
-            Theme/Preferences: $promptDetail.$townRecsStr
+            Theme/Preferences: $promptDetail.
 
             CRITICAL ROUTING INSTRUCTION:
             1. If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).

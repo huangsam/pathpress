@@ -19,7 +19,6 @@ class NoOpFallbackProvider : LlmProvider {
         endCoords: LocationCoords,
         days: Int,
         userPrompt: String?,
-        recommendedTowns: List<String>,
     ): TripPlanResponse {
         val cleanPrompt = userPrompt.takeValidText()
         val narrative =
