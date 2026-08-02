@@ -401,6 +401,39 @@ class LlmProviderTest {
     }
 
     @Test
+    fun `HttpLlmProvider buildPrompt incorporates candidate waypoints when provided`() {
+        val dummyProvider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = null
+
+                fun testPrompt(
+                    start: String,
+                    end: String,
+                    days: Int,
+                    prompt: String?,
+                    candidates: List<LocationCoords>,
+                ) = buildPrompt(start, end, days, prompt, candidates)
+            }
+
+        val candidates =
+            listOf(
+                LocationCoords(36.6002, -121.8947, "Monterey, CA"),
+                LocationCoords(35.1428, -120.6412, "Pismo Beach, CA"),
+            )
+        val prompt =
+            dummyProvider.testPrompt(
+                "San Jose",
+                "Los Angeles",
+                2,
+                "coastal scenic points",
+                candidates,
+            )
+        assertTrue(prompt.contains("VERIFIED CANDIDATE TOWNS ALONG ROUTE"))
+        assertTrue(prompt.contains("Monterey, CA"))
+        assertTrue(prompt.contains("Pismo Beach, CA"))
+    }
+
+    @Test
     fun `NoOpFallbackProvider generates clean description for POI with historic yes tag`() {
         val provider = NoOpFallbackProvider()
         val poi =
