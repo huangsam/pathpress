@@ -356,6 +356,36 @@ class LlmProviderTest {
     }
 
     @Test
+    fun `HttpLlmProvider parseTripPlan caps oversized waypoint list`() {
+        val dummyProvider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = null
+
+                fun testParse(json: String, days: Int) = parseTripPlan(json, days)
+            }
+
+        val oversizedWaypointsJson =
+            """
+            {
+              "waypoints": [
+                "Town 1", "Town 2", "Town 3", "Town 4", "Town 5", "Town 6", "Town 7", "Town 8"
+              ],
+              "narrative": "A scenic trip with too many stops."
+            }
+            """
+                .trimIndent()
+
+        val result = dummyProvider.testParse(oversizedWaypointsJson, 2)
+        assertEquals(
+            4,
+            result.waypoints.size,
+            "Waypoints must be capped to bound geocoding/routing fan-out",
+        )
+        assertEquals("Town 1", result.waypoints[0].name)
+        assertEquals("Town 4", result.waypoints[3].name)
+    }
+
+    @Test
     fun `HttpLlmProvider buildPrompt includes critical routing instructions for waypoints`() {
         val dummyProvider =
             object : HttpLlmProvider() {

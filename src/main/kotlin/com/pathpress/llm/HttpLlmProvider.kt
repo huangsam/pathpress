@@ -36,6 +36,12 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         HttpClient.newBuilder().connectTimeout(config.httpLlmConnectTimeout).build()
     protected val mapper = jacksonObjectMapper()
 
+    companion object {
+        // Bounds waypoint fan-out (Nominatim geocodes + GraphHopper probes) per the prompted 2-4
+        // anchors.
+        private const val MAX_LLM_WAYPOINTS = 4
+    }
+
     /**
      * Executes the provider-specific HTTP POST request for a given prompt string. Returns raw
      * string response text from the LLM provider, or null on HTTP/network error.
@@ -148,6 +154,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                         }
                     }
                     .orEmpty()
+                    .take(MAX_LLM_WAYPOINTS)
             TripPlanResponse(waypoints = waypoints, narrative = narrative, legStories = legStories)
         } catch (e: Exception) {
             logger.warn("Failed to parse LLM trip plan response: {}", e.message, e)
