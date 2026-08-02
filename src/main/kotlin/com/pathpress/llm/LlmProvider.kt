@@ -61,7 +61,6 @@ interface LlmProvider {
         endCoords: LocationCoords,
         days: Int,
         userPrompt: String?,
-        candidateWaypoints: List<LocationCoords> = emptyList(),
     ): TripPlanResponse
 
     /** Generate leg stories and curated POI descriptions grounded in real OSM tags. */
