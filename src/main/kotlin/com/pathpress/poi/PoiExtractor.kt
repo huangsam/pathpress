@@ -546,7 +546,7 @@ object PoiExtractor {
                 val dist = haversineMeters(current.lat, current.lng, candidate.lat, candidate.lng)
                 val candidateDomain = getThemeParkDomain(candidate)
                 val sameDomain = currentDomain != null && currentDomain == candidateDomain
-                if (dist <= clusterRadiusMeters && sameDomain) {
+                if (dist <= clusterRadiusMeters || sameDomain) {
                     visited[j] = true
                     cluster.add(candidate)
                 }

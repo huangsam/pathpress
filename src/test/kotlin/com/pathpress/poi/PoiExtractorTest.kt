@@ -553,6 +553,38 @@ class PoiExtractorTest {
     }
 
     @Test
+    fun `deduplicateThemeParks clusters nearby rides by proximity alone when domain is unknown`() {
+        // Neither ride's website resolves to a known theme-park domain, so getThemeParkDomain
+        // returns null for both and sameDomain is false. Only the proximity check can cluster
+        // these; regresses if the proximity/domain check is combined with && instead of ||.
+        val ride1 =
+            POI(
+                id = "r1",
+                name = "Local Park Coaster",
+                lat = 34.425,
+                lng = -118.597,
+                tags = mapOf("attraction" to "roller_coaster", "website" to "https://example.org"),
+                type = "roller_coaster",
+                distanceFromRouteMeters = 500.0,
+            )
+        val ride2 =
+            POI(
+                id = "r2",
+                name = "Local Park Ferris Wheel",
+                lat = 34.426,
+                lng = -118.598,
+                tags = mapOf("attraction" to "amusement_ride"),
+                type = "amusement_ride",
+                distanceFromRouteMeters = 200.0,
+            )
+
+        val deduplicated = PoiExtractor.deduplicateThemeParks(listOf(ride1, ride2))
+
+        assertEquals(1, deduplicated.size, "Expected proximity alone to cluster both rides")
+        assertEquals("r2", deduplicated[0].id, "Closer ride (200m) should be the representative")
+    }
+
+    @Test
     fun `resolveCacheFilePath derives state-qualified cache paths`() {
         assertEquals(
             ".pois_cache/pois_cache_california-latest.json",
