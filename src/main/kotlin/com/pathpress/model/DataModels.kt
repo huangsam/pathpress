@@ -58,22 +58,22 @@ data class POI(
             val name = tags["name"] ?: tags["ref"]
 
             // 1. Primary tag lookup (e.g. amenity=cafe, tourism=museum)
+            // Iterate PRIMARY_KEYS in priority order, not tags.entries insertion order
             val primaryVal =
-                tags.entries
-                    .firstOrNull { (k, v) ->
-                        k in PoiCategoryConstants.PRIMARY_KEYS &&
-                            v.lowercase() !in PoiCategoryConstants.INVALID_VALUES
-                    }
-                    ?.value
+                PoiCategoryConstants.PRIMARY_KEYS.firstNotNullOfOrNull { k ->
+                    val v = tags[k]
+                    if (v != null && v.lowercase() !in PoiCategoryConstants.INVALID_VALUES) v
+                    else null
+                }
 
             // 2. Secondary tag lookup (e.g. attraction=viewpoint, craft=brewery)
+            // Iterate SECONDARY_KEYS in priority order, not tags.entries insertion order
             val secondaryVal =
-                tags.entries
-                    .firstOrNull { (k, v) ->
-                        k in PoiCategoryConstants.SECONDARY_KEYS &&
-                            v.lowercase() !in PoiCategoryConstants.INVALID_VALUES
-                    }
-                    ?.value
+                PoiCategoryConstants.SECONDARY_KEYS.firstNotNullOfOrNull { k ->
+                    val v = tags[k]
+                    if (v != null && v.lowercase() !in PoiCategoryConstants.INVALID_VALUES) v
+                    else null
+                }
 
             // 3. Key fallback (e.g. historic=yes -> "historic")
             val fallbackKey =
@@ -144,19 +144,17 @@ fun sanitizePoiType(type: String?, tags: Map<String, String> = emptyMap()): Stri
     val resolved =
         if (trimmed in genericTypes) {
             val primaryVal =
-                tags.entries
-                    .firstOrNull { (k, v) ->
-                        k in PoiCategoryConstants.PRIMARY_KEYS &&
-                            v.lowercase() !in PoiCategoryConstants.INVALID_VALUES
-                    }
-                    ?.value
+                PoiCategoryConstants.PRIMARY_KEYS.firstNotNullOfOrNull { k ->
+                    val v = tags[k]
+                    if (v != null && v.lowercase() !in PoiCategoryConstants.INVALID_VALUES) v
+                    else null
+                }
             val secondaryVal =
-                tags.entries
-                    .firstOrNull { (k, v) ->
-                        k in PoiCategoryConstants.SECONDARY_KEYS &&
-                            v.lowercase() !in PoiCategoryConstants.INVALID_VALUES
-                    }
-                    ?.value
+                PoiCategoryConstants.SECONDARY_KEYS.firstNotNullOfOrNull { k ->
+                    val v = tags[k]
+                    if (v != null && v.lowercase() !in PoiCategoryConstants.INVALID_VALUES) v
+                    else null
+                }
             val fallbackKey =
                 tags.entries
                     .firstOrNull { (k, v) ->
