@@ -313,37 +313,84 @@ class RouteCalculator(
         )
         townNames.add(null)
 
-        val legs = mutableListOf<RouteLeg>()
-        // Track assigned POIs across legs to prevent duplicate POI recommendations across days
-        val usedPoiIds = mutableSetOf<String>()
+        val dCum = DoubleArray(allCoords.size)
+        dCum[0] = 0.0
+        for (i in 0 until allCoords.size - 1) {
+            dCum[i + 1] =
+                dCum[i] +
+                    PoiExtractor.haversineMeters(
+                        allCoords[i].lat,
+                        allCoords[i].lng,
+                        allCoords[i + 1].lat,
+                        allCoords[i + 1].lng,
+                    )
+        }
+        val totalPolyDist = dCum.lastOrNull() ?: 0.0
+
+        val segIndices = IntArray(days + 1)
+        segIndices[0] = 0
+        segIndices[days] = (allCoords.size - 2).coerceAtLeast(0)
+
+        for (k in 1 until days) {
+            val targetDist = (k.toDouble() / days) * totalPolyDist
+            var idx = segIndices[k - 1]
+            for (i in idx until allCoords.size - 1) {
+                if (dCum[i + 1] >= targetDist) {
+                    idx = i
+                    break
+                }
+            }
+            segIndices[k] = idx
+        }
+
+        fun areCoordsClose(c1: LocationCoords, c2: LocationCoords): Boolean =
+            kotlin.math.abs(c1.lat - c2.lat) < 1e-6 && kotlin.math.abs(c1.lng - c2.lng) < 1e-6
+
+        val perLegPoints = mutableListOf<List<LocationCoords>>()
 
         for (dayIndex in 0 until days) {
             val legStart = legWaypoints[dayIndex]
             val legEnd = legWaypoints[dayIndex + 1]
 
-            val legReq =
-                GHRequest(legStart.lat, legStart.lng, legEnd.lat, legEnd.lng).setProfile("car")
-            val legRes =
-                try {
-                    graphHopper.route(legReq)
-                } catch (e: Exception) {
-                    logger.warn(
-                        "Per-leg route calculation failed for day ${dayIndex + 1}: ${e.message}",
-                        e,
-                    )
-                    null
+            val startVertexIdx = if (dayIndex == 0) 0 else segIndices[dayIndex] + 1
+            val endVertexIdx =
+                if (dayIndex == days - 1) allCoords.size - 1 else segIndices[dayIndex + 1]
+
+            val vertexSlice =
+                if (
+                    allCoords.isNotEmpty() &&
+                        startVertexIdx <= endVertexIdx &&
+                        endVertexIdx < allCoords.size
+                ) {
+                    allCoords.subList(startVertexIdx, endVertexIdx + 1)
+                } else {
+                    emptyList()
                 }
 
-            val (dist, dur, legPoints) =
-                if (legRes != null && !legRes.hasErrors() && legRes.best.points.size() > 0) {
-                    val p = legRes.best.points
-                    val coords =
-                        (0 until p.size()).map { LocationCoords(p.getLat(it), p.getLon(it)) }
-                    Triple(legRes.best.distance, legRes.best.time / 1000.0, coords)
-                } else {
-                    val fallbackCoords = listOf(legStart, legEnd)
-                    Triple(path.distance / days, (path.time / 1000.0) / days, fallbackCoords)
+            val legPoints = mutableListOf<LocationCoords>()
+            legPoints.add(legStart)
+            for (pt in vertexSlice) {
+                if (!areCoordsClose(legPoints.last(), pt)) {
+                    legPoints.add(pt)
                 }
+            }
+            if (!areCoordsClose(legPoints.last(), legEnd)) {
+                legPoints.add(legEnd)
+            }
+
+            perLegPoints.add(legPoints)
+        }
+
+        val legs = mutableListOf<RouteLeg>()
+        val usedPoiIds = mutableSetOf<String>()
+
+        for (dayIndex in 0 until days) {
+            val legStart = legWaypoints[dayIndex]
+            val legEnd = legWaypoints[dayIndex + 1]
+            val legPoints = perLegPoints[dayIndex]
+
+            val dist = path.distance / days
+            val dur = (path.time / 1000.0) / days
 
             val realPois =
                 PoiExtractor.extractPoisForLeg(

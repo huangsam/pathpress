@@ -70,8 +70,8 @@ class RouteCalculatorTest {
         assertEquals(2, legs[1].dayNumber)
         assertEquals(250000.0, legs[0].distanceMeters)
         assertEquals(250000.0, legs[1].distanceMeters)
-        assertEquals(2, legs[0].geometry.size)
-        assertEquals(2, legs[1].geometry.size)
+        kotlin.test.assertTrue(legs[0].geometry.size >= 2)
+        kotlin.test.assertTrue(legs[1].geometry.size >= 2)
     }
 
     @Test
@@ -127,10 +127,10 @@ class RouteCalculatorTest {
 
         assertEquals(3, legs.size)
 
-        // Assert each leg has geometry populated (fallback geometry uses start/end so size is 2)
-        assertEquals(2, legs[0].geometry.size)
-        assertEquals(2, legs[1].geometry.size)
-        assertEquals(2, legs[2].geometry.size)
+        // Assert each leg has geometry populated
+        kotlin.test.assertTrue(legs[0].geometry.size >= 2)
+        kotlin.test.assertTrue(legs[1].geometry.size >= 2)
+        kotlin.test.assertTrue(legs[2].geometry.size >= 2)
 
         // Assert geometry coordinates match the expected partitioned start/end points
         assertEquals(37.7749, legs[0].geometry[0].lat)
@@ -147,6 +147,42 @@ class RouteCalculatorTest {
         // The end of leg 2 should be the final destination
         assertEquals(34.0522, legs[2].geometry.last().lat)
         assertEquals(-118.2437, legs[2].geometry.last().lng)
+    }
+
+    @Test
+    fun `extractLegsFromResponse multi-day legs preserve parent route geometry and waypoint corridor`() {
+        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val path = ResponsePath()
+        val pointList = PointList()
+        // Parent path passes through SF -> Monterey -> Big Sur (waypoint) -> Morro Bay -> LA
+        pointList.add(37.7749, -122.4194) // SF
+        pointList.add(36.6002, -121.8947) // Monterey
+        pointList.add(36.2704, -121.8081) // Big Sur (waypoint corridor)
+        pointList.add(35.3658, -120.8499) // Morro Bay
+        pointList.add(34.0522, -118.2437) // LA
+        path.points = pointList
+        path.distance = 700000.0
+        path.time = 25000000L
+
+        val legs =
+            calculator.extractLegsFromResponse(
+                path = path,
+                days = 2,
+                dayTitles = emptyList(),
+                profile = "car",
+                limitPerLeg = 2,
+            )
+
+        assertEquals(2, legs.size)
+        // Verify that intermediate parent polyline points (such as Big Sur) are present in the leg
+        // geometry
+        val allLegPoints = legs.flatMap { it.geometry }
+        val containsBigSur = allLegPoints.any { kotlin.math.abs(it.lat - 36.2704) < 0.001 }
+        assertEquals(
+            true,
+            containsBigSur,
+            "Multi-day leg geometry must contain parent waypoint corridor (Big Sur)",
+        )
     }
 
     @Test
