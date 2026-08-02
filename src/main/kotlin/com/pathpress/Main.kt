@@ -97,6 +97,8 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 DistanceUnit.METRIC
             }
 
+        val mappedProfile = if (profile.lowercase() == "scenic") "car" else profile
+
         logger.info("PathPress v${BuildConfig.VERSION}")
         logger.info("=".repeat(50))
         logger.info("Start Input: $startLocation")
@@ -146,7 +148,6 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
         // so a throwaway direct route is computed here purely to surface verified town names.
         val recommendedTowns =
             if (days > 1) {
-                val corridorProfile = if (profile.lowercase() == "scenic") "car" else profile
                 val directRoutePoints =
                     try {
                         routeCalculator.calculateDirectRoutePolyline(
@@ -154,7 +155,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                             startLng = startGeo.coords.lng,
                             endLat = endGeo.coords.lat,
                             endLng = endGeo.coords.lng,
-                            profile = corridorProfile,
+                            profile = mappedProfile,
                         )
                     } catch (e: Exception) {
                         logger.warn("Direct corridor probe failed: ${e.message}")
@@ -344,7 +345,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 endLat = endGeo.coords.lat,
                 endLng = endGeo.coords.lng,
                 days = days,
-                profile = if (profile.lowercase() == "scenic") "car" else profile,
+                profile = mappedProfile,
                 limitPerLeg = poisPerLeg,
                 userPrompt = prompt,
                 waypoints = resolvedWaypoints,
