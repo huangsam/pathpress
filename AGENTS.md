@@ -7,3 +7,4 @@
 5. Anything reaching `raw()` or the CSS template must be escaped.
 6. A guard test doesn't count until it has been observed failing.
 7. Verify with `./gradlew ktfmtFormat test` and report pass count.
+8. Unused code is deleted, not wired up. Reviving it needs a measurement.
