@@ -52,8 +52,8 @@ class RouteCalculator(
 
         val validWaypoints = waypoints.filter { it.lat != 0.0 || it.lng != 0.0 }
 
-        val startSnap = snapToRoadNetwork(startLat, startLng)
-        val endSnap = snapToRoadNetwork(endLat, endLng)
+        val startSnap = snapToRoadNetwork(startLat, startLng, profile)
+        val endSnap = snapToRoadNetwork(endLat, endLng, profile)
         val snappedStart = startSnap.coords
         val snappedEnd = endSnap.coords
 
@@ -469,23 +469,37 @@ class RouteCalculator(
         return legs
     }
 
-    private val snapFilter: com.graphhopper.routing.util.EdgeFilter by lazy {
-        try {
-            val profile = graphHopper.getProfile("car")
-            val weighting = graphHopper.createWeighting(profile, com.graphhopper.util.PMap())
-            val carAccess = graphHopper.encodingManager.getBooleanEncodedValue("car_access")
-            com.graphhopper.routing.util.DefaultSnapFilter(weighting, carAccess)
-        } catch (e: Exception) {
-            logger.warn("Failed to initialize snapFilter, falling back to ALL_EDGES", e)
-            com.graphhopper.routing.util.EdgeFilter.ALL_EDGES
+    private val snapFilterCache = mutableMapOf<String, com.graphhopper.routing.util.EdgeFilter>()
+
+    /** Builds (and caches) an edge filter for the given routing profile, falling back to "car". */
+    private fun snapFilterFor(profile: String): com.graphhopper.routing.util.EdgeFilter =
+        snapFilterCache.getOrPut(profile) {
+            try {
+                val ghProfile =
+                    try {
+                        graphHopper.getProfile(profile)
+                    } catch (e: Exception) {
+                        graphHopper.getProfile("car")
+                    }
+                val weighting = graphHopper.createWeighting(ghProfile, com.graphhopper.util.PMap())
+                val carAccess = graphHopper.encodingManager.getBooleanEncodedValue("car_access")
+                com.graphhopper.routing.util.DefaultSnapFilter(weighting, carAccess)
+            } catch (e: Exception) {
+                logger.warn(
+                    "Failed to initialize snapFilter for profile '{}', falling back to ALL_EDGES",
+                    profile,
+                    e,
+                )
+                com.graphhopper.routing.util.EdgeFilter.ALL_EDGES
+            }
         }
-    }
 
     /**
      * Snaps a coordinate to the nearest routable road network edge. If the direct snap fails (e.g.
      * the point is in a lake or wilderness), falls back to the nearest known town within 30 km.
      */
-    private fun snapToRoadNetwork(lat: Double, lng: Double): SnapResult {
+    private fun snapToRoadNetwork(lat: Double, lng: Double, profile: String = "car"): SnapResult {
+        val snapFilter = snapFilterFor(profile)
         return try {
             val qr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
             if (qr.isValid && qr.snappedPoint != null) {

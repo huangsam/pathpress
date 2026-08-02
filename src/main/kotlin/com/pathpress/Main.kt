@@ -192,37 +192,49 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 )
 
             if (!valResult.isValid) {
-                logger.warn(
-                    "LLM waypoint validation failed: ${valResult.reason}. " +
-                        "Retrying trip planning with LLM (attempt 2/2)..."
-                )
-                val retryTripPlan =
-                    llm.planTrip(
-                        startName = startGeo.displayName,
-                        endName = endGeo.displayName,
-                        startCoords = startGeo.coords,
-                        endCoords = endGeo.coords,
-                        days = days,
-                        userPrompt = prompt,
+                if (valResult.validWaypoints.isNotEmpty()) {
+                    // Partial rejection: keep the in-corridor subset rather than discarding
+                    // everything.
+                    logger.warn(
+                        "LLM waypoint validation failed: ${valResult.reason}. " +
+                            "Accepting the ${valResult.validWaypoints.size} valid waypoint(s) and dropping the rest."
                     )
-                val retryWaypoints = geocodeWaypoints(retryTripPlan.waypoints)
-                val retryValResult =
-                    WaypointValidator.validateWaypoints(
-                        retryWaypoints,
-                        startGeo.coords,
-                        endGeo.coords,
-                    )
-
-                if (retryValResult.isValid && retryWaypoints.isNotEmpty()) {
-                    logger.info("Retry attempt produced valid waypoints!")
-                    resolvedWaypoints = retryWaypoints
-                    tripPlan = retryTripPlan
+                    resolvedWaypoints = valResult.validWaypoints.toMutableList()
                 } else {
                     logger.warn(
-                        "LLM waypoint validation failed on retry attempt. " +
-                            "Clearing invalid waypoints and using deterministic route fallback."
+                        "LLM waypoint validation failed: ${valResult.reason}. " +
+                            "Retrying trip planning with LLM (attempt 2/2)..."
                     )
-                    resolvedWaypoints.clear()
+                    val retryTripPlan =
+                        llm.planTrip(
+                            startName = startGeo.displayName,
+                            endName = endGeo.displayName,
+                            startCoords = startGeo.coords,
+                            endCoords = endGeo.coords,
+                            days = days,
+                            userPrompt = prompt,
+                        )
+                    val retryWaypoints = geocodeWaypoints(retryTripPlan.waypoints)
+                    val retryValResult =
+                        WaypointValidator.validateWaypoints(
+                            retryWaypoints,
+                            startGeo.coords,
+                            endGeo.coords,
+                        )
+
+                    if (retryValResult.validWaypoints.isNotEmpty()) {
+                        logger.info(
+                            "Retry attempt produced ${retryValResult.validWaypoints.size} valid waypoint(s)."
+                        )
+                        resolvedWaypoints = retryValResult.validWaypoints.toMutableList()
+                        tripPlan = retryTripPlan
+                    } else {
+                        logger.warn(
+                            "LLM waypoint validation failed on retry attempt. " +
+                                "Clearing invalid waypoints and using deterministic route fallback."
+                        )
+                        resolvedWaypoints.clear()
+                    }
                 }
             }
         }
