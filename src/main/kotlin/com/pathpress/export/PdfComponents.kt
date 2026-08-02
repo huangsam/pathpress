@@ -177,6 +177,12 @@ internal fun FlowContent.legCard(
                         +" Overnight in ${sanitizeText(leg.endTownName)}"
                     }
                 }
+                if (leg.isApproximateGeometry) {
+                    span("meta-badge-warning") {
+                        unsafe { raw(LucideIcon.triangleAlert("#b91c1c", 12)) }
+                        +" Approximate route - road path unavailable for this day"
+                    }
+                }
                 a(href = directionsUrl, classes = "meta-badge-nav") {
                     unsafe { raw(LucideIcon.navigation("#0284c7", 12)) }
                     +" Scenic Overview"

@@ -347,6 +347,7 @@ class RouteCalculator(
             kotlin.math.abs(c1.lat - c2.lat) < 1e-6 && kotlin.math.abs(c1.lng - c2.lng) < 1e-6
 
         val perLegPoints = mutableListOf<List<LocationCoords>>()
+        val perLegApproximate = mutableListOf<Boolean>()
 
         for (dayIndex in 0 until days) {
             val legStart = legWaypoints[dayIndex]
@@ -356,16 +357,26 @@ class RouteCalculator(
             val endVertexIdx =
                 if (dayIndex == days - 1) allCoords.size - 1 else segIndices[dayIndex + 1]
 
+            val vertexSliceValid =
+                allCoords.isNotEmpty() &&
+                    startVertexIdx <= endVertexIdx &&
+                    endVertexIdx < allCoords.size
             val vertexSlice =
-                if (
-                    allCoords.isNotEmpty() &&
-                        startVertexIdx <= endVertexIdx &&
-                        endVertexIdx < allCoords.size
-                ) {
+                if (vertexSliceValid) {
                     allCoords.subList(startVertexIdx, endVertexIdx + 1)
                 } else {
                     emptyList()
                 }
+            if (!vertexSliceValid) {
+                logger.warn(
+                    "Day {} leg polyline slice invalid (startVertexIdx={}, endVertexIdx={}, points={}). " +
+                        "Falling back to a straight line between leg endpoints; POIs and distance/duration for this day will be approximate.",
+                    dayIndex + 1,
+                    startVertexIdx,
+                    endVertexIdx,
+                    allCoords.size,
+                )
+            }
 
             val legPoints = mutableListOf<LocationCoords>()
             legPoints.add(legStart)
@@ -379,6 +390,8 @@ class RouteCalculator(
             }
 
             perLegPoints.add(legPoints)
+            // No road-derived vertices between endpoints means the leg is a straight-line guess.
+            perLegApproximate.add(!vertexSliceValid || vertexSlice.isEmpty())
         }
 
         val legs = mutableListOf<RouteLeg>()
@@ -388,9 +401,17 @@ class RouteCalculator(
             val legStart = legWaypoints[dayIndex]
             val legEnd = legWaypoints[dayIndex + 1]
             val legPoints = perLegPoints[dayIndex]
+            val isApproximate = perLegApproximate[dayIndex]
 
             val dist = path.distance / days
             val dur = (path.time / 1000.0) / days
+
+            if (isApproximate) {
+                logger.warn(
+                    "Day {} POIs are being extracted along an approximate straight-line leg, not the actual road route.",
+                    dayIndex + 1,
+                )
+            }
 
             val realPois =
                 PoiExtractor.extractPoisForLeg(
@@ -440,6 +461,7 @@ class RouteCalculator(
                     pois = realPois,
                     endTownName = endTown,
                     geometry = legPoints,
+                    isApproximateGeometry = isApproximate,
                 )
             )
         }

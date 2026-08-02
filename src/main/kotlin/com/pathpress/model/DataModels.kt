@@ -199,6 +199,13 @@ data class RouteLeg(
     val legStory: String? = null,
     val endTownName: String? = null,
     val geometry: List<LocationCoords> = emptyList(),
+    /**
+     * True when this leg's [geometry] and [distanceMeters]/[durationSeconds] are a straight-line /
+     * evenly-divided approximation because the actual per-day route polyline could not be sliced
+     * from the full route (e.g. inconsistent segment indices). POIs in this case are extracted
+     * along a line that is not a real road, so callers should surface this to the user.
+     */
+    val isApproximateGeometry: Boolean = false,
 ) {
     /** Generate a Google Maps URL for directions on this leg. */
     fun toDirectionsUrl(): String =
