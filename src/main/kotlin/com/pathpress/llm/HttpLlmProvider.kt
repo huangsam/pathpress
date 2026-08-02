@@ -55,9 +55,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         endCoords: LocationCoords,
         days: Int,
         userPrompt: String?,
+        recommendedTowns: List<String>,
     ): TripPlanResponse {
         try {
-            val promptText = buildPrompt(startName, endName, days, userPrompt)
+            val promptText = buildPrompt(startName, endName, days, userPrompt, recommendedTowns)
             val responseText = complete(promptText)
             if (!responseText.isNullOrBlank()) {
                 return parseTripPlan(responseText, days)
@@ -66,7 +67,15 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             logger.warn("LLM Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
-            .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
+            .planTrip(
+                startName,
+                endName,
+                startCoords,
+                endCoords,
+                days,
+                userPrompt,
+                recommendedTowns,
+            )
     }
 
     /**

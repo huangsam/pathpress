@@ -33,6 +33,43 @@ class RouteCalculator(
     private val logger = LoggerFactory.getLogger(RouteCalculator::class.java)
 
     /**
+     * Computes a cheap, waypoint-free direct route polyline between [startLat]/[startLng] and
+     * [endLat]/[endLng], skipping leg splitting and POI extraction.
+     *
+     * Used purely as a corridor probe so callers (e.g.
+     * [com.pathpress.poi.PoiExtractor.findCandidateTownsAlongRoute]) can rank real overnight towns
+     * *before* an LLM trip plan or the final routed legs exist. Returns an empty list if routing
+     * fails.
+     */
+    fun calculateDirectRoutePolyline(
+        startLat: Double,
+        startLng: Double,
+        endLat: Double,
+        endLng: Double,
+        profile: String = "car",
+    ): List<LocationCoords> {
+        val snappedStart = snapToRoadNetwork(startLat, startLng, profile).coords
+        val snappedEnd = snapToRoadNetwork(endLat, endLng, profile).coords
+
+        val request = GHRequest().setProfile(profile)
+        request.addPoint(GHPoint(snappedStart.lat, snappedStart.lng))
+        request.addPoint(GHPoint(snappedEnd.lat, snappedEnd.lng))
+
+        val response =
+            try {
+                graphHopper.route(request)
+            } catch (e: Exception) {
+                logger.warn("Direct corridor route probe failed: {}", e.message)
+                return emptyList()
+            }
+
+        if (response == null || response.hasErrors()) return emptyList()
+
+        val points = response.best.points
+        return (0 until points.size()).map { LocationCoords(points.getLat(it), points.getLon(it)) }
+    }
+
+    /**
      * Calculate a route between start and end coordinates, dividing it into daily legs with real
      * POIs.
      */
