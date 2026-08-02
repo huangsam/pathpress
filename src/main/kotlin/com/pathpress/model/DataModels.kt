@@ -130,8 +130,9 @@ data class POI(
  * Performs a 2-pass resolution:
  * - Pass 1: If [type] is generic, attempts to re-resolve a more specific value from the remaining
  *   [tags].
- * - Pass 2: Maps known raw terms to clean human-readable terms (e.g. "memorial_hall" -> "memorial")
- *   and converts underscores to spaces.
+ * - Pass 2: Maps known raw terms to clean canonical terms (e.g. "memorial_hall" -> "memorial").
+ *   Underscores are preserved so the result stays comparable to raw OSM tag values (e.g.
+ *   "nature_reserve"); convert to spaces only at display time.
  */
 fun sanitizePoiType(type: String?, tags: Map<String, String> = emptyMap()): String {
     if (type.isNullOrBlank()) return "landmark"
@@ -180,7 +181,7 @@ fun sanitizePoiType(type: String?, tags: Map<String, String> = emptyMap()): Stri
         "poi" -> "landmark"
         "memorial_hall" -> "memorial"
         "confectionery" -> "bakery"
-        else -> lower.replace("_", " ")
+        else -> lower
     }
 }
 

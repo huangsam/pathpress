@@ -116,7 +116,7 @@ class DataModelsTest {
         assertEquals("cafe", sanitizePoiType("cafe", mapOf("amenity" to "cafe")))
         assertEquals("memorial", sanitizePoiType("memorial_hall", emptyMap()))
         assertEquals("bakery", sanitizePoiType("confectionery", emptyMap()))
-        assertEquals("scenic viewpoint", sanitizePoiType("scenic_viewpoint", emptyMap()))
+        assertEquals("scenic_viewpoint", sanitizePoiType("scenic_viewpoint", emptyMap()))
     }
 
     @Test
