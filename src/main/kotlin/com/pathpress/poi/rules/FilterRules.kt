@@ -3,30 +3,6 @@ package com.pathpress.poi.rules
 import com.pathpress.model.POI
 
 /**
- * Filters out abandoned, disused, closed, or private access POIs.
- *
- * **Rationale**: Directing travelers to permanently closed businesses or private property causes
- * frustrating detours and potential trespassing issues.
- */
-object DisusedAndClosedFilterRule : PoiFilterRule {
-    override fun isExcluded(poi: POI, context: PoiEvaluationContext): Boolean {
-        val tags = poi.tags
-        if (tags["disused"] == "yes" || tags["abandoned"] == "yes" || tags["closed"] == "yes")
-            return true
-        if (tags.containsKey("end_date")) return true
-        if (tags["access"] == "no" || tags["access"] == "private") return true
-        for (key in tags.keys) {
-            if (
-                key.startsWith("disused:") || key.startsWith("abandoned:") || key.startsWith("was:")
-            ) {
-                return true
-            }
-        }
-        return false
-    }
-}
-
-/**
  * Filters out theme park rides and sub-attractions unless explicitly requested in the user prompt.
  *
  * **Rationale**: Individual theme park rides (roller coasters, monorails, water slides) pollute POI

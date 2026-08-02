@@ -32,7 +32,7 @@ class PoiRulesEngine(
     companion object {
         /** Default set of hard-exclusion rules. */
         fun defaultFilterRules(): List<PoiFilterRule> =
-            listOf(DisusedAndClosedFilterRule, ThemeParkFilterRule, PersonaExclusionFilterRule)
+            listOf(ThemeParkFilterRule, PersonaExclusionFilterRule)
 
         /** Default set of additive quality/relevance scoring rules. */
         fun defaultScoringRules(): List<PoiScoringRule> =

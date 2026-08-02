@@ -28,20 +28,6 @@ class PoiRulesEngineTest {
         )
 
     @Test
-    fun `DisusedAndClosedFilterRule excludes disused, closed, or private nodes`() {
-        val disusedPoi = createTestPoi("1", name = "Old Shop", tags = mapOf("disused" to "yes"))
-        val closedPoi = createTestPoi("2", name = "Closed Diner", tags = mapOf("closed" to "yes"))
-        val privatePoi =
-            createTestPoi("3", name = "Private Garden", tags = mapOf("access" to "private"))
-        val activePoi = createTestPoi("4", name = "Active Cafe", tags = mapOf("amenity" to "cafe"))
-
-        assertTrue(DisusedAndClosedFilterRule.isExcluded(disusedPoi, PoiEvaluationContext()))
-        assertTrue(DisusedAndClosedFilterRule.isExcluded(closedPoi, PoiEvaluationContext()))
-        assertTrue(DisusedAndClosedFilterRule.isExcluded(privatePoi, PoiEvaluationContext()))
-        assertFalse(DisusedAndClosedFilterRule.isExcluded(activePoi, PoiEvaluationContext()))
-    }
-
-    @Test
     fun `ThemeParkFilterRule excludes amusement rides unless theme parks allowed`() {
         val rollerCoaster =
             createTestPoi(
@@ -119,11 +105,11 @@ class PoiRulesEngineTest {
     @Test
     fun `PoiRulesEngine evaluates all active filter and scoring rules`() {
         val engine = PoiRulesEngine.default
-        val disused =
+        val themeRide =
             createTestPoi(
                 "1",
-                name = "Abandoned Cafe",
-                tags = mapOf("amenity" to "cafe", "disused" to "yes"),
+                name = "Roller Coaster",
+                tags = mapOf("attraction" to "roller_coaster"),
             )
         val richPark =
             createTestPoi(
@@ -141,7 +127,7 @@ class PoiRulesEngineTest {
 
         val context = PoiEvaluationContext(userPrompt = "Family trip")
 
-        assertTrue(engine.isExcluded(disused, context))
+        assertTrue(engine.isExcluded(themeRide, context))
         assertFalse(engine.isExcluded(richPark, context))
 
         val score = engine.calculatePoiQualityScore(richPark, context)
