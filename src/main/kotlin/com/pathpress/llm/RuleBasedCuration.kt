@@ -1,6 +1,8 @@
 package com.pathpress.llm
 
+import com.pathpress.model.DistanceUnit
 import com.pathpress.model.RouteLeg
+import com.pathpress.model.takeValidText
 import com.pathpress.poi.PoiDescriptionFormatter
 import org.slf4j.LoggerFactory
 
@@ -13,10 +15,7 @@ import org.slf4j.LoggerFactory
 object RuleBasedCuration {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun curate(leg: RouteLeg): CuratedLegResult {
-        val legTitle = leg.endTownName?.let { "Drive to $it" } ?: "Day ${leg.dayNumber} Scenic Leg"
-        val fallbackStory =
-            "Day ${leg.dayNumber}: Enjoy a scenic drive along $legTitle, discovering vibrant local culture and natural landmarks."
+    fun curate(leg: RouteLeg, unit: DistanceUnit = DistanceUnit.METRIC): CuratedLegResult {
         val story =
             leg.legStory
                 .takeIf { !it.isNullOrBlank() }
@@ -30,7 +29,7 @@ object RuleBasedCuration {
                         )
                         null
                     } else candidate
-                } ?: fallbackStory
+                } ?: buildFactGroundedStory(leg, unit)
 
         val updatedPois =
             leg.pois.map { poi ->
@@ -40,5 +39,31 @@ object RuleBasedCuration {
             }
 
         return CuratedLegResult(legStory = story, curatedPois = updatedPois)
+    }
+
+    /**
+     * Builds a fact-grounded one-sentence leg story from real OSM/GraphHopper data: distance, end
+     * town, and the first named POI plus a count of remaining stops. No content is invented.
+     */
+    internal fun buildFactGroundedStory(leg: RouteLeg, unit: DistanceUnit): String {
+        val distanceMeters = leg.distanceMeters ?: 0.0
+        val distanceValue =
+            if (unit == DistanceUnit.IMPERIAL) distanceMeters / 1609.344
+            else distanceMeters / 1000.0
+        val unitLabel = if (unit == DistanceUnit.IMPERIAL) "mi" else "km"
+        val distanceStr = String.format(java.util.Locale.US, "%.1f", distanceValue)
+
+        val townStr = leg.endTownName ?: "the destination"
+        val namedPois = leg.pois.mapNotNull { it.name.takeValidText() }
+        val firstPoiName = namedPois.firstOrNull()
+
+        val poiClause =
+            when (namedPois.size) {
+                0 -> ""
+                1 -> ", passing $firstPoiName"
+                else -> ", passing $firstPoiName and ${namedPois.size - 1} more stops"
+            }
+
+        return "Day ${leg.dayNumber}: A ${distanceStr}${unitLabel} drive to $townStr$poiClause."
     }
 }

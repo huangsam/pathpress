@@ -36,6 +36,6 @@ class NoOpFallbackProvider : LlmProvider {
         userPrompt: String?,
         unit: DistanceUnit,
     ): CuratedLegResult {
-        return RuleBasedCuration.curate(leg)
+        return RuleBasedCuration.curate(leg, unit)
     }
 }

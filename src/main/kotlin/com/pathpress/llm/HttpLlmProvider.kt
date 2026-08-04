@@ -113,17 +113,14 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             You are a master road trip planner. Design a $days-day road trip from $startName to $endName.
             Theme/Preferences: $promptDetail.
             CRITICAL ROUTING INSTRUCTION:
-            1. If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).
-            2. Incorporate iconic regional landmarks and historical milestones along the route into the overall narrative.
-            3. Do NOT state or invent specific road names, route numbers, or highway designations anywhere in the response (e.g. do NOT write "I-5", "US-101", "Highway 1", "Route 66"). Refer to towns, regions, and landmarks only — real road data comes exclusively from routing/mapping data, not from you.
+            1. Provide 2-4 intermediate spatial anchor towns/locations along the route in the "waypoints" array (e.g. ["Monterey, CA", "Pismo Beach, CA"]).
+            2. Incorporate iconic regional landmarks and historical milestones into the overall narrative.
+            3. Do NOT state or invent specific road names, route numbers, or highway designations anywhere in the response (e.g. no "I-5", "US-101", "Highway 1"). Refer to towns, regions, and landmarks only.
 
             Provide a JSON response with:
             {
-              "waypoints": [
-                {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
-                {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}
-              ],
-              "narrative": "<REQUIRED: 2 to 3 short, clear sentences (maximum 50 words total) summarizing the trip vibe and route from $startName to $endName. Keep sentences brief, direct, and easy to read. Do NOT write dense, multi-sentence purple prose or flowery fluff.>"
+              "waypoints": ["Monterey, CA", "Pismo Beach, CA"],
+              "narrative": "<REQUIRED: 2 to 3 short, clear sentences (maximum 50 words total) summarizing the trip vibe and route from $startName to $endName.>"
             }
             Return ONLY valid raw JSON. The "narrative" field is mandatory and must not be null or empty.
         """
@@ -199,5 +196,5 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         leg: RouteLeg,
         userPrompt: String?,
         unit: DistanceUnit,
-    ): CuratedLegResult = RuleBasedCuration.curate(leg)
+    ): CuratedLegResult = RuleBasedCuration.curate(leg, unit)
 }

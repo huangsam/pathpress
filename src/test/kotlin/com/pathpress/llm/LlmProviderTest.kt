@@ -129,6 +129,65 @@ class LlmProviderTest {
     }
 
     @Test
+    fun `RuleBasedCuration buildFactGroundedStory includes distance, town, and POI facts`() {
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 2,
+                totalDays = 3,
+                endTownName = "Monterey",
+                distanceMeters = 120000.0,
+                durationSeconds = 5400.0,
+                pois =
+                    listOf(
+                        POI(
+                            id = "p1",
+                            name = "Big Sur Viewpoint",
+                            lat = 36.4,
+                            lng = -121.9,
+                            tags = mapOf("tourism" to "viewpoint"),
+                            type = "viewpoint",
+                        ),
+                        POI(
+                            id = "p2",
+                            name = "Coastal Cafe",
+                            lat = 36.3,
+                            lng = -121.85,
+                            tags = mapOf("amenity" to "cafe"),
+                            type = "cafe",
+                        ),
+                    ),
+            )
+
+        val metric = RuleBasedCuration.buildFactGroundedStory(leg, DistanceUnit.METRIC)
+        assertTrue(metric.contains("Day 2"), "should include day number")
+        assertTrue(metric.contains("120.0km"), "should include metric distance")
+        assertTrue(metric.contains("Monterey"), "should include end town")
+        assertTrue(metric.contains("Big Sur Viewpoint"), "should include first POI name")
+        assertTrue(metric.contains("1 more stop"), "should count remaining POIs")
+        assertFalse(
+            FalsifiableSpecificsFilter.containsRoadReference(metric),
+            "must not mention roads",
+        )
+
+        val imperial = RuleBasedCuration.buildFactGroundedStory(leg, DistanceUnit.IMPERIAL)
+        assertTrue(imperial.contains("mi"), "should use miles for imperial")
+        assertFalse(imperial.contains("km"), "should not use km for imperial")
+
+        val noPoisLeg = leg.copy(pois = emptyList())
+        val noPois = RuleBasedCuration.buildFactGroundedStory(noPoisLeg, DistanceUnit.METRIC)
+        assertFalse(noPois.contains("passing"), "should omit poi clause when no POIs")
+
+        val onePoiLeg = leg.copy(pois = leg.pois.take(1))
+        val onePoi = RuleBasedCuration.buildFactGroundedStory(onePoiLeg, DistanceUnit.METRIC)
+        assertTrue(onePoi.contains("Big Sur Viewpoint"), "should name the single POI")
+        assertFalse(onePoi.contains("more stop"), "should not show 'more stops' for single POI")
+    }
+
+    @Test
     fun `HttpLlmProvider planTrip returns parsed response when complete succeeds`() {
         val validLlmJson =
             """
