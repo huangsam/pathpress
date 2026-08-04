@@ -273,9 +273,9 @@ class LlmProviderTest {
                     dayNumber: Int,
                     distanceMeters: Double,
                     endTownName: String?,
-                    poiNames: List<String>,
+                    poiName: String?,
                     unit: DistanceUnit,
-                ) = buildLegStoryPrompt(dayNumber, distanceMeters, endTownName, poiNames, unit)
+                ) = buildLegStoryPrompt(dayNumber, distanceMeters, endTownName, poiName, unit)
             }
 
         val metricPrompt =
@@ -283,7 +283,7 @@ class LlmProviderTest {
                 2,
                 50000.0,
                 "Monterey",
-                listOf("Big Sur Viewpoint"),
+                "Big Sur Viewpoint",
                 DistanceUnit.METRIC,
             )
         assertTrue(metricPrompt.contains("50.0km"))
@@ -298,11 +298,17 @@ class LlmProviderTest {
                 2,
                 50000.0,
                 "Monterey",
-                listOf("Big Sur Viewpoint"),
+                "Big Sur Viewpoint",
                 DistanceUnit.IMPERIAL,
             )
         assertTrue(imperialPrompt.contains("mi"))
         assertTrue(!imperialPrompt.contains("50.0km"))
+
+        val noPoiPrompt =
+            dummyProvider.testPrompt(1, 30000.0, "San Luis Obispo", null, DistanceUnit.METRIC)
+        assertTrue(noPoiPrompt.contains("30.0km"))
+        assertTrue(noPoiPrompt.contains("San Luis Obispo"))
+        assertFalse(noPoiPrompt.contains("passing"))
     }
 
     @Test

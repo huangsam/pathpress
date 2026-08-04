@@ -224,14 +224,14 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         unit: DistanceUnit,
     ): CuratedLegResult {
         val ruleBased = RuleBasedCuration.curate(leg)
-        val poiNames = leg.pois.mapNotNull { it.name.takeValidText() }
+        val firstPoi = leg.pois.firstOrNull()?.name.takeValidText()
         return try {
             val prompt =
                 buildLegStoryPrompt(
                     dayNumber = leg.dayNumber,
                     distanceMeters = leg.distanceMeters ?: 0.0,
                     endTownName = leg.endTownName,
-                    poiNames = poiNames,
+                    poiName = firstPoi,
                     unit = unit,
                 )
             val story = complete(prompt)?.trim()?.trim('"', '\u201C', '\u201D')
@@ -249,13 +249,14 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
     /**
      * Builds a fact-grounded prompt requesting exactly one sentence describing a day's drive, using
-     * ONLY the real distance, end town, and POI names extracted from OSM/GraphHopper data.
+     * ONLY the real distance, end town, and optionally the first POI extracted from
+     * OSM/GraphHopper.
      */
     protected fun buildLegStoryPrompt(
         dayNumber: Int,
         distanceMeters: Double,
         endTownName: String?,
-        poiNames: List<String>,
+        poiName: String?,
         unit: DistanceUnit,
     ): String {
         val distanceValue =
@@ -264,10 +265,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         val unitLabel = if (unit == DistanceUnit.IMPERIAL) "mi" else "km"
         val distanceStr = String.format(java.util.Locale.US, "%.1f", distanceValue)
         val townStr = endTownName ?: "the destination town"
-        val poiStr = if (poiNames.isEmpty()) "no named stops" else poiNames.joinToString(", ")
+        val poiClause = poiName?.let { " passing $it" } ?: ""
 
         return """
-            Write 1 sentence describing day $dayNumber of a road trip: $distanceStr$unitLabel ending in $townStr, passing $poiStr.
+            Write 1 sentence describing day $dayNumber of a road trip: $distanceStr$unitLabel ending in $townStr$poiClause.
             Use ONLY these facts - never name a road, highway, or route number, and never add landmarks not listed.
             Return ONLY the sentence, no quotes, no JSON, no extra commentary.
         """
