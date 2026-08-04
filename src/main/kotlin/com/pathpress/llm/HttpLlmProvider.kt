@@ -60,13 +60,49 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             val promptText = buildPrompt(startName, endName, days, userPrompt)
             val responseText = complete(promptText)
             if (!responseText.isNullOrBlank()) {
-                return parseTripPlan(responseText, days)
+                val fallbackNarrative =
+                    NoOpFallbackProvider()
+                        .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
+                        .narrative
+                return sanitizeFalsifiableSpecifics(
+                    parseTripPlan(responseText, days),
+                    fallbackNarrative,
+                )
             }
         } catch (e: Exception) {
             logger.warn("LLM Provider warning: {}", e.message)
         }
         return NoOpFallbackProvider()
             .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
+    }
+
+    /**
+     * Post-filter guarding against LLM-fabricated road/highway specifics that slipped past the
+     * prompt's ban. Any narrative or legStory matching [FalsifiableSpecificsFilter] is dropped:
+     * narrative degrades to [fallbackNarrative] and legStories are blanked so the leg falls through
+     * to RuleBasedCuration's deterministic story instead.
+     */
+    protected fun sanitizeFalsifiableSpecifics(
+        response: TripPlanResponse,
+        fallbackNarrative: String,
+    ): TripPlanResponse {
+        val safeNarrative =
+            if (FalsifiableSpecificsFilter.containsRoadReference(response.narrative)) {
+                logger.warn(
+                    "Dropping LLM narrative: contained a falsifiable road/highway reference"
+                )
+                fallbackNarrative
+            } else response.narrative
+        val safeLegStories =
+            response.legStories.map { story ->
+                if (FalsifiableSpecificsFilter.containsRoadReference(story)) {
+                    logger.warn(
+                        "Dropping LLM legStory: contained a falsifiable road/highway reference"
+                    )
+                    ""
+                } else story
+            }
+        return response.copy(narrative = safeNarrative, legStories = safeLegStories)
     }
 
     /**
@@ -88,6 +124,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             CRITICAL ROUTING INSTRUCTION:
             1. If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).
             2. Incorporate iconic regional landmarks and historical milestones along the route into the day-by-day narratives ("legStories") and overall narrative.
+            3. Do NOT state or invent specific road names, route numbers, or highway designations anywhere in the response (e.g. do NOT write "I-5", "US-101", "Highway 1", "Route 66"). Refer to towns, regions, and landmarks only — real road data comes exclusively from routing/mapping data, not from you.
 
             Provide a JSON response with:
             {

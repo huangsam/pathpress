@@ -2,6 +2,7 @@ package com.pathpress.llm
 
 import com.pathpress.model.RouteLeg
 import com.pathpress.poi.PoiDescriptionFormatter
+import org.slf4j.LoggerFactory
 
 /**
  * Deterministic POI curation derived from OSM tags.
@@ -10,11 +11,26 @@ import com.pathpress.poi.PoiDescriptionFormatter
  * network latency, and immunity to LLM hallucinations.
  */
 object RuleBasedCuration {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     fun curate(leg: RouteLeg): CuratedLegResult {
         val legTitle = leg.endTownName?.let { "Drive to $it" } ?: "Day ${leg.dayNumber} Scenic Leg"
+        val fallbackStory =
+            "Day ${leg.dayNumber}: Enjoy a scenic drive along $legTitle, discovering vibrant local culture and natural landmarks."
         val story =
-            leg.legStory.takeIf { !it.isNullOrBlank() }
-                ?: "Day ${leg.dayNumber}: Enjoy a scenic drive along $legTitle, discovering vibrant local culture and natural landmarks."
+            leg.legStory
+                .takeIf { !it.isNullOrBlank() }
+                .let { candidate ->
+                    if (
+                        candidate != null &&
+                            FalsifiableSpecificsFilter.containsRoadReference(candidate)
+                    ) {
+                        logger.warn(
+                            "Dropping legStory: contained a falsifiable road/highway reference"
+                        )
+                        null
+                    } else candidate
+                } ?: fallbackStory
 
         val updatedPois =
             leg.pois.map { poi ->

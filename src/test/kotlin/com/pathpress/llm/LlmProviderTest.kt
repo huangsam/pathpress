@@ -202,7 +202,7 @@ class LlmProviderTest {
                 {"name": "Big Sur, CA", "lat": 36.2704, "lng": -121.8081}
               ],
               "narrative": "LLM custom parsed narrative for coastal trip.",
-              "legStories": ["Day 1: Drive along cliffside Highway 1."]
+              "legStories": ["Day 1: Drive along the cliffside coast, stopping in Big Sur."]
             }
             """
                 .trimIndent()
@@ -226,7 +226,60 @@ class LlmProviderTest {
         assertEquals(1, response.waypoints.size)
         assertEquals("Big Sur, CA", response.waypoints[0].name)
         assertEquals(36.2704, response.waypoints[0].lat)
-        assertEquals(listOf("Day 1: Drive along cliffside Highway 1."), response.legStories)
+        assertEquals(
+            listOf("Day 1: Drive along the cliffside coast, stopping in Big Sur."),
+            response.legStories,
+        )
+    }
+
+    @Test
+    fun `HttpLlmProvider planTrip drops narrative and legStories containing falsifiable road references`() {
+        val taintedLlmJson =
+            """
+            {
+              "waypoints": [],
+              "narrative": "Take I-5 south then merge onto US-101 for a scenic coastal drive.",
+              "legStories": ["Day 1: Head south on Highway 1 through Big Sur."]
+            }
+            """
+                .trimIndent()
+
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String = taintedLlmJson
+            }
+
+        val response =
+            provider.planTrip(
+                startName = "San Francisco",
+                endName = "Los Angeles",
+                startCoords = LocationCoords(37.7749, -122.4194),
+                endCoords = LocationCoords(34.0522, -118.2437),
+                days = 2,
+                userPrompt = "Scenic",
+            )
+
+        assertFalse(
+            FalsifiableSpecificsFilter.containsRoadReference(response.narrative),
+            "Narrative must not leak road/highway specifics: ${response.narrative}",
+        )
+        assertEquals(listOf(""), response.legStories, "Tainted legStory must be dropped")
+
+        val leg =
+            RouteLeg(
+                startLat = 36.5,
+                startLng = -121.5,
+                endLat = 36.7,
+                endLng = -121.7,
+                dayNumber = 1,
+                totalDays = 1,
+                legStory = response.legStories[0].ifBlank { null },
+            )
+        val curated = RuleBasedCuration.curate(leg)
+        assertFalse(
+            FalsifiableSpecificsFilter.containsRoadReference(curated.legStory),
+            "RuleBasedCuration fallback must not leak road/highway specifics: ${curated.legStory}",
+        )
     }
 
     @Test
