@@ -1,5 +1,6 @@
 package com.pathpress.llm
 
+import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
@@ -30,7 +31,11 @@ class NoOpFallbackProvider : LlmProvider {
         return TripPlanResponse(waypoints = emptyList(), narrative = narrative)
     }
 
-    override fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult {
+    override fun curateLegPois(
+        leg: RouteLeg,
+        userPrompt: String?,
+        unit: DistanceUnit,
+    ): CuratedLegResult {
         return RuleBasedCuration.curate(leg)
     }
 }

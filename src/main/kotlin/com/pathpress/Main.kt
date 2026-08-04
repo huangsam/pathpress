@@ -196,7 +196,7 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
             val storyFromPlan = tripPlan.legStories.getOrNull(idx)
             val legWithStory =
                 if (!storyFromPlan.isNullOrBlank()) leg.copy(legStory = storyFromPlan) else leg
-            val curation = llm.curateLegPois(legWithStory, prompt)
+            val curation = llm.curateLegPois(legWithStory, prompt, distanceUnit)
             legWithStory.copy(legStory = curation.legStory, pois = curation.curatedPois)
         }
 

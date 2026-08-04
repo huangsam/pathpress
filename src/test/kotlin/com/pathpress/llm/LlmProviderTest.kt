@@ -1,6 +1,7 @@
 package com.pathpress.llm
 
 import com.pathpress.config.Config
+import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.model.RouteLeg
@@ -115,7 +116,7 @@ class LlmProviderTest {
                 pois = listOf(poi1, poi2),
             )
 
-        val curated = provider.curateLegPois(leg, userPrompt = null)
+        val curated = provider.curateLegPois(leg, userPrompt = null, unit = DistanceUnit.METRIC)
         assertEquals(2, curated.curatedPois.size)
         assertTrue(
             curated.curatedPois[0].description!!.contains("coffee", ignoreCase = true) ||
@@ -128,14 +129,11 @@ class LlmProviderTest {
     }
 
     @Test
-    fun `HttpLlmProvider curateLegPois never calls the LLM`() {
-        var completeCalled = false
+    fun `HttpLlmProvider curateLegPois keeps POI descriptions rule-based but uses LLM for legStory`() {
         val provider =
             object : HttpLlmProvider() {
-                override fun complete(prompt: String): String? {
-                    completeCalled = true
-                    error("complete() must never be called during curateLegPois!")
-                }
+                override fun complete(prompt: String): String =
+                    "A short scenic drive into Monterey."
             }
 
         val poi =
@@ -162,35 +160,149 @@ class LlmProviderTest {
                 pois = listOf(poi),
             )
 
-        // Test with different prompts to ensure pure deterministic rule-based output unaffected by
-        // prompt
-        val result1 = provider.curateLegPois(leg, userPrompt = "Family coastal trip with toddlers")
-        val result2 = provider.curateLegPois(leg, userPrompt = "Strenuous mountain hike")
-        val resultNull = provider.curateLegPois(leg, userPrompt = null)
-
+        val result =
+            provider.curateLegPois(
+                leg,
+                userPrompt = "Family coastal trip with toddlers",
+                unit = DistanceUnit.METRIC,
+            )
         val expectedRuleBased = RuleBasedCuration.curate(leg)
 
-        assertFalse(completeCalled, "complete() must never be invoked during POI curation")
+        // POI descriptions are always rule-based, never touched by the LLM or user prompt
+        assertEquals(expectedRuleBased.curatedPois, result.curatedPois)
+        assertEquals("Scenic ocean overlook", result.curatedPois[0].description)
+
+        // legStory comes from the LLM's fact-grounded sentence
+        assertEquals("A short scenic drive into Monterey.", result.legStory)
+    }
+
+    @Test
+    fun `HttpLlmProvider curateLegPois falls back to RuleBasedCuration when LLM legStory is blank`() {
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String = "   "
+            }
+
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 1,
+                totalDays = 1,
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val result = provider.curateLegPois(leg, userPrompt = null, unit = DistanceUnit.METRIC)
+        val expectedRuleBased = RuleBasedCuration.curate(leg)
+
+        assertEquals(expectedRuleBased.legStory, result.legStory)
+    }
+
+    @Test
+    fun `HttpLlmProvider curateLegPois falls back to RuleBasedCuration when LLM legStory contains a road reference`() {
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String =
+                    "Drive south on Highway 1 into Monterey."
+            }
+
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 1,
+                totalDays = 1,
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val result = provider.curateLegPois(leg, userPrompt = null, unit = DistanceUnit.METRIC)
+        val expectedRuleBased = RuleBasedCuration.curate(leg)
+
         assertEquals(
-            expectedRuleBased,
-            result1,
-            "curateLegPois must equal RuleBasedCuration output",
+            expectedRuleBased.legStory,
+            result.legStory,
+            "Tainted LLM legStory must be dropped in favor of RuleBasedCuration fallback",
         )
-        assertEquals(
-            expectedRuleBased,
-            result2,
-            "curateLegPois must equal RuleBasedCuration output",
-        )
-        assertEquals(
-            expectedRuleBased,
-            resultNull,
-            "curateLegPois must equal RuleBasedCuration output",
+        assertFalse(FalsifiableSpecificsFilter.containsRoadReference(result.legStory))
+    }
+
+    @Test
+    fun `HttpLlmProvider curateLegPois falls back to RuleBasedCuration when complete throws`() {
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = error("network failure")
+            }
+
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 1,
+                totalDays = 1,
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val result = provider.curateLegPois(leg, userPrompt = null, unit = DistanceUnit.METRIC)
+        val expectedRuleBased = RuleBasedCuration.curate(leg)
+
+        assertEquals(expectedRuleBased, result)
+    }
+
+    @Test
+    fun `HttpLlmProvider buildLegStoryPrompt includes only real facts and unit-aware distance`() {
+        val dummyProvider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? = null
+
+                fun testPrompt(
+                    dayNumber: Int,
+                    distanceMeters: Double,
+                    endTownName: String?,
+                    poiNames: List<String>,
+                    unit: DistanceUnit,
+                ) = buildLegStoryPrompt(dayNumber, distanceMeters, endTownName, poiNames, unit)
+            }
+
+        val metricPrompt =
+            dummyProvider.testPrompt(
+                2,
+                50000.0,
+                "Monterey",
+                listOf("Big Sur Viewpoint"),
+                DistanceUnit.METRIC,
+            )
+        assertTrue(metricPrompt.contains("50.0km"))
+        assertTrue(metricPrompt.contains("Monterey"))
+        assertTrue(metricPrompt.contains("Big Sur Viewpoint"))
+        assertTrue(
+            metricPrompt.contains("never name a road, highway, or route number", ignoreCase = true)
         )
 
-        // Confirm rule-based OSM tag derivation details
-        assertEquals(1, result1.curatedPois.size)
-        assertEquals("Scenic ocean overlook", result1.curatedPois[0].description)
-        assertTrue(result1.legStory.contains("Monterey"))
+        val imperialPrompt =
+            dummyProvider.testPrompt(
+                2,
+                50000.0,
+                "Monterey",
+                listOf("Big Sur Viewpoint"),
+                DistanceUnit.IMPERIAL,
+            )
+        assertTrue(imperialPrompt.contains("mi"))
+        assertTrue(!imperialPrompt.contains("50.0km"))
     }
 
     @Test

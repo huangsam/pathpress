@@ -1,6 +1,7 @@
 package com.pathpress.llm
 
 import com.pathpress.config.Config
+import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.model.RouteLeg
@@ -64,7 +65,11 @@ interface LlmProvider {
     ): TripPlanResponse
 
     /** Generate leg stories and curated POI descriptions grounded in real OSM tags. */
-    fun curateLegPois(leg: RouteLeg, userPrompt: String?): CuratedLegResult
+    fun curateLegPois(
+        leg: RouteLeg,
+        userPrompt: String?,
+        unit: DistanceUnit = DistanceUnit.METRIC,
+    ): CuratedLegResult
 
     companion object {
         /**
