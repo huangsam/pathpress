@@ -225,13 +225,15 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
     ): CuratedLegResult {
         val ruleBased = RuleBasedCuration.curate(leg)
         val firstPoi = leg.pois.firstOrNull()?.name.takeValidText()
+        val poiCount = leg.pois.size
         return try {
             val prompt =
                 buildLegStoryPrompt(
                     dayNumber = leg.dayNumber,
                     distanceMeters = leg.distanceMeters ?: 0.0,
                     endTownName = leg.endTownName,
-                    poiName = firstPoi,
+                    firstPoiName = firstPoi,
+                    totalPoiCount = poiCount,
                     unit = unit,
                 )
             val story = complete(prompt)?.trim()?.trim('"', '\u201C', '\u201D')
@@ -249,14 +251,15 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
     /**
      * Builds a fact-grounded prompt requesting exactly one sentence describing a day's drive, using
-     * ONLY the real distance, end town, and optionally the first POI extracted from
-     * OSM/GraphHopper.
+     * ONLY the real distance, end town, and optionally the first POI + a count of remaining POIs
+     * extracted from OSM/GraphHopper.
      */
     protected fun buildLegStoryPrompt(
         dayNumber: Int,
         distanceMeters: Double,
         endTownName: String?,
-        poiName: String?,
+        firstPoiName: String?,
+        totalPoiCount: Int,
         unit: DistanceUnit,
     ): String {
         val distanceValue =
@@ -265,7 +268,12 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         val unitLabel = if (unit == DistanceUnit.IMPERIAL) "mi" else "km"
         val distanceStr = String.format(java.util.Locale.US, "%.1f", distanceValue)
         val townStr = endTownName ?: "the destination town"
-        val poiClause = poiName?.let { " passing $it" } ?: ""
+        val poiClause =
+            when (totalPoiCount) {
+                0 -> ""
+                1 -> " passing $firstPoiName"
+                else -> " passing $firstPoiName and ${totalPoiCount - 1} more places"
+            }
 
         return """
             Write 1 sentence describing day $dayNumber of a road trip: $distanceStr$unitLabel ending in $townStr$poiClause.

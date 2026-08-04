@@ -273,9 +273,18 @@ class LlmProviderTest {
                     dayNumber: Int,
                     distanceMeters: Double,
                     endTownName: String?,
-                    poiName: String?,
+                    firstPoiName: String?,
+                    totalPoiCount: Int,
                     unit: DistanceUnit,
-                ) = buildLegStoryPrompt(dayNumber, distanceMeters, endTownName, poiName, unit)
+                ) =
+                    buildLegStoryPrompt(
+                        dayNumber,
+                        distanceMeters,
+                        endTownName,
+                        firstPoiName,
+                        totalPoiCount,
+                        unit,
+                    )
             }
 
         val metricPrompt =
@@ -284,6 +293,7 @@ class LlmProviderTest {
                 50000.0,
                 "Monterey",
                 "Big Sur Viewpoint",
+                1,
                 DistanceUnit.METRIC,
             )
         assertTrue(metricPrompt.contains("50.0km"))
@@ -299,16 +309,30 @@ class LlmProviderTest {
                 50000.0,
                 "Monterey",
                 "Big Sur Viewpoint",
+                1,
                 DistanceUnit.IMPERIAL,
             )
         assertTrue(imperialPrompt.contains("mi"))
         assertTrue(!imperialPrompt.contains("50.0km"))
 
         val noPoiPrompt =
-            dummyProvider.testPrompt(1, 30000.0, "San Luis Obispo", null, DistanceUnit.METRIC)
+            dummyProvider.testPrompt(1, 30000.0, "San Luis Obispo", null, 0, DistanceUnit.METRIC)
         assertTrue(noPoiPrompt.contains("30.0km"))
         assertTrue(noPoiPrompt.contains("San Luis Obispo"))
         assertFalse(noPoiPrompt.contains("passing"))
+
+        val multiPoiPrompt =
+            dummyProvider.testPrompt(
+                3,
+                60000.0,
+                "Santa Barbara",
+                "Elephant Seal Vista",
+                5,
+                DistanceUnit.METRIC,
+            )
+        assertTrue(multiPoiPrompt.contains("60.0km"))
+        assertTrue(multiPoiPrompt.contains("Elephant Seal Vista"))
+        assertTrue(multiPoiPrompt.contains("4 more places"))
     }
 
     @Test
