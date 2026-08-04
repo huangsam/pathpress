@@ -13,7 +13,7 @@
 
 Pure LLM travel planners frequently suffer from "spatial amnesia"—hallucinating routes, driving times, and non-existent locations. Conversely, standard navigation apps lack contextual storytelling and custom trip vibes.
 
-**PathPress** bridges this gap by decoupling deterministic spatial routing from AI narrative curation—combining real-world map data with LLM storytelling to generate physically accurate, publication-ready travel guides.
+**PathPress** bridges this gap by decoupling deterministic spatial routing from high-level AI planning - combining real-world map data with LLM storytelling to generate physically accurate, publication-ready travel guides.
 
 ## Key Features
 

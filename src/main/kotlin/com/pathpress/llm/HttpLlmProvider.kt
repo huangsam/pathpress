@@ -192,75 +192,12 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
     }
 
     /**
-     * Curates POIs via rule-based OSM tag formatting (never LLM-generated, per
-     * [RuleBasedCuration]), then asks the LLM for a single fact-grounded legStory sentence built
-     * ONLY from the leg's real distance, end town, and POI names. The response is regex-validated
-     * ([FalsifiableSpecificsFilter]); a blank response, network/parse failure, or road/highway
-     * reference drops back to [RuleBasedCuration]'s deterministic story.
+     * Curates POIs via rule-based OSM tag formatting. Leg storytelling is fully deterministic
+     * ([RuleBasedCuration]); the LLM is not consulted for this path.
      */
     final override fun curateLegPois(
         leg: RouteLeg,
         userPrompt: String?,
         unit: DistanceUnit,
-    ): CuratedLegResult {
-        val ruleBased = RuleBasedCuration.curate(leg)
-        val namedPois = leg.pois.mapNotNull { it.name.takeValidText() }
-        val firstPoiName = namedPois.firstOrNull()
-        val poiCount = namedPois.size
-        return try {
-            val prompt =
-                buildLegStoryPrompt(
-                    dayNumber = leg.dayNumber,
-                    distanceMeters = leg.distanceMeters ?: 0.0,
-                    endTownName = leg.endTownName,
-                    firstPoiName = firstPoiName,
-                    totalPoiCount = poiCount,
-                    unit = unit,
-                )
-            val story = complete(prompt)?.trim()?.trim('"', '\u201C', '\u201D')
-            if (story.isNullOrBlank() || FalsifiableSpecificsFilter.containsRoadReference(story)) {
-                logger.warn("Dropping LLM legStory: blank or falsifiable road/highway reference")
-                ruleBased
-            } else {
-                ruleBased.copy(legStory = story)
-            }
-        } catch (e: Exception) {
-            logger.warn("LLM leg-story generation failed: {}", e.message)
-            ruleBased
-        }
-    }
-
-    /**
-     * Builds a fact-grounded prompt requesting exactly one sentence describing a day's drive, using
-     * ONLY the real distance, end town, and optionally the first POI + a count of remaining POIs
-     * extracted from OSM/GraphHopper.
-     */
-    protected fun buildLegStoryPrompt(
-        dayNumber: Int,
-        distanceMeters: Double,
-        endTownName: String?,
-        firstPoiName: String?,
-        totalPoiCount: Int,
-        unit: DistanceUnit,
-    ): String {
-        val distanceValue =
-            if (unit == DistanceUnit.IMPERIAL) distanceMeters / 1609.344
-            else distanceMeters / 1000.0
-        val unitLabel = if (unit == DistanceUnit.IMPERIAL) "mi" else "km"
-        val distanceStr = String.format(java.util.Locale.US, "%.1f", distanceValue)
-        val townStr = endTownName ?: "the destination town"
-        val poiClause =
-            when (totalPoiCount) {
-                0 -> ""
-                1 -> " passing $firstPoiName"
-                else -> " passing $firstPoiName and ${totalPoiCount - 1} more places"
-            }
-
-        return """
-            Write 1 sentence describing day $dayNumber of a road trip: $distanceStr$unitLabel ending in $townStr$poiClause.
-            Use ONLY these facts - never name a road, highway, or route number, and never add landmarks not listed.
-            Return ONLY the sentence, no quotes, no JSON, no extra commentary.
-        """
-            .trimIndent()
-    }
+    ): CuratedLegResult = RuleBasedCuration.curate(leg)
 }
