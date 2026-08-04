@@ -79,9 +79,8 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
     /**
      * Post-filter guarding against LLM-fabricated road/highway specifics that slipped past the
-     * prompt's ban. Any narrative or legStory matching [FalsifiableSpecificsFilter] is dropped:
-     * narrative degrades to [fallbackNarrative] and legStories are blanked so the leg falls through
-     * to RuleBasedCuration's deterministic story instead.
+     * prompt's ban. Any narrative matching [FalsifiableSpecificsFilter] is dropped: narrative
+     * degrades to [fallbackNarrative] instead.
      */
     protected fun sanitizeFalsifiableSpecifics(
         response: TripPlanResponse,
@@ -94,16 +93,7 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                 )
                 fallbackNarrative
             } else response.narrative
-        val safeLegStories =
-            response.legStories.map { story ->
-                if (FalsifiableSpecificsFilter.containsRoadReference(story)) {
-                    logger.warn(
-                        "Dropping LLM legStory: contained a falsifiable road/highway reference"
-                    )
-                    ""
-                } else story
-            }
-        return response.copy(narrative = safeNarrative, legStories = safeLegStories)
+        return response.copy(narrative = safeNarrative)
     }
 
     /**
@@ -124,22 +114,18 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
             Theme/Preferences: $promptDetail.
             CRITICAL ROUTING INSTRUCTION:
             1. If the theme/preferences mention scenic regions, coastal highways, beaches, mountains, or specific regional preferences (e.g. 'coastal', 'beach', 'mountain', 'scenic'), you MUST provide 2-4 intermediate spatial anchor towns/locations along that specific scenic corridor in the "waypoints" array (e.g., ["Monterey, CA", "Pismo Beach, CA"]).
-            2. Incorporate iconic regional landmarks and historical milestones along the route into the day-by-day narratives ("legStories") and overall narrative.
+            2. Incorporate iconic regional landmarks and historical milestones along the route into the overall narrative.
             3. Do NOT state or invent specific road names, route numbers, or highway designations anywhere in the response (e.g. do NOT write "I-5", "US-101", "Highway 1", "Route 66"). Refer to towns, regions, and landmarks only — real road data comes exclusively from routing/mapping data, not from you.
 
             Provide a JSON response with:
             {
-              "legStories": [
-                "1 concise sentence engaging description of driving Day 1.",
-                "1 concise sentence engaging description of driving Day 2."
-              ],
               "waypoints": [
                 {"name": "Monterey, CA", "lat": 36.6002, "lng": -121.8947},
                 {"name": "Pismo Beach, CA", "lat": 35.1428, "lng": -120.6412}
               ],
               "narrative": "<REQUIRED: 2 to 3 short, clear sentences (maximum 50 words total) summarizing the trip vibe and route from $startName to $endName. Keep sentences brief, direct, and easy to read. Do NOT write dense, multi-sentence purple prose or flowery fluff.>"
             }
-            Return ONLY valid raw JSON. The "narrative" and "legStories" fields are mandatory and must not be null or empty.
+            Return ONLY valid raw JSON. The "narrative" field is mandatory and must not be null or empty.
         """
             .trimIndent()
     }
@@ -157,8 +143,6 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
 
         return try {
             val map: Map<String, Any> = mapper.readValue(cleanJson)
-            val legStories =
-                (map["legStories"] as? List<*>)?.mapNotNull { it.toString() } ?: emptyList()
             val narrative = map["narrative"]?.toString().takeValidText() ?: narrativeFallback ?: ""
             val waypoints =
                 (map["waypoints"] as? List<*>)
@@ -185,14 +169,10 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
                     }
                     .orEmpty()
                     .take(MAX_LLM_WAYPOINTS)
-            TripPlanResponse(waypoints = waypoints, narrative = narrative, legStories = legStories)
+            TripPlanResponse(waypoints = waypoints, narrative = narrative)
         } catch (e: Exception) {
             logger.warn("Failed to parse LLM trip plan response: {}", e.message, e)
-            TripPlanResponse(
-                waypoints = emptyList(),
-                narrative = narrativeFallback ?: "",
-                legStories = emptyList(),
-            )
+            TripPlanResponse(waypoints = emptyList(), narrative = narrativeFallback ?: "")
         }
     }
 

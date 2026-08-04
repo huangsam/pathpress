@@ -343,8 +343,7 @@ class LlmProviderTest {
               "waypoints": [
                 {"name": "Big Sur, CA", "lat": 36.2704, "lng": -121.8081}
               ],
-              "narrative": "LLM custom parsed narrative for coastal trip.",
-              "legStories": ["Day 1: Drive along the cliffside coast, stopping in Big Sur."]
+              "narrative": "LLM custom parsed narrative for coastal trip."
             }
             """
                 .trimIndent()
@@ -368,20 +367,15 @@ class LlmProviderTest {
         assertEquals(1, response.waypoints.size)
         assertEquals("Big Sur, CA", response.waypoints[0].name)
         assertEquals(36.2704, response.waypoints[0].lat)
-        assertEquals(
-            listOf("Day 1: Drive along the cliffside coast, stopping in Big Sur."),
-            response.legStories,
-        )
     }
 
     @Test
-    fun `HttpLlmProvider planTrip drops narrative and legStories containing falsifiable road references`() {
+    fun `HttpLlmProvider planTrip drops narrative containing falsifiable road references`() {
         val taintedLlmJson =
             """
             {
               "waypoints": [],
-              "narrative": "Take I-5 south then merge onto US-101 for a scenic coastal drive.",
-              "legStories": ["Day 1: Head south on Highway 1 through Big Sur."]
+              "narrative": "Take I-5 south then merge onto US-101 for a scenic coastal drive."
             }
             """
                 .trimIndent()
@@ -405,7 +399,6 @@ class LlmProviderTest {
             FalsifiableSpecificsFilter.containsRoadReference(response.narrative),
             "Narrative must not leak road/highway specifics: ${response.narrative}",
         )
-        assertEquals(listOf(""), response.legStories, "Tainted legStory must be dropped")
 
         val leg =
             RouteLeg(
@@ -415,7 +408,6 @@ class LlmProviderTest {
                 endLng = -121.7,
                 dayNumber = 1,
                 totalDays = 1,
-                legStory = response.legStories[0].ifBlank { null },
             )
         val curated = RuleBasedCuration.curate(leg)
         assertFalse(
@@ -451,7 +443,6 @@ class LlmProviderTest {
             response.narrative,
         )
         assertTrue(response.waypoints.isEmpty())
-        assertTrue(response.legStories.isEmpty())
     }
 
     @Test

@@ -12,11 +12,7 @@ import com.pathpress.model.RouteLeg
  * @property waypoints Intermediate spatial anchor towns or coordinates suggested by the LLM.
  * @property narrative Summary narrative describing the overall trip experience and landscape.
  */
-data class TripPlanResponse(
-    val waypoints: List<LocationCoords>,
-    val narrative: String = "",
-    val legStories: List<String> = emptyList(),
-)
+data class TripPlanResponse(val waypoints: List<LocationCoords>, val narrative: String = "")
 
 /**
  * Result of POI narration curation for a single route leg.
