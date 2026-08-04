@@ -204,15 +204,16 @@ abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvide
         unit: DistanceUnit,
     ): CuratedLegResult {
         val ruleBased = RuleBasedCuration.curate(leg)
-        val firstPoi = leg.pois.firstOrNull()?.name.takeValidText()
-        val poiCount = leg.pois.size
+        val namedPois = leg.pois.mapNotNull { it.name.takeValidText() }
+        val firstPoiName = namedPois.firstOrNull()
+        val poiCount = namedPois.size
         return try {
             val prompt =
                 buildLegStoryPrompt(
                     dayNumber = leg.dayNumber,
                     distanceMeters = leg.distanceMeters ?: 0.0,
                     endTownName = leg.endTownName,
-                    firstPoiName = firstPoi,
+                    firstPoiName = firstPoiName,
                     totalPoiCount = poiCount,
                     unit = unit,
                 )
