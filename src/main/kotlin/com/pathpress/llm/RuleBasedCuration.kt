@@ -4,7 +4,6 @@ import com.pathpress.model.DistanceUnit
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
 import com.pathpress.poi.PoiDescriptionFormatter
-import org.slf4j.LoggerFactory
 
 /**
  * Deterministic POI curation derived from OSM tags.
@@ -13,7 +12,6 @@ import org.slf4j.LoggerFactory
  * network latency, and immunity to LLM hallucinations.
  */
 object RuleBasedCuration {
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     fun curate(leg: RouteLeg, unit: DistanceUnit = DistanceUnit.METRIC): CuratedLegResult {
         val story = buildFactGroundedStory(leg, unit)
