@@ -54,6 +54,7 @@ object RuleBasedCuration {
         val distanceStr = String.format(java.util.Locale.US, "%.1f", distanceValue)
 
         val townStr = leg.endTownName ?: "the destination"
+        val fromStr = leg.startTownName?.let { "from $it " } ?: ""
         val namedPois = leg.pois.mapNotNull { it.name.takeValidText() }
         val firstPoiName = namedPois.firstOrNull()
 
@@ -64,6 +65,6 @@ object RuleBasedCuration {
                 else -> ", passing $firstPoiName and ${namedPois.size - 1} more stops"
             }
 
-        return "Day ${leg.dayNumber}: A ${distanceStr}${unitLabel} drive to $townStr$poiClause."
+        return "Day ${leg.dayNumber}: A ${distanceStr}${unitLabel} drive $fromStr to $townStr$poiClause."
     }
 }

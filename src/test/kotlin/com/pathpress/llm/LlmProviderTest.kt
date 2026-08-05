@@ -185,6 +185,15 @@ class LlmProviderTest {
         val onePoi = RuleBasedCuration.buildFactGroundedStory(onePoiLeg, DistanceUnit.METRIC)
         assertTrue(onePoi.contains("Big Sur Viewpoint"), "should name the single POI")
         assertFalse(onePoi.contains("more stop"), "should not show 'more stops' for single POI")
+
+        val withStart = leg.copy(startTownName = "San Jose")
+        val fromTo = RuleBasedCuration.buildFactGroundedStory(withStart, DistanceUnit.METRIC)
+        assertTrue(fromTo.contains("from San Jose"), "should include start town when present")
+        assertTrue(fromTo.contains("to Monterey"), "should still include end town")
+
+        val noStart = leg.copy(startTownName = null)
+        val noFrom = RuleBasedCuration.buildFactGroundedStory(noStart, DistanceUnit.METRIC)
+        assertFalse(noFrom.contains("from"), "should omit 'from' clause when startTownName is null")
     }
 
     @Test

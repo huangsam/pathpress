@@ -197,6 +197,7 @@ data class RouteLeg(
     val pois: List<POI> = emptyList(),
     val legStory: String? = null,
     val endTownName: String? = null,
+    val startTownName: String? = null,
     val geometry: List<LocationCoords> = emptyList(),
     /**
      * True when this leg's [geometry] and [distanceMeters]/[durationSeconds] are a straight-line /
