@@ -62,9 +62,12 @@ object RuleBasedCuration {
             when (namedPois.size) {
                 0 -> ""
                 1 -> ", passing $firstPoiName"
-                else -> ", passing $firstPoiName and ${namedPois.size - 1} more stops"
+                else -> {
+                    val extra = namedPois.size - 1
+                    ", passing $firstPoiName and $extra more ${if (extra == 1) "stop" else "stops"}"
+                }
             }
 
-        return "Day ${leg.dayNumber}: A ${distanceStr}${unitLabel} drive $fromStr to $townStr$poiClause."
+        return "Day ${leg.dayNumber}: A ${distanceStr}${unitLabel} drive ${fromStr}to $townStr$poiClause."
     }
 }

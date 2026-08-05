@@ -47,6 +47,8 @@ class RouteCalculator(
         limitPerLeg: Int = Config.current.defaultPoisPerLeg,
         userPrompt: String? = null,
         waypoints: List<LocationCoords> = emptyList(),
+        startName: String? = null,
+        endName: String? = null,
     ): List<RouteLeg> {
         require(days > 0) { "Days must be positive" }
 
@@ -176,6 +178,8 @@ class RouteCalculator(
             profile,
             limitPerLeg,
             userPrompt,
+            startName = startName,
+            endName = endName,
         )
     }
 
@@ -186,6 +190,8 @@ class RouteCalculator(
         profile: String,
         limitPerLeg: Int,
         userPrompt: String? = null,
+        startName: String? = null,
+        endName: String? = null,
     ): List<RouteLeg> {
         val pointsList = path.points
         val allCoords =
@@ -203,15 +209,6 @@ class RouteCalculator(
                     userPrompt = userPrompt,
                 )
 
-            val originTown =
-                PoiExtractor.findNearbyTowns(
-                        pbfFilePath,
-                        pointsList.getLat(0),
-                        pointsList.getLon(0),
-                        maxDistanceMeters = 40000.0,
-                    )
-                    .firstOrNull()
-                    ?.name
             val destTown =
                 PoiExtractor.findNearbyTowns(
                         pbfFilePath,
@@ -220,7 +217,7 @@ class RouteCalculator(
                         maxDistanceMeters = 40000.0,
                     )
                     .firstOrNull()
-                    ?.name
+                    ?.name ?: endName
             val defaultTitle =
                 if (!destTown.isNullOrBlank()) "Drive to $destTown" else "Drive to Destination"
             val customTitle = dayTitles.getOrNull(0)?.takeIf { it.isNotBlank() }
@@ -237,7 +234,7 @@ class RouteCalculator(
                     durationSeconds = path.time / 1000.0,
                     dayTitle = customTitle ?: defaultTitle,
                     pois = realPois,
-                    startTownName = originTown,
+                    startTownName = startName,
                     endTownName = destTown,
                     geometry = pointsList.map { LocationCoords(it.lat, it.lon) },
                 )
@@ -463,7 +460,7 @@ class RouteCalculator(
                             maxDistanceMeters = 40000.0,
                         )
                         .firstOrNull()
-                        ?.name ?: townNames.getOrNull(dayIndex)
+                        ?.name ?: townNames.getOrNull(dayIndex) ?: endName
                 } else {
                     townNames.getOrNull(dayIndex)
                 }
@@ -475,19 +472,7 @@ class RouteCalculator(
                 else "Day ${dayIndex + 1} Scenic Leg"
             val finalLegTitle = customTitle ?: computedTitle
 
-            val startTown =
-                if (dayIndex == 0) {
-                    PoiExtractor.findNearbyTowns(
-                            pbfFilePath,
-                            legStart.lat,
-                            legStart.lng,
-                            maxDistanceMeters = 40000.0,
-                        )
-                        .firstOrNull()
-                        ?.name
-                } else {
-                    townNames.getOrNull(dayIndex - 1)
-                }
+            val startTown = if (dayIndex == 0) startName else townNames.getOrNull(dayIndex - 1)
 
             legs.add(
                 RouteLeg(

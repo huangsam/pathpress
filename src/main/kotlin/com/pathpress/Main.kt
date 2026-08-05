@@ -188,6 +188,8 @@ open class PathPressCommand : CliktCommand(name = "pathpress") {
                 limitPerLeg = poisPerLeg,
                 userPrompt = prompt,
                 waypoints = resolvedWaypoints,
+                startName = startGeo.displayName,
+                endName = endGeo.displayName,
             )
 
         // 5. Curate POIs & Apply Leg Storytelling
