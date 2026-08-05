@@ -197,6 +197,42 @@ class LlmProviderTest {
     }
 
     @Test
+    fun `HttpLlmProvider curateLegPois never calls the LLM`() {
+        var completeCalled = false
+        val provider =
+            object : HttpLlmProvider() {
+                override fun complete(prompt: String): String? {
+                    completeCalled = true
+                    error("complete() must never be called during curateLegPois!")
+                }
+            }
+
+        val leg =
+            RouteLeg(
+                startLat = 37.7,
+                startLng = -122.4,
+                endLat = 36.2,
+                endLng = -121.8,
+                dayNumber = 1,
+                totalDays = 1,
+                endTownName = "Monterey",
+                distanceMeters = 50000.0,
+                durationSeconds = 3600.0,
+                pois = emptyList(),
+            )
+
+        val result =
+            provider.curateLegPois(
+                leg,
+                userPrompt = "Family coastal trip",
+                unit = DistanceUnit.METRIC,
+            )
+
+        assertFalse(completeCalled, "complete() must not be called when curating POIs")
+        assertTrue(result.legStory.contains("Monterey"))
+    }
+
+    @Test
     fun `HttpLlmProvider planTrip returns parsed response when complete succeeds`() {
         val validLlmJson =
             """
