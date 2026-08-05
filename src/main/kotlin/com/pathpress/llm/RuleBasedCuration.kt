@@ -16,20 +16,7 @@ object RuleBasedCuration {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun curate(leg: RouteLeg, unit: DistanceUnit = DistanceUnit.METRIC): CuratedLegResult {
-        val story =
-            leg.legStory
-                .takeIf { !it.isNullOrBlank() }
-                .let { candidate ->
-                    if (
-                        candidate != null &&
-                            FalsifiableSpecificsFilter.containsRoadReference(candidate)
-                    ) {
-                        logger.warn(
-                            "Dropping legStory: contained a falsifiable road/highway reference"
-                        )
-                        null
-                    } else candidate
-                } ?: buildFactGroundedStory(leg, unit)
+        val story = buildFactGroundedStory(leg, unit)
 
         val updatedPois =
             leg.pois.map { poi ->
