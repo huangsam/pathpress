@@ -774,4 +774,12 @@ class PoiExtractorTest {
             "P2 should be rejected despite being in Bucket 1 because it is too close to P1",
         )
     }
+
+    @Test
+    fun `companion object does not inherit from PoiExtractor`() {
+        assertFalse(
+            (PoiExtractor.Companion as Any) is PoiExtractor,
+            "PoiExtractor companion object should not inherit from PoiExtractor",
+        )
+    }
 }

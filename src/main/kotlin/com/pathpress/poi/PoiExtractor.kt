@@ -27,15 +27,6 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
 open class PoiExtractor(val config: Config = Config.fromEnv()) {
-    /** Clear in-memory cache reference. Delegates to singleton [PoiCacheManager]. */
-    fun clearInMemCache() {
-        PoiCacheManager.clearInMemCache()
-    }
-
-    /** Resolves cache file path under `.pois_cache/`. Delegates to singleton [PoiCacheManager]. */
-    fun resolveCacheFilePath(pbfPath: String, customCachePath: String? = null): String =
-        PoiCacheManager.resolveCacheFilePath(pbfPath, customCachePath)
-
     /**
      * Retrieve or build the [PoiCacheStore].
      *
@@ -44,45 +35,6 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
      */
     fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore =
         PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath)
-
-    /** Builds a [PoiCacheStore] directly from an in-memory collection of [ReaderElement]s. */
-    fun buildCacheFromElements(elements: Iterable<ReaderElement>): PoiCacheStore =
-        OsmPbfReader.buildCacheFromElements(elements)
-
-    internal fun processWayElementPass1(
-        way: ReaderWay,
-        neededNodeIds: LongHashSet,
-        wayCandidates: MutableList<WayPoiCandidate>,
-    ) {
-        OsmPbfReader.processWayElementPass1(way, neededNodeIds, wayCandidates)
-    }
-
-    internal fun processNodeElementPass2(
-        node: ReaderNode,
-        neededNodeIds: LongHashSet,
-        neededNodeLats: LongDoubleHashMap,
-        neededNodeLons: LongDoubleHashMap,
-        pois: MutableList<POI>,
-        towns: MutableList<TownInfo>,
-    ) {
-        OsmPbfReader.processNodeElementPass2(
-            node,
-            neededNodeIds,
-            neededNodeLats,
-            neededNodeLons,
-            pois,
-            towns,
-        )
-    }
-
-    internal fun resolveWayCentroids(
-        wayCandidates: List<WayPoiCandidate>,
-        neededNodeLats: LongDoubleHashMap,
-        neededNodeLons: LongDoubleHashMap,
-        pois: MutableList<POI>,
-    ) {
-        OsmPbfReader.resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, pois)
-    }
 
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
@@ -140,7 +92,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             if (poi.id in excludePoiIds) continue
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 if (rulesEngine.isExcluded(poi, evalContext)) continue
-                val dist = minDistanceToPolyline(poi.lat, poi.lng, legPoints)
+                val dist = SpatialGridIndex.minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
                     candidates.add(poi.copy(distanceFromRouteMeters = dist))
                 }
@@ -149,7 +101,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         val deduplicatedCandidates =
             if (evalContext.allowsThemeParksFromPrompt) {
-                deduplicateThemeParks(candidates)
+                ThemeParkClustering.deduplicateThemeParks(candidates)
             } else {
                 candidates
             }
@@ -162,15 +114,6 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             rulesEngine,
         )
     }
-
-    internal fun deduplicateThemeParks(
-        candidates: List<POI>,
-        clusterRadiusMeters: Double = 1500.0,
-    ): List<POI> = ThemeParkClustering.deduplicateThemeParks(candidates, clusterRadiusMeters)
-
-    internal fun isThemeParkNode(poi: POI): Boolean = ThemeParkClustering.isThemeParkNode(poi)
-
-    internal fun getThemeParkDomain(poi: POI): String? = ThemeParkClustering.getThemeParkDomain(poi)
 
     /** Find towns/cities near target coordinates along a multi-day route. */
     open fun findNearbyTowns(
@@ -207,7 +150,8 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val matches = mutableListOf<TownInfo>()
         for (town in candidateTowns) {
             if (town.lat in minLat..maxLat && town.lng in minLng..maxLng) {
-                val dist = haversineMeters(targetLat, targetLng, town.lat, town.lng)
+                val dist =
+                    SpatialGridIndex.haversineMeters(targetLat, targetLng, town.lat, town.lng)
                 if (dist <= maxDistanceMeters) {
                     matches.add(town)
                 }
@@ -218,7 +162,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         return matches.sortedWith(
             compareBy(
                 { placePriority[it.type] ?: 5 },
-                { haversineMeters(targetLat, targetLng, it.lat, it.lng) },
+                { SpatialGridIndex.haversineMeters(targetLat, targetLng, it.lat, it.lng) },
             )
         )
     }
@@ -241,7 +185,9 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         val totalDist =
             routePoints
-                .zipWithNext { a, b -> haversineMeters(a.lat, a.lng, b.lat, b.lng) }
+                .zipWithNext { a, b ->
+                    SpatialGridIndex.haversineMeters(a.lat, a.lng, b.lat, b.lng)
+                }
                 .sum()
                 .coerceAtLeast(1.0)
         val targetDistMeters = totalDist * targetProgressFraction
@@ -252,7 +198,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         for (i in 0 until routePoints.size - 1) {
             val segDist =
-                haversineMeters(
+                SpatialGridIndex.haversineMeters(
                     routePoints[i].lat,
                     routePoints[i].lng,
                     routePoints[i + 1].lat,
@@ -310,10 +256,16 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         val scoredList = mutableListOf<ScoredTown>()
         for (town in candidateTowns) {
-            val distToPolyline = minDistanceToPolyline(town.lat, town.lng, sampledPoints)
+            val distToPolyline =
+                SpatialGridIndex.minDistanceToPolyline(town.lat, town.lng, sampledPoints)
             if (distToPolyline <= maxDistanceMeters) {
                 val distToTargetMilestone =
-                    haversineMeters(targetMilestone.lat, targetMilestone.lng, town.lat, town.lng)
+                    SpatialGridIndex.haversineMeters(
+                        targetMilestone.lat,
+                        targetMilestone.lng,
+                        town.lat,
+                        town.lng,
+                    )
                 val scored =
                     TownScorer.scoreTownForOvernight(
                         town = town,
@@ -330,66 +282,203 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         return TownScorer.rankCandidateTowns(scoredList)
     }
 
-    internal fun isDisusedOrClosed(tags: Map<String, String>): Boolean =
-        OsmPbfReader.isDisusedOrClosed(tags)
-
-    internal fun isRelevantPoi(tags: Map<String, String>): Boolean =
-        OsmPbfReader.isRelevantPoi(tags)
-
-    internal fun rankAndSelectPois(
-        candidates: List<POI>,
-        limit: Int,
-        legPoints: List<LocationCoords> = emptyList(),
-        evalContext: PoiEvaluationContext = PoiEvaluationContext(),
-        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-    ): List<POI> =
-        SpatialGridIndex.rankAndSelectPois(candidates, limit, legPoints, evalContext, rulesEngine)
-
-    internal fun rankAndSelectPois(
-        candidates: List<POI>,
-        limit: Int,
-        legPoints: List<LocationCoords>,
-        userPrompt: String?,
-        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-    ): List<POI> =
-        SpatialGridIndex.rankAndSelectPois(candidates, limit, legPoints, userPrompt, rulesEngine)
-
-    internal fun calculatePoiQualityScore(
-        poi: POI,
-        userPrompt: String? = null,
-        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-    ): Double =
-        rulesEngine.calculatePoiQualityScore(poi, PoiEvaluationContext(userPrompt = userPrompt))
-
     open fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
         SpatialGridIndex.haversineMeters(lat1, lon1, lat2, lon2)
-
-    internal fun minDistanceToPolyline(
-        lat: Double,
-        lng: Double,
-        polyline: List<LocationCoords>,
-    ): Double = SpatialGridIndex.minDistanceToPolyline(lat, lng, polyline)
-
-    internal fun pointToSegmentDistanceMeters(
-        pLat: Double,
-        pLng: Double,
-        aLat: Double,
-        aLng: Double,
-        bLat: Double,
-        bLng: Double,
-    ): Double = SpatialGridIndex.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
 
     /**
      * Companion object providing static-style access to [PoiExtractor] methods.
      *
-     * Since [PoiExtractor] delegates all cache lifecycle management to the singleton
-     * [PoiCacheManager], instances of [PoiExtractor] are stateless and only hold the [Config]
-     * parameter. This means the companion object and [default] instance are functionally equivalent
-     * (both use default [Config]).
-     *
-     * For new code, prefer [default] for explicit singleton semantics.
+     * Delegates to the default singleton [default] instance or underlying utility classes.
      */
-    companion object : PoiExtractor(Config.fromEnv()) {
+    companion object {
         val default = PoiExtractor(Config.fromEnv())
+
+        /** Clear in-memory cache reference. Delegates to singleton [PoiCacheManager]. */
+        fun clearInMemCache() {
+            PoiCacheManager.clearInMemCache()
+        }
+
+        /**
+         * Resolves cache file path under `.pois_cache/`. Delegates to singleton [PoiCacheManager].
+         */
+        fun resolveCacheFilePath(pbfPath: String, customCachePath: String? = null): String =
+            PoiCacheManager.resolveCacheFilePath(pbfPath, customCachePath)
+
+        /** Retrieve or build the [PoiCacheStore] using default [PoiExtractor]. */
+        fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore =
+            default.getOrBuildCache(pbfPath, cacheFilePath)
+
+        /** Builds a [PoiCacheStore] directly from an in-memory collection of [ReaderElement]s. */
+        fun buildCacheFromElements(elements: Iterable<ReaderElement>): PoiCacheStore =
+            OsmPbfReader.buildCacheFromElements(elements)
+
+        internal fun processWayElementPass1(
+            way: ReaderWay,
+            neededNodeIds: LongHashSet,
+            wayCandidates: MutableList<WayPoiCandidate>,
+        ) {
+            OsmPbfReader.processWayElementPass1(way, neededNodeIds, wayCandidates)
+        }
+
+        internal fun processNodeElementPass2(
+            node: ReaderNode,
+            neededNodeIds: LongHashSet,
+            neededNodeLats: LongDoubleHashMap,
+            neededNodeLons: LongDoubleHashMap,
+            pois: MutableList<POI>,
+            towns: MutableList<TownInfo>,
+        ) {
+            OsmPbfReader.processNodeElementPass2(
+                node,
+                neededNodeIds,
+                neededNodeLats,
+                neededNodeLons,
+                pois,
+                towns,
+            )
+        }
+
+        internal fun resolveWayCentroids(
+            wayCandidates: List<WayPoiCandidate>,
+            neededNodeLats: LongDoubleHashMap,
+            neededNodeLons: LongDoubleHashMap,
+            pois: MutableList<POI>,
+        ) {
+            OsmPbfReader.resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, pois)
+        }
+
+        /**
+         * Extract real POIs along a route leg polyline within a corridor buffer using default
+         * [PoiExtractor].
+         */
+        fun extractPoisForLeg(
+            pbfPath: String,
+            legPoints: List<LocationCoords>,
+            maxDistanceMeters: Double = 5000.0,
+            limitPerLeg: Int = default.config.defaultPoisPerLeg,
+            userPrompt: String? = null,
+            excludePeaks: Boolean = false,
+            excludeIndustrial: Boolean = true,
+            rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+            excludePoiIds: Set<String> = emptySet(),
+        ): List<POI> =
+            default.extractPoisForLeg(
+                pbfPath = pbfPath,
+                legPoints = legPoints,
+                maxDistanceMeters = maxDistanceMeters,
+                limitPerLeg = limitPerLeg,
+                userPrompt = userPrompt,
+                excludePeaks = excludePeaks,
+                excludeIndustrial = excludeIndustrial,
+                rulesEngine = rulesEngine,
+                excludePoiIds = excludePoiIds,
+            )
+
+        internal fun deduplicateThemeParks(
+            candidates: List<POI>,
+            clusterRadiusMeters: Double = 1500.0,
+        ): List<POI> = ThemeParkClustering.deduplicateThemeParks(candidates, clusterRadiusMeters)
+
+        internal fun isThemeParkNode(poi: POI): Boolean = ThemeParkClustering.isThemeParkNode(poi)
+
+        internal fun getThemeParkDomain(poi: POI): String? =
+            ThemeParkClustering.getThemeParkDomain(poi)
+
+        /**
+         * Find towns/cities near target coordinates along a multi-day route using default
+         * [PoiExtractor].
+         */
+        fun findNearbyTowns(
+            pbfPath: String,
+            targetLat: Double,
+            targetLng: Double,
+            maxDistanceMeters: Double = 35000.0,
+        ): List<TownInfo> =
+            default.findNearbyTowns(pbfPath, targetLat, targetLng, maxDistanceMeters)
+
+        /**
+         * Find and score candidate towns near a target progress milestone along a route polyline
+         * using default [PoiExtractor].
+         */
+        fun findCandidateTownsAlongRoute(
+            pbfPath: String,
+            routePoints: List<LocationCoords>,
+            targetProgressFraction: Double,
+            windowFraction: Double = default.config.townProgressWindowFraction,
+            maxDistanceMeters: Double = 40000.0,
+            userPrompt: String? = null,
+            radiusMiles: Double = default.config.townScoringRadiusMiles,
+        ): List<ScoredTown> =
+            default.findCandidateTownsAlongRoute(
+                pbfPath = pbfPath,
+                routePoints = routePoints,
+                targetProgressFraction = targetProgressFraction,
+                windowFraction = windowFraction,
+                maxDistanceMeters = maxDistanceMeters,
+                userPrompt = userPrompt,
+                radiusMiles = radiusMiles,
+            )
+
+        internal fun isDisusedOrClosed(tags: Map<String, String>): Boolean =
+            OsmPbfReader.isDisusedOrClosed(tags)
+
+        internal fun isRelevantPoi(tags: Map<String, String>): Boolean =
+            OsmPbfReader.isRelevantPoi(tags)
+
+        internal fun rankAndSelectPois(
+            candidates: List<POI>,
+            limit: Int,
+            legPoints: List<LocationCoords> = emptyList(),
+            evalContext: PoiEvaluationContext = PoiEvaluationContext(),
+            rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+        ): List<POI> =
+            SpatialGridIndex.rankAndSelectPois(
+                candidates,
+                limit,
+                legPoints,
+                evalContext,
+                rulesEngine,
+            )
+
+        internal fun rankAndSelectPois(
+            candidates: List<POI>,
+            limit: Int,
+            legPoints: List<LocationCoords>,
+            userPrompt: String?,
+            rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+        ): List<POI> =
+            SpatialGridIndex.rankAndSelectPois(
+                candidates,
+                limit,
+                legPoints,
+                userPrompt,
+                rulesEngine,
+            )
+
+        internal fun calculatePoiQualityScore(
+            poi: POI,
+            userPrompt: String? = null,
+            rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
+        ): Double =
+            rulesEngine.calculatePoiQualityScore(poi, PoiEvaluationContext(userPrompt = userPrompt))
+
+        fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
+            SpatialGridIndex.haversineMeters(lat1, lon1, lat2, lon2)
+
+        internal fun minDistanceToPolyline(
+            lat: Double,
+            lng: Double,
+            polyline: List<LocationCoords>,
+        ): Double = SpatialGridIndex.minDistanceToPolyline(lat, lng, polyline)
+
+        internal fun pointToSegmentDistanceMeters(
+            pLat: Double,
+            pLng: Double,
+            aLat: Double,
+            aLng: Double,
+            bLat: Double,
+            bLng: Double,
+        ): Double =
+            SpatialGridIndex.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
     }
 }
