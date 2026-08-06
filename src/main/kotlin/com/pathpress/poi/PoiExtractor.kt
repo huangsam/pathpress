@@ -24,6 +24,7 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * - [OsmPbfReader]: 2-pass GraphHopper PBF streaming.
  * - [PoiCacheManager]: Jackson JSON disk cache & in-memory cache lifecycle.
  * - [SpatialGridIndex]: Discrete spatial grid cell index and geometric polyline math.
+ * - [PoiRanker]: Segment-based POI ranking, scoring, and type diversity selection.
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
 open class PoiExtractor(val config: Config = Config.fromEnv()) {
@@ -106,7 +107,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
                 candidates
             }
 
-        return SpatialGridIndex.rankAndSelectPois(
+        return PoiRanker.rankAndSelectPois(
             deduplicatedCandidates,
             limitPerLeg,
             legPoints,
@@ -432,13 +433,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             evalContext: PoiEvaluationContext = PoiEvaluationContext(),
             rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
         ): List<POI> =
-            SpatialGridIndex.rankAndSelectPois(
-                candidates,
-                limit,
-                legPoints,
-                evalContext,
-                rulesEngine,
-            )
+            PoiRanker.rankAndSelectPois(candidates, limit, legPoints, evalContext, rulesEngine)
 
         internal fun rankAndSelectPois(
             candidates: List<POI>,
@@ -447,13 +442,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             userPrompt: String?,
             rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
         ): List<POI> =
-            SpatialGridIndex.rankAndSelectPois(
-                candidates,
-                limit,
-                legPoints,
-                userPrompt,
-                rulesEngine,
-            )
+            PoiRanker.rankAndSelectPois(candidates, limit, legPoints, userPrompt, rulesEngine)
 
         internal fun calculatePoiQualityScore(
             poi: POI,
