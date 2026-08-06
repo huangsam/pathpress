@@ -230,13 +230,13 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val candidateTowns = mutableSetOf<TownInfo>()
         val bufferLatDeg = maxDistanceMeters / 111000.0
 
-        for (pt in sampledPoints) {
-            val cosLat = cos(Math.toRadians(pt.lat)).coerceAtLeast(0.01)
+        for ((lat, lng) in sampledPoints) {
+            val cosLat = cos(Math.toRadians(lat)).coerceAtLeast(0.01)
             val bufferLngDeg = maxDistanceMeters / (111000.0 * cosLat)
-            val minLat = pt.lat - bufferLatDeg
-            val maxLat = pt.lat + bufferLatDeg
-            val minLng = pt.lng - bufferLngDeg
-            val maxLng = pt.lng + bufferLngDeg
+            val minLat = lat - bufferLatDeg
+            val maxLat = lat + bufferLatDeg
+            val minLng = lng - bufferLngDeg
+            val maxLng = lng + bufferLngDeg
 
             val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
             val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
