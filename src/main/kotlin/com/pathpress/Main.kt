@@ -16,6 +16,7 @@ import com.pathpress.llm.TripPlanResponse
 import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.Route
+import com.pathpress.poi.toDirectionsUrl
 import com.pathpress.routing.GeocodedLocation
 import com.pathpress.routing.Geocoder
 import com.pathpress.routing.RouteCalculator

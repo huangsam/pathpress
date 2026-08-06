@@ -2,6 +2,7 @@ package com.pathpress.poi
 
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
+import com.pathpress.model.RouteLeg
 import org.slf4j.LoggerFactory
 
 /** Formatter for generating Google Maps URLs with zero external dependencies. */
@@ -108,3 +109,17 @@ object MapUrlFormatter {
      */
     fun formatPoiNavUrl(poi: POI): String = formatSingleStopNavUrl(poi.lat, poi.lng)
 }
+
+/** Generate a Google Maps URL for directions on this leg. */
+fun RouteLeg.toDirectionsUrl(): String =
+    MapUrlFormatter.formatDirectionsUrl(
+        startLat = startLat,
+        startLng = startLng,
+        endLat = endLat,
+        endLng = endLng,
+        waypoints = pois.map { LocationCoords(it.lat, it.lng) },
+    )
+
+/** Generate a Google Maps URL for viewing the route on a map. */
+fun RouteLeg.toMapUrl(): String =
+    MapUrlFormatter.formatMapUrl(lat = (startLat + endLat) / 2, lng = (startLng + endLng) / 2)

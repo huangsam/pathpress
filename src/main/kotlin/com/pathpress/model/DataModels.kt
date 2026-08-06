@@ -1,7 +1,5 @@
 package com.pathpress.model
 
-import com.pathpress.poi.MapUrlFormatter
-
 /** Represents coordinates for a location. */
 data class LocationCoords(val lat: Double, val lng: Double, val name: String? = null)
 
@@ -206,21 +204,7 @@ data class RouteLeg(
      * along a line that is not a real road, so callers should surface this to the user.
      */
     val isApproximateGeometry: Boolean = false,
-) {
-    /** Generate a Google Maps URL for directions on this leg. */
-    fun toDirectionsUrl(): String =
-        MapUrlFormatter.formatDirectionsUrl(
-            startLat = startLat,
-            startLng = startLng,
-            endLat = endLat,
-            endLng = endLng,
-            waypoints = pois.map { LocationCoords(it.lat, it.lng) },
-        )
-
-    /** Generate a Google Maps URL for viewing the route on a map. */
-    fun toMapUrl(): String =
-        MapUrlFormatter.formatMapUrl(lat = (startLat + endLat) / 2, lng = (startLng + endLng) / 2)
-}
+)
 
 /**
  * Extension helper to filter out null, blank, or `"null"` literal strings (commonly produced when

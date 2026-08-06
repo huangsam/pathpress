@@ -12,6 +12,7 @@ import com.pathpress.model.boundNarrative
 import com.pathpress.model.sanitizePoiType
 import com.pathpress.poi.AddressResolver
 import com.pathpress.poi.MapUrlFormatter
+import com.pathpress.poi.toDirectionsUrl
 import kotlinx.html.*
 
 internal fun FlowContent.coverPage(

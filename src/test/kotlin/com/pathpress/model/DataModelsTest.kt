@@ -1,5 +1,7 @@
 package com.pathpress.model
 
+import com.pathpress.poi.toDirectionsUrl
+import com.pathpress.poi.toMapUrl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
