@@ -26,7 +26,7 @@ object BuildConfig {
 
 /** PathPress CLI command implemented using Clikt. */
 open class PathPressCommand(
-    private val config: Config = Config(),
+    private val config: Config = Config.fromEnv(),
     private val orchestrator: TripPlannerOrchestrator = TripPlannerOrchestrator(config = config),
 ) : CliktCommand(name = "pathpress") {
     override fun help(context: Context): String =

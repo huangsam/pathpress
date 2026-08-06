@@ -14,7 +14,7 @@ import java.net.http.HttpResponse
  */
 class ClaudeProvider(
     apiKey: String,
-    config: Config = Config(),
+    config: Config = Config.fromEnv(),
     val modelName: String = config.defaultClaudeModel,
 ) : HttpLlmProvider(config) {
     private val apiKey: String = apiKey.validateApiKey(LlmProviderType.CLAUDE)

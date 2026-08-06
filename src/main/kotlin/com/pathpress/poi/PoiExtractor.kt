@@ -26,7 +26,7 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * - [SpatialGridIndex]: Discrete spatial grid cell index and geometric polyline math.
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
-open class PoiExtractor(val config: Config = Config()) {
+open class PoiExtractor(val config: Config = Config.fromEnv()) {
     /** Clear in-memory cache reference. Delegates to singleton [PoiCacheManager]. */
     fun clearInMemCache() {
         PoiCacheManager.clearInMemCache()
@@ -389,7 +389,7 @@ open class PoiExtractor(val config: Config = Config()) {
      *
      * For new code, prefer [default] for explicit singleton semantics.
      */
-    companion object : PoiExtractor() {
-        val default = PoiExtractor()
+    companion object : PoiExtractor(Config.fromEnv()) {
+        val default = PoiExtractor(Config.fromEnv())
     }
 }

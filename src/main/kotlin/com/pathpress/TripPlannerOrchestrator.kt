@@ -39,7 +39,7 @@ data class TripPlannerResult(
 
 /** Pure application service that orchestrates the trip planning execution pipeline. */
 class TripPlannerOrchestrator(
-    private val config: Config = Config(),
+    private val config: Config = Config.fromEnv(),
     private val geocoder: (String) -> GeocodedLocation? = { Geocoder.geocode(it) },
     private val routeCalculatorFactory:
         (graphPath: String, pbfPath: String, config: Config) -> RouteCalculator =
