@@ -11,6 +11,7 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.pathpress.config.Config
 import com.pathpress.export.PdfExporter
 import com.pathpress.model.DistanceUnit
+import com.pathpress.pbf.PbfPathResolver
 import org.slf4j.LoggerFactory
 
 object BuildConfig {
@@ -37,7 +38,8 @@ open class PathPressCommand(
         option("--end", help = "Destination location name or lat,lng coordinates").required()
     val days by option("--days", help = "Number of days to spread the trip across").int().default(1)
     val outputFile by option("--output", help = "Output PDF file path").default("itinerary.pdf")
-    val rawPbfPath by option("--pbf", help = "Path to OSM PBF file").default(defaultPbfPath())
+    val rawPbfPath by
+        option("--pbf", help = "Path to OSM PBF file").default(PbfPathResolver.defaultPath())
     val graphPath by
         option("--graph", help = "GraphHopper graph storage directory").default(".graphhopper")
     val prompt by
@@ -131,33 +133,6 @@ open class PathPressCommand(
 
         CliReporter.reportDailySummary(result.route, request.distanceUnit)
     }
-}
-
-fun resolvePbfPath(requestedPath: String): String {
-    val file = java.io.File(requestedPath)
-    if (file.exists()) return requestedPath
-    val dataFile = java.io.File("data", requestedPath)
-    if (dataFile.exists()) return dataFile.path
-    return requestedPath
-}
-
-fun defaultPbfPath(): String {
-    val envPath = System.getenv("PATHPRESS_PBF")
-    if (!envPath.isNullOrBlank()) return envPath
-
-    val defaultDataPbf = java.io.File("data", "california-latest.osm.pbf")
-    if (defaultDataPbf.exists()) return defaultDataPbf.path
-
-    val dataDir = java.io.File("data")
-    if (dataDir.exists() && dataDir.isDirectory) {
-        val pbfFile = dataDir.listFiles()?.firstOrNull { it.name.endsWith(".pbf") }
-        if (pbfFile != null) return pbfFile.path
-    }
-
-    val rootPbf = java.io.File("california-latest.osm.pbf")
-    if (rootPbf.exists()) return rootPbf.name
-
-    return "data/california-latest.osm.pbf"
 }
 
 fun main(args: Array<String>) = PathPressCommand().main(args)

@@ -6,6 +6,7 @@ import com.pathpress.llm.TripPlanResponse
 import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.Route
+import com.pathpress.pbf.PbfPathResolver
 import com.pathpress.routing.GeocodedLocation
 import com.pathpress.routing.Geocoder
 import com.pathpress.routing.RouteCalculator
@@ -25,7 +26,7 @@ data class TripPlannerRequest(
     val llmUrl: String? = null,
     val poisPerLeg: Int = Config.DEFAULT_POIS_PER_LEG,
     val distanceUnit: DistanceUnit = DistanceUnit.METRIC,
-    val pbfPath: String = defaultPbfPath(),
+    val pbfPath: String = PbfPathResolver.defaultPath(),
     val graphPath: String = ".graphhopper",
 )
 
@@ -56,7 +57,7 @@ class TripPlannerOrchestrator(
     private val logger = LoggerFactory.getLogger(TripPlannerOrchestrator::class.java)
 
     fun planTrip(request: TripPlannerRequest): TripPlannerResult {
-        val pbfPath = resolvePbfPath(request.pbfPath)
+        val pbfPath = PbfPathResolver.resolve(request.pbfPath)
         val mappedProfile = if (request.profile.lowercase() == "scenic") "car" else request.profile
 
         // 1. Geocode start and end locations
