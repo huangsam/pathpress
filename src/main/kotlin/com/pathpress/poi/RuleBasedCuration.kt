@@ -1,9 +1,9 @@
-package com.pathpress.llm
+package com.pathpress.poi
 
+import com.pathpress.llm.CuratedLegResult
 import com.pathpress.model.DistanceUnit
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
-import com.pathpress.poi.PoiDescriptionFormatter
 
 /**
  * Deterministic POI curation derived from OSM tags.

@@ -4,6 +4,7 @@ import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
+import com.pathpress.poi.RuleBasedCuration
 
 /**
  * Offline or fallback [LlmProvider] used when no LLM API key is specified or when remote LLM calls

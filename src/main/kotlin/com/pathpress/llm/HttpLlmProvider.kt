@@ -7,6 +7,7 @@ import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.takeValidText
+import com.pathpress.poi.RuleBasedCuration
 import java.net.http.HttpClient
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory

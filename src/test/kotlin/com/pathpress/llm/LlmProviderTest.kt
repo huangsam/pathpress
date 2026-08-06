@@ -5,6 +5,7 @@ import com.pathpress.model.DistanceUnit
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.model.RouteLeg
+import com.pathpress.poi.RuleBasedCuration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
