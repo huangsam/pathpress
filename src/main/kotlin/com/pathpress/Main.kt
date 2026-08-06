@@ -25,7 +25,8 @@ object BuildConfig {
 
 /** PathPress CLI command implemented using Clikt. */
 open class PathPressCommand(
-    private val orchestrator: TripPlannerOrchestrator = TripPlannerOrchestrator()
+    private val config: Config = Config(),
+    private val orchestrator: TripPlannerOrchestrator = TripPlannerOrchestrator(config = config),
 ) : CliktCommand(name = "pathpress") {
     override fun help(context: Context): String =
         "PathPress - A robust, hybrid AI road trip planner using OpenStreetMap & GraphHopper."
@@ -58,7 +59,7 @@ open class PathPressCommand(
     val poisPerLeg by
         option("--pois-per-leg", help = "Maximum POIs to extract per day/leg")
             .int()
-            .default(Config.current.defaultPoisPerLeg)
+            .default(config.defaultPoisPerLeg)
     val verbose by
         option(
                 "-v",

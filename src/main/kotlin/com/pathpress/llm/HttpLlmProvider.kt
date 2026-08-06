@@ -31,7 +31,7 @@ fun String?.validateApiKey(provider: String): String =
  * Provides shared prompt construction, grounding constraints, template method HTTP completion, and
  * resilient JSON parsing logic.
  */
-abstract class HttpLlmProvider(val config: Config = Config.current) : LlmProvider {
+abstract class HttpLlmProvider(val config: Config = Config()) : LlmProvider {
     protected val logger: Logger = LoggerFactory.getLogger(javaClass)
     protected val client: HttpClient =
         HttpClient.newBuilder().connectTimeout(config.httpLlmConnectTimeout).build()

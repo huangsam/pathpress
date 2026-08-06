@@ -23,7 +23,7 @@ data class TripPlannerRequest(
     val llmModel: String? = null,
     val llmKey: String? = null,
     val llmUrl: String? = null,
-    val poisPerLeg: Int = Config.current.defaultPoisPerLeg,
+    val poisPerLeg: Int = Config.DEFAULT_POIS_PER_LEG,
     val distanceUnit: DistanceUnit = DistanceUnit.METRIC,
     val pbfPath: String = defaultPbfPath(),
     val graphPath: String = ".graphhopper",
@@ -38,14 +38,18 @@ data class TripPlannerResult(
 
 /** Pure application service that orchestrates the trip planning execution pipeline. */
 class TripPlannerOrchestrator(
-    private val routeCalculatorFactory: (graphPath: String, pbfPath: String) -> RouteCalculator =
-        { graphPath, pbfPath ->
-            RouteCalculator.create(graphPath, pbfPath)
+    private val config: Config = Config(),
+    private val routeCalculatorFactory:
+        (graphPath: String, pbfPath: String, config: Config) -> RouteCalculator =
+        { graphPath, pbfPath, cfg ->
+            RouteCalculator.create(graphPath, pbfPath, cfg)
         },
     private val llmProviderFactory:
-        (provider: String, key: String?, url: String?, model: String?) -> LlmProvider =
-        { provider, key, url, model ->
-            LlmProvider.create(provider, key, url, model)
+        (
+            provider: String, key: String?, url: String?, model: String?, config: Config,
+        ) -> LlmProvider =
+        { provider, key, url, model, cfg ->
+            LlmProvider.create(provider, key, url, model, config = cfg)
         },
 ) {
     private val logger = LoggerFactory.getLogger(TripPlannerOrchestrator::class.java)
@@ -77,7 +81,7 @@ class TripPlannerOrchestrator(
         logger.info("Loading spatial routing data from $pbfPath...")
         val routeCalculator =
             try {
-                routeCalculatorFactory(request.graphPath, pbfPath)
+                routeCalculatorFactory(request.graphPath, pbfPath, config)
             } catch (e: Exception) {
                 error(
                     "Failed to initialize GraphHopper. Ensure PBF file exists at $pbfPath\n" +
@@ -93,6 +97,7 @@ class TripPlannerOrchestrator(
                 request.llmKey,
                 request.llmUrl,
                 request.llmModel,
+                config,
             )
         var tripPlan =
             llm.planTrip(

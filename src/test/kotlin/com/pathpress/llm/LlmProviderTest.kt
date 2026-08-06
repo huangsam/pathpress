@@ -24,7 +24,7 @@ class LlmProviderTest {
     fun `LlmProvider factory configures default and custom models for providers`() {
         val defaultGemini = LlmProvider.create("gemini", apiKey = "test-key", apiUrl = null)
         assertIs<GeminiProvider>(defaultGemini)
-        assertEquals(Config.current.defaultGeminiModel, defaultGemini.modelName)
+        assertEquals(Config().defaultGeminiModel, defaultGemini.modelName)
 
         val customGemini =
             LlmProvider.create(

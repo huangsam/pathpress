@@ -62,10 +62,10 @@ object TownScorer {
     fun scoreTownForOvernight(
         town: TownInfo,
         cacheStore: PoiCacheStore,
-        radiusMiles: Double = Config.current.townScoringRadiusMiles,
+        config: Config = Config(),
+        radiusMiles: Double = config.townScoringRadiusMiles,
         userPrompt: String? = null,
         distanceFromTargetMeters: Double = 0.0,
-        config: Config = Config.current,
     ): ScoredTown {
         // Convert radius in miles to meters and derive lat/lng bounding box degree offset
         // (~111,000m per degree)

@@ -26,7 +26,7 @@ object Geocoder {
 
     private val httpClient: HttpClient =
         HttpClient.newBuilder()
-            .connectTimeout(Config.current.geocoderConnectTimeout)
+            .connectTimeout(Config().geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build()
 

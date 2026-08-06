@@ -22,7 +22,10 @@ data class LegGeometryInfo(
  * Encapsulates multi-day route pacing, milestone calculation, polyline slicing, and candidate town
  * selection.
  */
-class RoutePacer(private val pbfFilePath: String = "data/california-latest.osm.pbf") {
+class RoutePacer(
+    private val pbfFilePath: String,
+    private val poiExtractor: PoiExtractor = PoiExtractor.default,
+) {
     private val logger = LoggerFactory.getLogger(RoutePacer::class.java)
 
     /** Compute cumulative distance array (`dCum`) along polyline coordinates. */
@@ -32,7 +35,7 @@ class RoutePacer(private val pbfFilePath: String = "data/california-latest.osm.p
         for (i in 0 until allCoords.size - 1) {
             dCum[i + 1] =
                 dCum[i] +
-                    PoiExtractor.haversineMeters(
+                    poiExtractor.haversineMeters(
                         allCoords[i].lat,
                         allCoords[i].lng,
                         allCoords[i + 1].lat,
@@ -158,7 +161,7 @@ class RoutePacer(private val pbfFilePath: String = "data/california-latest.osm.p
 
             for (i in 0 until pointsList.size() - 1) {
                 val segDist =
-                    PoiExtractor.haversineMeters(
+                    poiExtractor.haversineMeters(
                         pointsList.getLat(i),
                         pointsList.getLon(i),
                         pointsList.getLat(i + 1),
@@ -180,7 +183,7 @@ class RoutePacer(private val pbfFilePath: String = "data/california-latest.osm.p
 
             val targetProgressFraction = dayIndex.toDouble() / days
             val candidateTowns =
-                PoiExtractor.findCandidateTownsAlongRoute(
+                poiExtractor.findCandidateTownsAlongRoute(
                     pbfPath = pbfFilePath,
                     routePoints = allCoords,
                     targetProgressFraction = targetProgressFraction,
@@ -189,7 +192,8 @@ class RoutePacer(private val pbfFilePath: String = "data/california-latest.osm.p
                 )
             val bestTown =
                 candidateTowns.firstOrNull()?.town
-                    ?: PoiExtractor.findNearbyTowns(
+                    ?: poiExtractor
+                        .findNearbyTowns(
                             pbfFilePath,
                             targetLat,
                             targetLng,

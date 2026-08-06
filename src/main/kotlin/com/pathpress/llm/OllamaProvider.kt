@@ -16,7 +16,7 @@ import java.net.http.HttpResponse
  */
 class OllamaProvider(
     private val endpoint: String,
-    config: Config = Config.current,
+    config: Config = Config(),
     val modelName: String = config.defaultOllamaModel,
 ) : HttpLlmProvider(config) {
     override fun complete(prompt: String): String? {

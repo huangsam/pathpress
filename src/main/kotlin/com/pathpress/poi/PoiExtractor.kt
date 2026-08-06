@@ -26,7 +26,7 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * - [SpatialGridIndex]: Discrete spatial grid cell index and geometric polyline math.
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
-object PoiExtractor {
+open class PoiExtractor(val config: Config = Config()) {
     @Volatile private var cachedStore: PoiCacheStore? = null
     private var cachedPbfPath: String? = null
 
@@ -44,10 +44,7 @@ object PoiExtractor {
         PoiCacheManager.resolveCacheFilePath(pbfPath, customCachePath)
 
     /** Retrieve or build the [PoiCacheStore]. */
-    fun getOrBuildCache(
-        pbfPath: String = "data/california-latest.osm.pbf",
-        cacheFilePath: String? = null,
-    ): PoiCacheStore {
+    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore {
         if (cachedStore != null && cachedPbfPath == pbfPath) {
             return cachedStore!!
         }
@@ -103,11 +100,10 @@ object PoiExtractor {
         pbfPath: String,
         legPoints: List<LocationCoords>,
         maxDistanceMeters: Double = 5000.0,
-        limitPerLeg: Int = Config.current.defaultPoisPerLeg,
+        limitPerLeg: Int = config.defaultPoisPerLeg,
         userPrompt: String? = null,
         excludePeaks: Boolean = false,
         excludeIndustrial: Boolean = true,
-        config: Config = Config.current,
         rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
         excludePoiIds: Set<String> = emptySet(),
     ): List<POI> {
@@ -205,10 +201,10 @@ object PoiExtractor {
         val minLng = targetLng - bufferLngDeg
         val maxLng = targetLng + bufferLngDeg
 
-        val minLatCell = floor(minLat / Config.current.gridCellSizeDeg).toInt()
-        val maxLatCell = floor(maxLat / Config.current.gridCellSizeDeg).toInt()
-        val minLngCell = floor(minLng / Config.current.gridCellSizeDeg).toInt()
-        val maxLngCell = floor(maxLng / Config.current.gridCellSizeDeg).toInt()
+        val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
+        val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
+        val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
+        val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
 
         val candidateTowns =
             SpatialGridIndex.queryCandidateTowns(
@@ -243,11 +239,10 @@ object PoiExtractor {
         pbfPath: String,
         routePoints: List<LocationCoords>,
         targetProgressFraction: Double,
-        windowFraction: Double = Config.current.townProgressWindowFraction,
+        windowFraction: Double = config.townProgressWindowFraction,
         maxDistanceMeters: Double = 40000.0,
         userPrompt: String? = null,
-        radiusMiles: Double = Config.current.townScoringRadiusMiles,
-        config: Config = Config.current,
+        radiusMiles: Double = config.townScoringRadiusMiles,
     ): List<ScoredTown> {
         val cacheStore = getOrBuildCache(pbfPath)
         if (cacheStore.towns.isEmpty() || routePoints.size < 2) return emptyList()
@@ -394,4 +389,8 @@ object PoiExtractor {
         bLat: Double,
         bLng: Double,
     ): Double = SpatialGridIndex.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
+
+    companion object : PoiExtractor() {
+        val default = PoiExtractor()
+    }
 }

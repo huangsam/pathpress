@@ -71,10 +71,7 @@ object PoiCacheManager {
      * over the PBF file is executed to generate it.
      */
     @Synchronized
-    fun getOrBuildCache(
-        pbfPath: String = "data/california-latest.osm.pbf",
-        cacheFilePath: String? = null,
-    ): PoiCacheStore {
+    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore {
         val resolvedCachePath = resolveCacheFilePath(pbfPath, cacheFilePath)
         if (cachedStore != null && cachedPbfPath == pbfPath) {
             return cachedStore!!

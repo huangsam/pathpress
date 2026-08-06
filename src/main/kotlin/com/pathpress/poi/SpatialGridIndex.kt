@@ -24,7 +24,7 @@ data class GridCell(val latIndex: Int, val lngIndex: Int) {
         fun fromCoords(
             lat: Double,
             lng: Double,
-            gridCellSizeDeg: Double = Config.current.gridCellSizeDeg,
+            gridCellSizeDeg: Double = Config.DEFAULT_GRID_CELL_SIZE_DEG,
         ): GridCell =
             GridCell(floor(lat / gridCellSizeDeg).toInt(), floor(lng / gridCellSizeDeg).toInt())
     }

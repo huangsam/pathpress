@@ -15,9 +15,12 @@ import org.slf4j.LoggerFactory
 /** Spatial engine for calculating driving routes using GraphHopper and real OSM POI extraction. */
 class RouteCalculator(
     private val graphHopper: GraphHopper,
-    val pbfFilePath: String = "data/california-latest.osm.pbf",
-    private val snapper: RoadNetworkSnapper = RoadNetworkSnapper(graphHopper, pbfFilePath),
-    private val pacer: RoutePacer = RoutePacer(pbfFilePath),
+    val pbfFilePath: String,
+    val config: Config = Config(),
+    private val poiExtractor: PoiExtractor = PoiExtractor(config),
+    private val snapper: RoadNetworkSnapper =
+        RoadNetworkSnapper(graphHopper, pbfFilePath, poiExtractor),
+    private val pacer: RoutePacer = RoutePacer(pbfFilePath, poiExtractor),
 ) {
     private val logger = LoggerFactory.getLogger(RouteCalculator::class.java)
 
@@ -33,7 +36,7 @@ class RouteCalculator(
         days: Int,
         dayTitles: List<String> = emptyList(),
         profile: String = "car",
-        limitPerLeg: Int = Config.current.defaultPoisPerLeg,
+        limitPerLeg: Int = config.defaultPoisPerLeg,
         userPrompt: String? = null,
         waypoints: List<LocationCoords> = emptyList(),
         startName: String? = null,
@@ -185,7 +188,7 @@ class RouteCalculator(
 
         if (days == 1) {
             val realPois =
-                PoiExtractor.extractPoisForLeg(
+                poiExtractor.extractPoisForLeg(
                     pbfFilePath,
                     allCoords,
                     maxDistanceMeters = 8000.0,
@@ -194,7 +197,8 @@ class RouteCalculator(
                 )
 
             val destTown =
-                PoiExtractor.findNearbyTowns(
+                poiExtractor
+                    .findNearbyTowns(
                         pbfFilePath,
                         pointsList.getLat(pointsList.size() - 1),
                         pointsList.getLon(pointsList.size() - 1),
@@ -240,7 +244,7 @@ class RouteCalculator(
         for (legInfo in pacedLegs) {
             val dayIndex = legInfo.dayIndex
             val realPois =
-                PoiExtractor.extractPoisForLeg(
+                poiExtractor.extractPoisForLeg(
                     pbfFilePath,
                     legInfo.legPoints,
                     maxDistanceMeters = 8000.0,
@@ -253,7 +257,8 @@ class RouteCalculator(
 
             val endTown =
                 if (dayIndex == days - 1) {
-                    PoiExtractor.findNearbyTowns(
+                    poiExtractor
+                        .findNearbyTowns(
                             pbfFilePath,
                             legInfo.legEnd.lat,
                             legInfo.legEnd.lng,
@@ -305,7 +310,11 @@ class RouteCalculator(
     }
 
     companion object {
-        fun create(graphPath: String, pbfFilePath: String): RouteCalculator {
+        fun create(
+            graphPath: String,
+            pbfFilePath: String,
+            config: Config = Config(),
+        ): RouteCalculator {
             val hopper = GraphHopper()
             hopper.setOSMFile(pbfFilePath)
             hopper.setGraphHopperLocation(graphPath)
@@ -317,7 +326,7 @@ class RouteCalculator(
             )
             hopper.importOrLoad()
 
-            return RouteCalculator(hopper, pbfFilePath)
+            return RouteCalculator(hopper, pbfFilePath, config)
         }
     }
 }

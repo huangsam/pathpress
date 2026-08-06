@@ -27,7 +27,8 @@ data class SnapResult(
  */
 class RoadNetworkSnapper(
     private val graphHopper: GraphHopper,
-    private val pbfFilePath: String = "data/california-latest.osm.pbf",
+    private val pbfFilePath: String,
+    private val poiExtractor: PoiExtractor = PoiExtractor.default,
 ) {
     private val logger = LoggerFactory.getLogger(RoadNetworkSnapper::class.java)
     private val snapFilterCache = mutableMapOf<String, EdgeFilter>()
@@ -65,14 +66,15 @@ class RoadNetworkSnapper(
             val qr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
             if (qr.isValid && qr.snappedPoint != null) {
                 val snapDist =
-                    PoiExtractor.haversineMeters(lat, lng, qr.snappedPoint.lat, qr.snappedPoint.lon)
+                    poiExtractor.haversineMeters(lat, lng, qr.snappedPoint.lat, qr.snappedPoint.lon)
                 SnapResult(
                     coords = LocationCoords(qr.snappedPoint.lat, qr.snappedPoint.lon),
                     snapDistanceMeters = snapDist,
                 )
             } else {
                 val nearbyTown =
-                    PoiExtractor.findNearbyTowns(pbfFilePath, lat, lng, maxDistanceMeters = 30000.0)
+                    poiExtractor
+                        .findNearbyTowns(pbfFilePath, lat, lng, maxDistanceMeters = 30000.0)
                         .firstOrNull()
                 if (nearbyTown != null) {
                     val townQr =
@@ -88,7 +90,7 @@ class RoadNetworkSnapper(
                             LocationCoords(nearbyTown.lat, nearbyTown.lng)
                         }
                     val snapDist =
-                        PoiExtractor.haversineMeters(lat, lng, snapCoords.lat, snapCoords.lng)
+                        poiExtractor.haversineMeters(lat, lng, snapCoords.lat, snapCoords.lng)
                     SnapResult(
                         coords = snapCoords,
                         snapDistanceMeters = snapDist,
