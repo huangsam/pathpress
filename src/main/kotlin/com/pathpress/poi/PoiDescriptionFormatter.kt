@@ -1,7 +1,6 @@
 package com.pathpress.poi
 
 import com.pathpress.model.POI
-import com.pathpress.model.sanitizePoiType
 
 /**
  * Deterministic formatter for [POI] descriptions and insider tips derived directly from

@@ -8,7 +8,6 @@ import com.graphhopper.reader.ReaderNode
 import com.graphhopper.reader.ReaderWay
 import com.graphhopper.reader.osm.OSMInputFile
 import com.pathpress.model.POI
-import com.pathpress.model.PoiCategoryConstants
 import java.io.File
 import org.slf4j.LoggerFactory
 

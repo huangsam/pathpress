@@ -9,9 +9,9 @@ import com.pathpress.model.POI
 import com.pathpress.model.Route
 import com.pathpress.model.RouteLeg
 import com.pathpress.model.boundNarrative
-import com.pathpress.model.sanitizePoiType
 import com.pathpress.poi.AddressResolver
 import com.pathpress.poi.MapUrlFormatter
+import com.pathpress.poi.sanitizePoiType
 import com.pathpress.poi.toDirectionsUrl
 import kotlinx.html.*
 

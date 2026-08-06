@@ -1,5 +1,6 @@
 package com.pathpress.model
 
+import com.pathpress.poi.sanitizePoiType
 import com.pathpress.poi.toDirectionsUrl
 import com.pathpress.poi.toMapUrl
 import kotlin.test.Test

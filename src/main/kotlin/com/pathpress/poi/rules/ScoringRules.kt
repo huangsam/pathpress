@@ -1,7 +1,7 @@
 package com.pathpress.poi.rules
 
 import com.pathpress.model.POI
-import com.pathpress.model.PoiCategoryConstants
+import com.pathpress.poi.PoiCategoryConstants
 
 val RELEVANT_AMENITIES_SET = PoiCategoryConstants.FOOD_AMENITIES
 

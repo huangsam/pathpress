@@ -1,27 +1,10 @@
 package com.pathpress.model
 
+import com.pathpress.poi.PoiCategoryConstants
+import com.pathpress.poi.sanitizePoiType
+
 /** Represents coordinates for a location. */
 data class LocationCoords(val lat: Double, val lng: Double, val name: String? = null)
-
-/**
- * Constants defining OpenStreetMap (OSM) tag keys and categories used during POI classification.
- */
-object PoiCategoryConstants {
-    /** OSM amenity values recognized as dining or coffee stops. */
-    val FOOD_AMENITIES: Set<String> =
-        setOf("cafe", "restaurant", "bakery", "pub", "bar", "fast_food", "ice_cream", "food_court")
-
-    /** Highest-priority OSM tag keys inspected to determine a POI's primary category. */
-    val PRIMARY_KEYS: List<String> =
-        listOf("amenity", "tourism", "natural", "historic", "leisure", "shop", "place")
-
-    /** Secondary fallback OSM tag keys if primary yields generic or missing values. */
-    val SECONDARY_KEYS: List<String> =
-        listOf("building", "attraction", "craft", "man_made", "historic:type")
-
-    /** Non-descriptive or boolean tag values ignored when resolving category names. */
-    val INVALID_VALUES: Set<String> = setOf("yes", "no", "true", "false", "null", "")
-}
 
 /** Represents a Point of Interest (POI) extracted from OpenStreetMap data. */
 data class POI(
@@ -121,66 +104,6 @@ data class POI(
     }
 }
 
-/**
- * Sanitizes POI category type to avoid generic boolean/raw strings (e.g., "yes", "building",
- * "point").
- *
- * Performs a 2-pass resolution:
- * - Pass 1: If [type] is generic, attempts to re-resolve a more specific value from the remaining
- *   [tags].
- * - Pass 2: Maps known raw terms to clean canonical terms (e.g. "memorial_hall" -> "memorial").
- *   Underscores are preserved so the result stays comparable to raw OSM tag values (e.g.
- *   "nature_reserve"); convert to spaces only at display time.
- */
-fun sanitizePoiType(type: String?, tags: Map<String, String> = emptyMap()): String {
-    if (type.isNullOrBlank()) return "landmark"
-
-    val genericTypes = setOf("yes", "building", "point", "node", "null", "true", "false", "poi")
-    val trimmed = type.lowercase().trim()
-
-    // Pass 1: Attempt tag re-resolution if the initial rawType was generic
-    val resolved =
-        if (trimmed in genericTypes) {
-            val primaryVal =
-                PoiCategoryConstants.PRIMARY_KEYS.firstNotNullOfOrNull { k ->
-                    val v = tags[k]
-                    if (v != null && v.lowercase() !in PoiCategoryConstants.INVALID_VALUES) v
-                    else null
-                }
-            val secondaryVal =
-                PoiCategoryConstants.SECONDARY_KEYS.firstNotNullOfOrNull { k ->
-                    val v = tags[k]
-                    if (v != null && v.lowercase() !in PoiCategoryConstants.INVALID_VALUES) v
-                    else null
-                }
-            val fallbackKey =
-                tags.entries
-                    .firstOrNull { (k, v) ->
-                        k in PoiCategoryConstants.PRIMARY_KEYS && v.lowercase() != "no"
-                    }
-                    ?.key
-
-            primaryVal ?: secondaryVal ?: fallbackKey ?: "landmark"
-        } else {
-            type
-        }
-
-    // Pass 2: Canonical category mapping and formatting
-    return when (val lower = resolved.lowercase().trim()) {
-        "yes",
-        "building",
-        "point",
-        "node",
-        "null",
-        "true",
-        "false",
-        "poi" -> "landmark"
-        "memorial_hall" -> "memorial"
-        "confectionery" -> "bakery"
-        else -> lower
-    }
-}
-
 /** Represents a daily segment of a route. */
 data class RouteLeg(
     val startLat: Double,
@@ -205,37 +128,6 @@ data class RouteLeg(
      */
     val isApproximateGeometry: Boolean = false,
 )
-
-/**
- * Extension helper to filter out null, blank, or `"null"` literal strings (commonly produced when
- * parsing unquoted or raw LLM output and stringified JSON).
- */
-fun String?.takeValidText(): String? =
-    this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
-
-/**
- * Limits narrative text to a clean, bounded summary of at most [maxSentences] sentences and
- * [maxWords] words total, preventing dense or overly long paragraphs on the cover page.
- */
-fun String.boundNarrative(maxWords: Int = 55, maxSentences: Int = 3): String {
-    val clean = this.trim()
-    if (clean.isBlank()) return clean
-    val sentences = clean.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
-    val result = mutableListOf<String>()
-    var totalWords = 0
-    for (sentence in sentences) {
-        val wordCount = sentence.split(Regex("\\s+")).count { it.isNotBlank() }
-        if (
-            result.isEmpty() || (result.size < maxSentences && totalWords + wordCount <= maxWords)
-        ) {
-            result.add(sentence)
-            totalWords += wordCount
-        } else {
-            break
-        }
-    }
-    return result.joinToString(" ")
-}
 
 /** Represents the complete calculated route. */
 data class Route(
