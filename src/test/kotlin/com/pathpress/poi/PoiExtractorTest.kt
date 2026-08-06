@@ -475,16 +475,16 @@ class PoiExtractorTest {
                 type = "gallery",
             )
 
-        // Inject dummy cache store into PoiExtractor cache
+        // Inject dummy cache store into PoiCacheManager (the singleton cache manager)
         PoiExtractor.clearInMemCache()
         val dummyStore = PoiCacheStore(pois = listOf(poi1, poi2))
-        val field = PoiExtractor::class.java.getDeclaredField("cachedStore")
+        val field = PoiCacheManager::class.java.getDeclaredField("cachedStore")
         field.isAccessible = true
-        field.set(PoiExtractor, dummyStore)
+        field.set(PoiCacheManager, dummyStore)
 
-        val pathField = PoiExtractor::class.java.getDeclaredField("cachedPbfPath")
+        val pathField = PoiCacheManager::class.java.getDeclaredField("cachedPbfPath")
         pathField.isAccessible = true
-        pathField.set(PoiExtractor, "dummy.pbf")
+        pathField.set(PoiCacheManager, "dummy.pbf")
 
         val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
 

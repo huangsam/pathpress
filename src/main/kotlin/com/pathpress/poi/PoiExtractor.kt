@@ -27,34 +27,23 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
 open class PoiExtractor(val config: Config = Config()) {
-    @Volatile private var cachedStore: PoiCacheStore? = null
-    private var cachedPbfPath: String? = null
-
-    /** Clear in-memory cache reference. */
+    /** Clear in-memory cache reference. Delegates to singleton [PoiCacheManager]. */
     fun clearInMemCache() {
-        synchronized(this) {
-            cachedStore = null
-            cachedPbfPath = null
-            PoiCacheManager.clearInMemCache()
-        }
+        PoiCacheManager.clearInMemCache()
     }
 
-    /** Resolves cache file path under `.pois_cache/`. */
+    /** Resolves cache file path under `.pois_cache/`. Delegates to singleton [PoiCacheManager]. */
     fun resolveCacheFilePath(pbfPath: String, customCachePath: String? = null): String =
         PoiCacheManager.resolveCacheFilePath(pbfPath, customCachePath)
 
-    /** Retrieve or build the [PoiCacheStore]. */
-    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore {
-        if (cachedStore != null && cachedPbfPath == pbfPath) {
-            return cachedStore!!
-        }
-        val store = PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath)
-        synchronized(this) {
-            cachedStore = store
-            cachedPbfPath = pbfPath
-        }
-        return store
-    }
+    /**
+     * Retrieve or build the [PoiCacheStore].
+     *
+     * Delegates to singleton [PoiCacheManager], which manages all cache lifecycle and prevents
+     * duplicate in-memory state tracking across multiple [PoiExtractor] instances.
+     */
+    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore =
+        PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath)
 
     /** Builds a [PoiCacheStore] directly from an in-memory collection of [ReaderElement]s. */
     fun buildCacheFromElements(elements: Iterable<ReaderElement>): PoiCacheStore =
@@ -390,6 +379,16 @@ open class PoiExtractor(val config: Config = Config()) {
         bLng: Double,
     ): Double = SpatialGridIndex.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
 
+    /**
+     * Companion object providing static-style access to [PoiExtractor] methods.
+     *
+     * Since [PoiExtractor] delegates all cache lifecycle management to the singleton
+     * [PoiCacheManager], instances of [PoiExtractor] are stateless and only hold the [Config]
+     * parameter. This means the companion object and [default] instance are functionally equivalent
+     * (both use default [Config]).
+     *
+     * For new code, prefer [default] for explicit singleton semantics.
+     */
     companion object : PoiExtractor() {
         val default = PoiExtractor()
     }
