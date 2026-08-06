@@ -10,7 +10,7 @@ class SpatialIndexTest {
 
     @BeforeEach
     fun setUp() {
-        PoiExtractor.clearInMemCache()
+        PoiCacheManager.clearInMemCache()
     }
 
     @Test

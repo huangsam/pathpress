@@ -25,7 +25,7 @@ data class LegGeometryInfo(
  */
 class RoutePacer(
     private val pbfFilePath: String,
-    private val poiExtractor: PoiExtractor = PoiExtractor.default,
+    private val poiExtractor: PoiExtractor = PoiExtractor(),
 ) {
     private val logger = LoggerFactory.getLogger(RoutePacer::class.java)
 

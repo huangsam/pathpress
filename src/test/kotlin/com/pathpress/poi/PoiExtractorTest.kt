@@ -4,6 +4,7 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.poi.rules.PersonaExclusionFilterRule
 import com.pathpress.poi.rules.PoiEvaluationContext
+import com.pathpress.poi.rules.PoiRulesEngine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -13,29 +14,29 @@ class PoiExtractorTest {
 
     @Test
     fun `isRelevantPoi correctly identifies relevant and irrelevant OSM tags`() {
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("amenity" to "cafe")))
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("tourism" to "viewpoint")))
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("natural" to "park")))
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("historic" to "monument")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("amenity" to "cafe")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("tourism" to "viewpoint")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("natural" to "park")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("historic" to "monument")))
 
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("highway" to "residential")))
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("building" to "house")))
-        assertFalse(PoiExtractor.isRelevantPoi(emptyMap()))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("highway" to "residential")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("building" to "house")))
+        assertFalse(OsmPbfReader.isRelevantPoi(emptyMap()))
     }
 
     @Test
     fun `isRelevantPoi recognizes heritage and nrhp tags`() {
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("nrhp:nhl" to "yes")))
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage" to "1")))
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage" to "2")))
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("heritage:operator" to "nps")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("nrhp:nhl" to "yes")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("heritage" to "1")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("heritage" to "2")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("heritage:operator" to "nps")))
 
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("heritage" to "3")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("heritage" to "3")))
     }
 
     @Test
     fun `rankAndSelectPois handles empty list and zero limit`() {
-        assertTrue(PoiExtractor.rankAndSelectPois(emptyList(), limit = 5).isEmpty())
+        assertTrue(PoiRanker.rankAndSelectPois(emptyList(), limit = 5).isEmpty())
         val cafe =
             POI(
                 id = "1",
@@ -45,7 +46,7 @@ class PoiExtractorTest {
                 tags = emptyMap(),
                 type = "cafe",
             )
-        assertTrue(PoiExtractor.rankAndSelectPois(listOf(cafe), limit = 0).isEmpty())
+        assertTrue(PoiRanker.rankAndSelectPois(listOf(cafe), limit = 0).isEmpty())
     }
 
     @Test
@@ -71,7 +72,7 @@ class PoiExtractorTest {
                 distanceFromRouteMeters = 100.0,
             )
 
-        val result = PoiExtractor.rankAndSelectPois(listOf(poi1, poi2), limit = 5)
+        val result = PoiRanker.rankAndSelectPois(listOf(poi1, poi2), limit = 5)
         assertEquals(1, result.size)
         assertEquals("2", result[0].id)
         assertEquals(100.0, result[0].distanceFromRouteMeters)
@@ -102,7 +103,7 @@ class PoiExtractorTest {
 
         // Request limit 2 when only cafes are available: Pass 1 picks cafe1 (1 per type), Pass 2
         // picks cafe2 (up to 2 per type)
-        val result = PoiExtractor.rankAndSelectPois(listOf(cafe1, cafe2), limit = 2)
+        val result = PoiRanker.rankAndSelectPois(listOf(cafe1, cafe2), limit = 2)
         assertEquals(2, result.size)
         assertEquals(listOf("1", "2"), result.map { it.id })
     }
@@ -131,8 +132,10 @@ class PoiExtractorTest {
                 distanceFromRouteMeters = 100.0,
             )
 
-        val richScore = PoiExtractor.calculatePoiQualityScore(richPoi)
-        val basicScore = PoiExtractor.calculatePoiQualityScore(basicPoi)
+        val richScore =
+            PoiRulesEngine.default.calculatePoiQualityScore(richPoi, PoiEvaluationContext())
+        val basicScore =
+            PoiRulesEngine.default.calculatePoiQualityScore(basicPoi, PoiEvaluationContext())
 
         assertTrue(
             richScore > basicScore,
@@ -142,26 +145,26 @@ class PoiExtractorTest {
 
     @Test
     fun `getOrBuildCache creates and loads JSON cache file`() {
-        PoiExtractor.clearInMemCache()
+        PoiCacheManager.clearInMemCache()
         val tempCacheFile = java.io.File.createTempFile("test_pois_cache", ".json")
         tempCacheFile.deleteOnExit()
 
         // Call getOrBuildCache with non-existent pbfPath so it creates empty PoiCacheStore if no
         // pbf
         val store =
-            PoiExtractor.getOrBuildCache(
+            PoiCacheManager.getOrBuildCache(
                 pbfPath = "non_existent.pbf",
                 cacheFilePath = tempCacheFile.absolutePath,
             )
         assertEquals(0, store.pois.size)
         assertEquals(0, store.towns.size)
 
-        PoiExtractor.clearInMemCache()
+        PoiCacheManager.clearInMemCache()
     }
 
     @Test
     fun `isRelevantPoi recognizes leisure playground`() {
-        assertTrue(PoiExtractor.isRelevantPoi(mapOf("leisure" to "playground")))
+        assertTrue(OsmPbfReader.isRelevantPoi(mapOf("leisure" to "playground")))
     }
 
     @Test
@@ -293,14 +296,14 @@ class PoiExtractorTest {
             )
 
         val familyScore =
-            PoiExtractor.calculatePoiQualityScore(
+            PoiRulesEngine.default.calculatePoiQualityScore(
                 playground,
-                userPrompt = "Trip with kids and toddlers",
+                PoiEvaluationContext(userPrompt = "Trip with kids and toddlers"),
             )
         val defaultScore =
-            PoiExtractor.calculatePoiQualityScore(
+            PoiRulesEngine.default.calculatePoiQualityScore(
                 genericSpot,
-                userPrompt = "Trip with kids and toddlers",
+                PoiEvaluationContext(userPrompt = "Trip with kids and toddlers"),
             )
 
         assertTrue(
@@ -311,17 +314,17 @@ class PoiExtractorTest {
 
     @Test
     fun `isRelevantPoi filters out disused, abandoned, closed, or private nodes`() {
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("amenity" to "ice_cream", "disused" to "yes")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("amenity" to "ice_cream", "disused" to "yes")))
         assertFalse(
-            PoiExtractor.isRelevantPoi(mapOf("amenity" to "restaurant", "abandoned" to "yes"))
+            OsmPbfReader.isRelevantPoi(mapOf("amenity" to "restaurant", "abandoned" to "yes"))
         )
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("amenity" to "cafe", "closed" to "yes")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("amenity" to "cafe", "closed" to "yes")))
         assertFalse(
-            PoiExtractor.isRelevantPoi(mapOf("amenity" to "fast_food", "end_date" to "2015"))
+            OsmPbfReader.isRelevantPoi(mapOf("amenity" to "fast_food", "end_date" to "2015"))
         )
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("amenity" to "cafe", "access" to "private")))
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("disused:amenity" to "ice_cream")))
-        assertFalse(PoiExtractor.isRelevantPoi(mapOf("abandoned:amenity" to "restaurant")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("amenity" to "cafe", "access" to "private")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("disused:amenity" to "ice_cream")))
+        assertFalse(OsmPbfReader.isRelevantPoi(mapOf("abandoned:amenity" to "restaurant")))
     }
 
     @Test
@@ -350,8 +353,16 @@ class PoiExtractorTest {
                 type = "ice_cream",
             )
 
-        val unverifiedScore = PoiExtractor.calculatePoiQualityScore(unverifiedIceCream)
-        val verifiedScore = PoiExtractor.calculatePoiQualityScore(verifiedIceCream)
+        val unverifiedScore =
+            PoiRulesEngine.default.calculatePoiQualityScore(
+                unverifiedIceCream,
+                PoiEvaluationContext(),
+            )
+        val verifiedScore =
+            PoiRulesEngine.default.calculatePoiQualityScore(
+                verifiedIceCream,
+                PoiEvaluationContext(),
+            )
 
         assertTrue(
             verifiedScore - unverifiedScore >= 20.0,
@@ -362,11 +373,12 @@ class PoiExtractorTest {
     @Test
     fun `findCandidateTownsAlongRoute returns empty list when routePoints is empty`() {
         val result =
-            PoiExtractor.findCandidateTownsAlongRoute(
-                pbfPath = "non_existent.pbf",
-                routePoints = emptyList(),
-                targetProgressFraction = 0.5,
-            )
+            PoiExtractor()
+                .findCandidateTownsAlongRoute(
+                    pbfPath = "non_existent.pbf",
+                    routePoints = emptyList(),
+                    targetProgressFraction = 0.5,
+                )
         assertTrue(result.isEmpty())
     }
 
@@ -392,7 +404,7 @@ class PoiExtractorTest {
             )
 
         // Inject dummy cache store into PoiCacheManager (the singleton cache manager)
-        PoiExtractor.clearInMemCache()
+        PoiCacheManager.clearInMemCache()
         val dummyStore = PoiCacheStore(pois = listOf(poi1, poi2))
         val field = PoiCacheManager::class.java.getDeclaredField("cachedStore")
         field.isAccessible = true
@@ -405,16 +417,17 @@ class PoiExtractorTest {
         val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
 
         val resultWithExclusion =
-            PoiExtractor.extractPoisForLeg(
-                pbfPath = "dummy.pbf",
-                legPoints = routePoints,
-                excludePoiIds = setOf("100"),
-            )
+            PoiExtractor()
+                .extractPoisForLeg(
+                    pbfPath = "dummy.pbf",
+                    legPoints = routePoints,
+                    excludePoiIds = setOf("100"),
+                )
 
         assertEquals(1, resultWithExclusion.size)
         assertEquals("101", resultWithExclusion[0].id)
 
-        PoiExtractor.clearInMemCache()
+        PoiCacheManager.clearInMemCache()
     }
 
     @Test
@@ -458,7 +471,8 @@ class PoiExtractorTest {
                 distanceFromRouteMeters = 100.0,
             )
 
-        val deduplicated = PoiExtractor.deduplicateThemeParks(listOf(coaster1, coaster2, cafe))
+        val deduplicated =
+            ThemeParkClustering.deduplicateThemeParks(listOf(coaster1, coaster2, cafe))
 
         assertEquals(2, deduplicated.size, "Expected 1 theme park representative + 1 cafe")
         assertTrue(deduplicated.any { it.id == "f1" })
@@ -494,7 +508,7 @@ class PoiExtractorTest {
                 distanceFromRouteMeters = 200.0,
             )
 
-        val deduplicated = PoiExtractor.deduplicateThemeParks(listOf(ride1, ride2))
+        val deduplicated = ThemeParkClustering.deduplicateThemeParks(listOf(ride1, ride2))
 
         assertEquals(1, deduplicated.size, "Expected proximity alone to cluster both rides")
         assertEquals("r2", deduplicated[0].id, "Closer ride (200m) should be the representative")
@@ -504,15 +518,18 @@ class PoiExtractorTest {
     fun `resolveCacheFilePath derives state-qualified cache paths`() {
         assertEquals(
             ".pois_cache/pois_cache_california-latest.json",
-            PoiExtractor.resolveCacheFilePath("data/california-latest.osm.pbf"),
+            PoiCacheManager.resolveCacheFilePath("data/california-latest.osm.pbf"),
         )
         assertEquals(
             ".pois_cache/pois_cache_texas-latest.json",
-            PoiExtractor.resolveCacheFilePath("data/texas-latest.osm.pbf"),
+            PoiCacheManager.resolveCacheFilePath("data/texas-latest.osm.pbf"),
         )
         assertEquals(
             "custom_cache.json",
-            PoiExtractor.resolveCacheFilePath("data/california-latest.osm.pbf", "custom_cache.json"),
+            PoiCacheManager.resolveCacheFilePath(
+                "data/california-latest.osm.pbf",
+                "custom_cache.json",
+            ),
         )
     }
 
@@ -536,7 +553,7 @@ class PoiExtractorTest {
         parkWay.setTag("name", "Yosemite Area Park")
         parkWay.setTag("leisure", "park")
 
-        val store = PoiExtractor.buildCacheFromElements(listOf(cafeNode, n1, n2, n3, n4, parkWay))
+        val store = OsmPbfReader.buildCacheFromElements(listOf(cafeNode, n1, n2, n3, n4, parkWay))
 
         val cafePoi = store.pois.find { it.name == "Cafe Blue" }
         val parkPoi = store.pois.find { it.name == "Yosemite Area Park" }
@@ -563,7 +580,7 @@ class PoiExtractorTest {
         partialWay.setTag("name", "Partial Park")
         partialWay.setTag("leisure", "park")
 
-        val store = PoiExtractor.buildCacheFromElements(listOf(n1, n2, partialWay))
+        val store = OsmPbfReader.buildCacheFromElements(listOf(n1, n2, partialWay))
 
         val parkPoi = store.pois.find { it.name == "Partial Park" }
         kotlin.test.assertNotNull(parkPoi, "Expected way POI for Partial Park")
@@ -607,7 +624,7 @@ class PoiExtractorTest {
             )
 
         val selected =
-            PoiExtractor.rankAndSelectPois(
+            PoiRanker.rankAndSelectPois(
                 candidates = listOf(p1, p2, p3),
                 limit = 3,
                 legPoints = legPoints,
@@ -671,7 +688,7 @@ class PoiExtractorTest {
             )
 
         val selected =
-            PoiExtractor.rankAndSelectPois(
+            PoiRanker.rankAndSelectPois(
                 candidates = listOf(p1, p2, p3, p4),
                 limit = 3,
                 legPoints = legPoints,
@@ -688,14 +705,6 @@ class PoiExtractorTest {
         assertFalse(
             selected.any { it.id == "2" },
             "P2 should be rejected despite being in Bucket 1 because it is too close to P1",
-        )
-    }
-
-    @Test
-    fun `companion object does not inherit from PoiExtractor`() {
-        assertFalse(
-            (PoiExtractor.Companion as Any) is PoiExtractor,
-            "PoiExtractor companion object should not inherit from PoiExtractor",
         )
     }
 }
