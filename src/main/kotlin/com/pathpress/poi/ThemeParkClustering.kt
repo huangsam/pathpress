@@ -1,5 +1,6 @@
 package com.pathpress.poi
 
+import com.pathpress.geo.GeoUtils
 import com.pathpress.model.POI
 
 /** Handles domain-matching and geographic clustering logic for theme park POI candidates. */
@@ -27,12 +28,7 @@ object ThemeParkClustering {
                 if (visited[j]) continue
                 val candidate = themeParkPois[j]
                 val dist =
-                    SpatialGridIndex.haversineMeters(
-                        current.lat,
-                        current.lng,
-                        candidate.lat,
-                        candidate.lng,
-                    )
+                    GeoUtils.haversineMeters(current.lat, current.lng, candidate.lat, candidate.lng)
                 val candidateDomain = getThemeParkDomain(candidate)
                 val sameDomain = currentDomain != null && currentDomain == candidateDomain
                 if (dist <= clusterRadiusMeters || sameDomain) {

@@ -1,7 +1,7 @@
 package com.pathpress.routing
 
+import com.pathpress.geo.GeoUtils
 import com.pathpress.model.LocationCoords
-import com.pathpress.poi.PoiExtractor
 import kotlin.math.cos
 import org.slf4j.LoggerFactory
 
@@ -45,12 +45,7 @@ object WaypointValidator {
         }
 
         val straightLineMeters =
-            PoiExtractor.haversineMeters(
-                startCoords.lat,
-                startCoords.lng,
-                endCoords.lat,
-                endCoords.lng,
-            )
+            GeoUtils.haversineMeters(startCoords.lat, startCoords.lng, endCoords.lat, endCoords.lng)
 
         // Buffer in meters (proportional to trip length, minimum 30 km for short legs)
         val bufferMeters = (straightLineMeters * bufferFraction).coerceAtLeast(30000.0)
@@ -81,7 +76,7 @@ object WaypointValidator {
             val inLngBounds = wp.lng in minLng..maxLng
 
             val distToSegmentMeters =
-                PoiExtractor.pointToSegmentDistanceMeters(
+                GeoUtils.pointToSegmentDistanceMeters(
                     wp.lat,
                     wp.lng,
                     startCoords.lat,

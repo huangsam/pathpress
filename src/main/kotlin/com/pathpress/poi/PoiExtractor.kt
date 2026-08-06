@@ -6,6 +6,7 @@ import com.graphhopper.reader.ReaderElement
 import com.graphhopper.reader.ReaderNode
 import com.graphhopper.reader.ReaderWay
 import com.pathpress.config.Config
+import com.pathpress.geo.GeoUtils
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.poi.rules.PoiEvaluationContext
@@ -93,7 +94,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             if (poi.id in excludePoiIds) continue
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
                 if (rulesEngine.isExcluded(poi, evalContext)) continue
-                val dist = SpatialGridIndex.minDistanceToPolyline(poi.lat, poi.lng, legPoints)
+                val dist = GeoUtils.minDistanceToPolyline(poi.lat, poi.lng, legPoints)
                 if (dist <= maxDistanceMeters) {
                     candidates.add(poi.copy(distanceFromRouteMeters = dist))
                 }
@@ -151,8 +152,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val matches = mutableListOf<TownInfo>()
         for (town in candidateTowns) {
             if (town.lat in minLat..maxLat && town.lng in minLng..maxLng) {
-                val dist =
-                    SpatialGridIndex.haversineMeters(targetLat, targetLng, town.lat, town.lng)
+                val dist = GeoUtils.haversineMeters(targetLat, targetLng, town.lat, town.lng)
                 if (dist <= maxDistanceMeters) {
                     matches.add(town)
                 }
@@ -163,7 +163,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         return matches.sortedWith(
             compareBy(
                 { placePriority[it.type] ?: 5 },
-                { SpatialGridIndex.haversineMeters(targetLat, targetLng, it.lat, it.lng) },
+                { GeoUtils.haversineMeters(targetLat, targetLng, it.lat, it.lng) },
             )
         )
     }
@@ -186,20 +186,18 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         val totalDist =
             routePoints
-                .zipWithNext { a, b ->
-                    SpatialGridIndex.haversineMeters(a.lat, a.lng, b.lat, b.lng)
-                }
+                .zipWithNext { a, b -> GeoUtils.haversineMeters(a.lat, a.lng, b.lat, b.lng) }
                 .sum()
                 .coerceAtLeast(1.0)
         val targetDistMeters = totalDist * targetProgressFraction
 
         var cumDist = 0.0
-        val targetPointCoords = mutableListOf<LocationCoords>()
+        var targetPointCoords = mutableListOf<LocationCoords>()
         var targetMilestoneCoords: LocationCoords? = null
 
         for (i in 0 until routePoints.size - 1) {
             val segDist =
-                SpatialGridIndex.haversineMeters(
+                GeoUtils.haversineMeters(
                     routePoints[i].lat,
                     routePoints[i].lng,
                     routePoints[i + 1].lat,
@@ -257,11 +255,10 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         val scoredList = mutableListOf<ScoredTown>()
         for (town in candidateTowns) {
-            val distToPolyline =
-                SpatialGridIndex.minDistanceToPolyline(town.lat, town.lng, sampledPoints)
+            val distToPolyline = GeoUtils.minDistanceToPolyline(town.lat, town.lng, sampledPoints)
             if (distToPolyline <= maxDistanceMeters) {
                 val distToTargetMilestone =
-                    SpatialGridIndex.haversineMeters(
+                    GeoUtils.haversineMeters(
                         targetMilestone.lat,
                         targetMilestone.lng,
                         town.lat,
@@ -282,9 +279,6 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
 
         return TownScorer.rankCandidateTowns(scoredList)
     }
-
-    open fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
-        SpatialGridIndex.haversineMeters(lat1, lon1, lat2, lon2)
 
     /**
      * Companion object providing static-style access to [PoiExtractor] methods.
@@ -450,24 +444,5 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
         ): Double =
             rulesEngine.calculatePoiQualityScore(poi, PoiEvaluationContext(userPrompt = userPrompt))
-
-        fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
-            SpatialGridIndex.haversineMeters(lat1, lon1, lat2, lon2)
-
-        internal fun minDistanceToPolyline(
-            lat: Double,
-            lng: Double,
-            polyline: List<LocationCoords>,
-        ): Double = SpatialGridIndex.minDistanceToPolyline(lat, lng, polyline)
-
-        internal fun pointToSegmentDistanceMeters(
-            pLat: Double,
-            pLng: Double,
-            aLat: Double,
-            aLng: Double,
-            bLat: Double,
-            bLng: Double,
-        ): Double =
-            SpatialGridIndex.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
     }
 }

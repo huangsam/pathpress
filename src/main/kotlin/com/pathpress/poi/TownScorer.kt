@@ -1,6 +1,7 @@
 package com.pathpress.poi
 
 import com.pathpress.config.Config
+import com.pathpress.geo.GeoUtils
 import com.pathpress.model.POI
 import kotlin.math.cos
 import kotlin.math.floor
@@ -100,7 +101,7 @@ object TownScorer {
         // Filter candidates by exact radial Haversine distance and categorize amenities
         for (poi in candidatePois) {
             if (poi.lat in minLat..maxLat && poi.lng in minLng..maxLng) {
-                val dist = PoiExtractor.haversineMeters(town.lat, town.lng, poi.lat, poi.lng)
+                val dist = GeoUtils.haversineMeters(town.lat, town.lng, poi.lat, poi.lng)
                 if (dist <= maxDistMeters) {
                     val pType = poi.type.lowercase()
                     val tourismTag = poi.tags["tourism"]?.lowercase()

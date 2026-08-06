@@ -1,6 +1,7 @@
 package com.pathpress.routing
 
 import com.graphhopper.ResponsePath
+import com.pathpress.geo.GeoUtils
 import com.pathpress.model.LocationCoords
 import com.pathpress.poi.PoiExtractor
 import org.slf4j.LoggerFactory
@@ -35,7 +36,7 @@ class RoutePacer(
         for (i in 0 until allCoords.size - 1) {
             dCum[i + 1] =
                 dCum[i] +
-                    poiExtractor.haversineMeters(
+                    GeoUtils.haversineMeters(
                         allCoords[i].lat,
                         allCoords[i].lng,
                         allCoords[i + 1].lat,
@@ -161,7 +162,7 @@ class RoutePacer(
 
             for (i in 0 until pointsList.size() - 1) {
                 val segDist =
-                    poiExtractor.haversineMeters(
+                    GeoUtils.haversineMeters(
                         pointsList.getLat(i),
                         pointsList.getLon(i),
                         pointsList.getLat(i + 1),

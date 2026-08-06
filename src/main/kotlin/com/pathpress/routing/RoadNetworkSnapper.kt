@@ -4,6 +4,7 @@ import com.graphhopper.GraphHopper
 import com.graphhopper.routing.util.DefaultSnapFilter
 import com.graphhopper.routing.util.EdgeFilter
 import com.graphhopper.util.PMap
+import com.pathpress.geo.GeoUtils
 import com.pathpress.model.LocationCoords
 import com.pathpress.poi.PoiExtractor
 import org.slf4j.LoggerFactory
@@ -66,7 +67,7 @@ class RoadNetworkSnapper(
             val qr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
             if (qr.isValid && qr.snappedPoint != null) {
                 val snapDist =
-                    poiExtractor.haversineMeters(lat, lng, qr.snappedPoint.lat, qr.snappedPoint.lon)
+                    GeoUtils.haversineMeters(lat, lng, qr.snappedPoint.lat, qr.snappedPoint.lon)
                 SnapResult(
                     coords = LocationCoords(qr.snappedPoint.lat, qr.snappedPoint.lon),
                     snapDistanceMeters = snapDist,
@@ -90,7 +91,7 @@ class RoadNetworkSnapper(
                             LocationCoords(nearbyTown.lat, nearbyTown.lng)
                         }
                     val snapDist =
-                        poiExtractor.haversineMeters(lat, lng, snapCoords.lat, snapCoords.lng)
+                        GeoUtils.haversineMeters(lat, lng, snapCoords.lat, snapCoords.lng)
                     SnapResult(
                         coords = snapCoords,
                         snapDistanceMeters = snapDist,
