@@ -131,8 +131,5 @@ data class Config(
                 diningWeight = env["TOWN_DINING_WEIGHT"]?.toIntOrNull() ?: DEFAULT_DINING_WEIGHT,
             )
         }
-
-        /** Default global configuration instance. */
-        @Volatile var current: Config = fromEnv()
     }
 }
