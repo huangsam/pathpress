@@ -72,4 +72,26 @@ class WaypointValidatorTest {
         assertFalse(result.isValid, "Fresno should be rejected for SJ->Monterey trip")
         assertEquals(1, result.rejectedWaypoints.size)
     }
+
+    @Test
+    fun testOutOfOrderWaypoints_SortedMonotonically() {
+        val santaBarbara = LocationCoords(34.4208, -119.6982, "Santa Barbara, CA")
+        val sanLuisObispo = LocationCoords(35.2828, -120.6596, "San Luis Obispo, CA")
+
+        // Pass Santa Barbara BEFORE San Luis Obispo (out of order for Southbound SJ -> SD trip)
+        val result =
+            WaypointValidator.validateWaypoints(
+                listOf(santaBarbara, sanLuisObispo, monterey),
+                sanJose,
+                sanDiego,
+            )
+
+        assertTrue(result.isValid)
+        assertEquals(3, result.validWaypoints.size)
+
+        // Expected monotonic sequence from SJ -> SD: Monterey -> San Luis Obispo -> Santa Barbara
+        assertEquals("Monterey, CA", result.validWaypoints[0].name)
+        assertEquals("San Luis Obispo, CA", result.validWaypoints[1].name)
+        assertEquals("Santa Barbara, CA", result.validWaypoints[2].name)
+    }
 }

@@ -104,6 +104,24 @@ object WaypointValidator {
             }
         }
 
+        // Sort waypoints monotonically along origin->destination vector to prevent backtracking
+        val sortedValid = valid.sortedBy { wp ->
+            GeoUtils.segmentProjectionParam(
+                wp.lat,
+                wp.lng,
+                startCoords.lat,
+                startCoords.lng,
+                endCoords.lat,
+                endCoords.lng,
+            )
+        }
+
+        if (valid != sortedValid) {
+            logger.info(
+                "Reordered ${sortedValid.size} waypoint(s) into monotonic travel sequence along trip corridor."
+            )
+        }
+
         val allValid = rejected.isEmpty()
         val reason =
             if (!allValid) {
@@ -113,7 +131,7 @@ object WaypointValidator {
 
         return WaypointValidationResult(
             isValid = allValid,
-            validWaypoints = valid,
+            validWaypoints = sortedValid,
             rejectedWaypoints = rejected,
             reason = reason,
         )
