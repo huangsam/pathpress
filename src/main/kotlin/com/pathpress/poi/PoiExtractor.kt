@@ -184,7 +184,7 @@ open class PoiExtractor(val config: Config = Config()) {
     internal fun getThemeParkDomain(poi: POI): String? = ThemeParkClustering.getThemeParkDomain(poi)
 
     /** Find towns/cities near target coordinates along a multi-day route. */
-    fun findNearbyTowns(
+    open fun findNearbyTowns(
         pbfPath: String,
         targetLat: Double,
         targetLng: Double,
@@ -235,7 +235,7 @@ open class PoiExtractor(val config: Config = Config()) {
     }
 
     /** Find and score candidate towns near a target progress milestone along a route polyline. */
-    fun findCandidateTownsAlongRoute(
+    open fun findCandidateTownsAlongRoute(
         pbfPath: String,
         routePoints: List<LocationCoords>,
         targetProgressFraction: Double,
@@ -372,7 +372,7 @@ open class PoiExtractor(val config: Config = Config()) {
     ): Double =
         rulesEngine.calculatePoiQualityScore(poi, PoiEvaluationContext(userPrompt = userPrompt))
 
-    fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
+    open fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
         SpatialGridIndex.haversineMeters(lat1, lon1, lat2, lon2)
 
     internal fun minDistanceToPolyline(

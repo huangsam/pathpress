@@ -39,6 +39,7 @@ data class TripPlannerResult(
 /** Pure application service that orchestrates the trip planning execution pipeline. */
 class TripPlannerOrchestrator(
     private val config: Config = Config(),
+    private val geocoder: (String) -> GeocodedLocation? = { Geocoder.geocode(it) },
     private val routeCalculatorFactory:
         (graphPath: String, pbfPath: String, config: Config) -> RouteCalculator =
         { graphPath, pbfPath, cfg ->
@@ -61,12 +62,12 @@ class TripPlannerOrchestrator(
         // 1. Geocode start and end locations
         logger.info("Geocoding locations...")
         val startGeo =
-            Geocoder.geocode(request.startLocation)
+            geocoder(request.startLocation)
                 ?: throw com.github.ajalt.clikt.core.UsageError(
                     "Could not geocode start location '${request.startLocation}'"
                 )
         val endGeo =
-            Geocoder.geocode(request.endLocation)
+            geocoder(request.endLocation)
                 ?: throw com.github.ajalt.clikt.core.UsageError(
                     "Could not geocode end location '${request.endLocation}'"
                 )
@@ -117,6 +118,7 @@ class TripPlannerOrchestrator(
                 days = request.days,
                 prompt = request.prompt,
                 llm = llm,
+                geocoder = geocoder,
             )
         var resolvedWaypoints = resolution.waypoints.toMutableList()
         tripPlan = resolution.tripPlan
@@ -171,6 +173,7 @@ internal fun resolveAndValidateWaypoints(
     days: Int,
     prompt: String?,
     llm: LlmProvider,
+    geocoder: (String) -> GeocodedLocation? = { Geocoder.geocode(it) },
 ): WaypointResolution {
     val logger = LoggerFactory.getLogger("com.pathpress.Main")
 
@@ -182,7 +185,7 @@ internal fun resolveAndValidateWaypoints(
                 } else if (!wp.name.isNullOrBlank()) {
                     try {
                         logger.info("Geocoding intermediate waypoint '${wp.name}'...")
-                        val geo = Geocoder.geocode(wp.name)
+                        val geo = geocoder(wp.name)
                         if (geo != null) {
                             LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
                         } else {
