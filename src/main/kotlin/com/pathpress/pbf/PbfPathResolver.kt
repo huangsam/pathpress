@@ -16,13 +16,16 @@ object PbfPathResolver {
      * Resolves a PBF file path with fallback logic.
      *
      * @param requestedPath The user-provided or default PBF path
-     * @return An absolute path to the PBF file, or the original path if not found
+     * @param baseDir Base working directory for checking relative paths
+     * @return Path to the resolved PBF file, or the original requested path if not found
      */
-    fun resolve(requestedPath: String): String {
+    fun resolve(requestedPath: String, baseDir: File = File(".")): String {
         val file = File(requestedPath)
-        if (file.exists()) return requestedPath
+        if (file.isAbsolute && file.exists()) return requestedPath
+        val relativeToWorkingDir = File(baseDir, requestedPath)
+        if (relativeToWorkingDir.exists()) return relativeToWorkingDir.path
 
-        val dataFile = File("data", requestedPath)
+        val dataFile = File(File(baseDir, "data"), requestedPath)
         if (dataFile.exists()) return dataFile.path
 
         return requestedPath
@@ -36,22 +39,28 @@ object PbfPathResolver {
      * 2. `data/california-latest.osm.pbf` if it exists
      * 3. First `.pbf` file in the `data/` directory
      * 4. `california-latest.osm.pbf` in working directory root
-     * 5. `data/california-latest.osm.pbf` as a最后 resort
+     * 5. `data/california-latest.osm.pbf` as a last resort
+     *
+     * @param baseDir Base working directory for checking fallback paths
+     * @param envLookup Function to query environment variables
      */
-    fun defaultPath(): String {
-        val envPath = System.getenv("PATHPRESS_PBF")
+    fun defaultPath(
+        baseDir: File = File("."),
+        envLookup: (String) -> String? = { System.getenv(it) },
+    ): String {
+        val envPath = envLookup("PATHPRESS_PBF")
         if (!envPath.isNullOrBlank()) return envPath
 
-        val defaultDataPbf = File("data", "california-latest.osm.pbf")
+        val defaultDataPbf = File(File(baseDir, "data"), "california-latest.osm.pbf")
         if (defaultDataPbf.exists()) return defaultDataPbf.path
 
-        val dataDir = File("data")
+        val dataDir = File(baseDir, "data")
         if (dataDir.exists() && dataDir.isDirectory) {
             val pbfFile = dataDir.listFiles()?.firstOrNull { it.name.endsWith(".pbf") }
             if (pbfFile != null) return pbfFile.path
         }
 
-        val rootPbf = File("california-latest.osm.pbf")
+        val rootPbf = File(baseDir, "california-latest.osm.pbf")
         if (rootPbf.exists()) return rootPbf.name
 
         return "data/california-latest.osm.pbf"
