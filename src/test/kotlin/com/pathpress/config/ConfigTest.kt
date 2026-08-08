@@ -54,7 +54,6 @@ class ConfigTest {
     fun `fromEnv falls back to defaults when env map is empty or invalid`() {
         val invalidEnv =
             mapOf(
-                "GRID_CELL_SIZE_DEG" to "invalid-double",
                 "DEFAULT_POIS_PER_LEG" to "not-an-int",
                 "HTTP_LLM_TIMEOUT_SECONDS" to "nan",
                 "GEOCODER_TIMEOUT_SECONDS" to "foo",

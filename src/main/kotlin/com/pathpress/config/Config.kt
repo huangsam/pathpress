@@ -5,10 +5,9 @@ import java.time.Duration
 /**
  * Centralized application configuration.
  *
- * Provides parameters for spatial grid partitioning, town scoring algorithms, LLM model defaults,
- * and network timeouts, with support for environment variable overrides via [fromEnv].
+ * Provides parameters for town scoring algorithms, LLM model defaults, and network timeouts, with
+ * support for environment variable overrides via [fromEnv].
  *
- * @property gridCellSizeDeg Spatial indexing cell dimension in degrees.
  * @property defaultPoisPerLeg Maximum number of POIs selected per leg segment.
  * @property defaultGeminiModel Default model identifier for Google Gemini API calls.
  * @property defaultClaudeModel Default model identifier for Anthropic Claude API calls.

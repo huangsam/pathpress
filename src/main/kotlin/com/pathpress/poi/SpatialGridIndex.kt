@@ -13,6 +13,12 @@ import kotlin.math.floor
  */
 data class GridCell(val latIndex: Int, val lngIndex: Int) {
     companion object {
+        /**
+         * Spatial grid cell size in degrees.
+         *
+         * Deliberately a constant rather than a `Config` field. Index buckets and query cells must
+         * be derived from the same value.
+         */
         const val GRID_CELL_SIZE_DEG: Double = 0.05
 
         /** Map lat/lng coordinates to a discrete [GridCell] bucket. */
