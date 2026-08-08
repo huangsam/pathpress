@@ -111,15 +111,16 @@ def check_prerequisites(state: str, jar_path: str, custom_pbf: str | None = None
         if not os.path.exists(pbf_path) and os.path.exists(os.path.join(REPO_ROOT, pbf_filename)):
             pbf_path = os.path.join(REPO_ROOT, pbf_filename)
 
-        print(f"{Colors.YELLOW}[!]{Colors.RESET} OSM PBF file missing at: {pbf_path}")
-        print(f"    Attempting to download via python3 scripts/download_pbf.py {state} ...")
-        downloader = os.path.join(REPO_ROOT, "scripts", "download_pbf.py")
-        dl_res = subprocess.run([sys.executable, downloader, state], cwd=REPO_ROOT, capture_output=True, text=True)
-        if dl_res.returncode != 0 or not os.path.exists(pbf_path):
-            print(f"{Colors.RED}[ERROR] Failed to download OSM PBF file for state '{state}':{Colors.RESET}")
-            print(dl_res.stderr or dl_res.stdout)
-            sys.exit(1)
-        print(f"{Colors.GREEN}[✓]{Colors.RESET} {state.capitalize()} OSM PBF file downloaded successfully.")
+        if not os.path.exists(pbf_path):
+            print(f"{Colors.YELLOW}[!]{Colors.RESET} OSM PBF file missing at: {pbf_path}")
+            print(f"    Attempting to download via python3 scripts/download_pbf.py {state} ...")
+            downloader = os.path.join(REPO_ROOT, "scripts", "download_pbf.py")
+            dl_res = subprocess.run([sys.executable, downloader, state], cwd=REPO_ROOT, capture_output=True, text=True)
+            if dl_res.returncode != 0 or not os.path.exists(pbf_path):
+                print(f"{Colors.RED}[ERROR] Failed to download OSM PBF file for state '{state}':{Colors.RESET}")
+                print(dl_res.stderr or dl_res.stdout)
+                sys.exit(1)
+            print(f"{Colors.GREEN}[✓]{Colors.RESET} {state.capitalize()} OSM PBF file downloaded successfully.")
 
     pbf_size_mb = os.path.getsize(pbf_path) / (1024 * 1024)
     print(f"{Colors.GREEN}[✓]{Colors.RESET} OSM PBF file verified ({pbf_size_mb:.1f} MB) -> {Colors.DIM}{pbf_path}{Colors.RESET}")
