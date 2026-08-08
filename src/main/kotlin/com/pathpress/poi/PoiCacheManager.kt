@@ -1,7 +1,5 @@
 package com.pathpress.poi
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.pathpress.model.POI
 import java.io.File
 import org.slf4j.LoggerFactory
@@ -28,118 +26,88 @@ data class PoiCacheStore(
 }
 
 /**
- * Handles cache path resolution under `.pois_cache/`, Jackson JSON serialization/deserialization,
- * timestamp staleness validation, and thread-safe in-memory cache lifecycle management.
+ * Manages 2-level hierarchical 1.0° × 1.0° geographic tile caching under `.pois_cache/tiles/`.
+ *
+ * Streams POIs and towns directly from [OsmPbfReader] into tile shards, deduplicating POIs
+ * idempotently by OSM ID.
  */
 object PoiCacheManager {
     private val logger = LoggerFactory.getLogger(PoiCacheManager::class.java)
-    private val mapper = ObjectMapper().registerKotlinModule()
 
-    private var cachedStore: PoiCacheStore? = null
-    private var cachedPbfPath: String? = null
+    private val ingestedPbfs = mutableSetOf<String>()
 
-    /** Clear in-memory cache reference (useful for testing). */
+    /** Clear in-memory cache reference and ingestion history (useful for testing). */
     fun clearInMemCache() {
-        synchronized(this) {
-            cachedStore = null
-            cachedPbfPath = null
-        }
+        synchronized(this) { ingestedPbfs.clear() }
     }
 
     /**
-     * Resolves a PBF-specific cache file path under `.pois_cache/` (e.g.
-     * `.pois_cache/pois_cache_california-latest.json`). If [customCachePath] is explicitly passed,
-     * it is returned directly.
-     */
-    fun resolveCacheFilePath(pbfPath: String, customCachePath: String? = null): String {
-        if (!customCachePath.isNullOrBlank()) return customCachePath
-        val fileName = File(pbfPath).name
-        val baseName =
-            fileName
-                .removeSuffix(".osm.pbf")
-                .removeSuffix(".pbf")
-                .replace(Regex("[^a-zA-Z0-9_-]"), "_")
-                .ifBlank { "default" }
-        return ".pois_cache/pois_cache_$baseName.json"
-    }
-
-    /**
-     * Retrieve or build the [PoiCacheStore].
-     *
-     * If a state-qualified cache file (e.g. `.pois_cache/pois_cache_california-latest.json`) exists
-     * and is up to date, it is loaded into memory (~15ms). Otherwise, a one-time single-pass scan
-     * over the PBF file is executed to generate it.
+     * Ingests an OSM PBF file by streaming its nodes and ways directly into 1.0° × 1.0° tile shards
+     * in [baseDir], deduplicating by OSM ID.
      */
     @Synchronized
-    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore {
-        val resolvedCachePath = resolveCacheFilePath(pbfPath, cacheFilePath)
-        if (cachedStore != null && cachedPbfPath == pbfPath) {
-            return cachedStore!!
-        }
+    fun ingestPbf(pbfFile: File, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR): Boolean {
+        if (!pbfFile.exists()) return false
 
-        val cacheFile = File(resolvedCachePath)
-        val pbfFile = File(pbfPath)
-
-        if (
-            cacheFile.exists() &&
-                (!pbfFile.exists() || cacheFile.lastModified() >= pbfFile.lastModified())
-        ) {
-            try {
-                val store = mapper.readValue(cacheFile, PoiCacheStore::class.java)
-                cachedStore = store
-                cachedPbfPath = pbfPath
-                logger.info(
-                    "Loaded POI cache from {} ({} POIs, {} towns)",
-                    resolvedCachePath,
-                    store.pois.size,
-                    store.towns.size,
-                )
-                return store
-            } catch (e: Exception) {
-                logger.warn(
-                    "Failed to load POI cache from {}: {}. Rebuilding...",
-                    resolvedCachePath,
-                    e.message,
-                    e,
-                )
-            }
-        }
-
-        if (!pbfFile.exists()) {
-            return PoiCacheStore()
-        }
-
-        logger.info("Building POI cache from {}...", pbfPath)
+        logger.info(
+            "Ingesting PBF file {} into geographic tile shards under {}...",
+            pbfFile.path,
+            baseDir.path,
+        )
         val startTime = System.currentTimeMillis()
         val pois = mutableListOf<POI>()
         val towns = mutableListOf<TownInfo>()
 
         val readSuccess = OsmPbfReader.readPbfFile(pbfFile, pois, towns)
-
-        val store = PoiCacheStore(pois = pois, towns = towns)
         if (readSuccess) {
-            try {
-                cacheFile.parentFile?.mkdirs()
-                mapper.writeValue(cacheFile, store)
-                val elapsed = System.currentTimeMillis() - startTime
-                logger.info(
-                    "Saved POI cache to {} with {} POIs and {} towns in {} ms",
-                    resolvedCachePath,
-                    pois.size,
-                    towns.size,
-                    elapsed,
-                )
-            } catch (e: Exception) {
-                logger.warn("Failed to write POI cache to {}: {}", resolvedCachePath, e.message, e)
-            }
-
-            cachedStore = store
-            cachedPbfPath = pbfPath
-        } else {
-            logger.warn(
-                "POI cache construction encountered errors. Skipping cache persistence to prevent corrupting disk cache with partial data."
+            val writtenFiles = SpatialTileStorage.saveTiles(pois, towns, baseDir)
+            val elapsed = System.currentTimeMillis() - startTime
+            logger.info(
+                "Ingested {} POIs and {} towns into {} tile file(s) under {} in {} ms",
+                pois.size,
+                towns.size,
+                writtenFiles.size,
+                baseDir.path,
+                elapsed,
             )
+            ingestedPbfs.add(pbfFile.absolutePath)
+            return true
+        } else {
+            logger.warn("PBF reading encountered errors. Ingestion to tile storage aborted.")
+            return false
         }
-        return store
+    }
+
+    /** Ensures that [pbfPath] has been ingested into [baseDir] if the PBF file exists. */
+    fun ensurePbfIngested(pbfPath: String, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR) {
+        val pbfFile = File(pbfPath)
+        if (pbfFile.exists() && !ingestedPbfs.contains(pbfFile.absolutePath)) {
+            ingestPbf(pbfFile, baseDir)
+        }
+    }
+
+    /**
+     * Retrieves a [PoiCacheStore] scoped to the bounding box [minLat..maxLat, minLng..maxLng] by
+     * loading only intersecting 1.0° × 1.0° geographic tile shards from [baseDir].
+     */
+    fun getCacheForBoundingBox(
+        pbfPath: String,
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double,
+        baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
+    ): PoiCacheStore {
+        ensurePbfIngested(pbfPath, baseDir)
+        return SpatialTileStorage.loadIntersectingStore(minLat, maxLat, minLng, maxLng, baseDir)
+    }
+
+    /** Retrieve or build the full [PoiCacheStore] across all available tiles in [baseDir]. */
+    fun getOrBuildCache(
+        pbfPath: String,
+        baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
+    ): PoiCacheStore {
+        ensurePbfIngested(pbfPath, baseDir)
+        return SpatialTileStorage.loadAllTiles(baseDir)
     }
 }

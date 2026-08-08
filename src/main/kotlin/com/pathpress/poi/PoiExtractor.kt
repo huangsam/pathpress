@@ -6,6 +6,7 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.poi.rules.PoiEvaluationContext
 import com.pathpress.poi.rules.PoiRulesEngine
+import java.io.File
 import kotlin.math.cos
 
 /** Container for town location attributes parsed from OpenStreetMap nodes. */
@@ -17,20 +18,36 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  *
  * Delegates low-level tasks to specialized components:
  * - [OsmPbfReader]: 2-pass GraphHopper PBF streaming.
- * - [PoiCacheManager]: Jackson JSON disk cache & in-memory cache lifecycle.
- * - [SpatialGridIndex]: Discrete spatial grid cell index and geometric polyline math.
+ * - [SpatialTileStorage]: 2-level 1.0° × 1.0° geographic tile sharding and bounding-box queries.
+ * - [PoiCacheManager]: Ingestion coordination and lifecycle management.
+ * - [SpatialGridIndex]: Discrete spatial grid cell index (0.05°) and geometric polyline math.
  * - [PoiRanker]: Segment-based POI ranking, scoring, and type diversity selection.
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
-open class PoiExtractor(val config: Config = Config.fromEnv()) {
-    /**
-     * Retrieve or build the [PoiCacheStore].
-     *
-     * Delegates to singleton [PoiCacheManager], which manages all cache lifecycle and prevents
-     * duplicate in-memory state tracking across multiple [PoiExtractor] instances.
-     */
-    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore =
-        PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath)
+open class PoiExtractor(
+    val config: Config = Config.fromEnv(),
+    val baseTilesDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
+) {
+    /** Retrieve or build the full [PoiCacheStore]. */
+    fun getOrBuildCache(pbfPath: String): PoiCacheStore =
+        PoiCacheManager.getOrBuildCache(pbfPath, baseTilesDir)
+
+    /** Retrieve a [PoiCacheStore] scoped to the bounding box [minLat..maxLat, minLng..maxLng]. */
+    fun getCacheForBoundingBox(
+        pbfPath: String,
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double,
+    ): PoiCacheStore =
+        PoiCacheManager.getCacheForBoundingBox(
+            pbfPath,
+            minLat,
+            maxLat,
+            minLng,
+            maxLng,
+            baseTilesDir,
+        )
 
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
@@ -48,7 +65,16 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             return emptyList()
         }
 
-        val cacheStore = getOrBuildCache(pbfPath)
+        val bufferLatDeg = (maxDistanceMeters / 111000.0) + 0.02
+        val refLat = legPoints.map { it.lat }.average()
+        val cosRefLat = cos(Math.toRadians(refLat)).coerceAtLeast(0.01)
+        val bufferLngDeg = (maxDistanceMeters / (111000.0 * cosRefLat)) + 0.02
+        val minLat = legPoints.minOf { it.lat } - bufferLatDeg
+        val maxLat = legPoints.maxOf { it.lat } + bufferLatDeg
+        val minLng = legPoints.minOf { it.lng } - bufferLngDeg
+        val maxLng = legPoints.maxOf { it.lng } + bufferLngDeg
+
+        val cacheStore = getCacheForBoundingBox(pbfPath, minLat, maxLat, minLng, maxLng)
         if (cacheStore.pois.isEmpty()) {
             return emptyList()
         }
@@ -59,15 +85,6 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
                 excludePeaks = excludePeaks,
                 excludeIndustrial = excludeIndustrial,
             )
-
-        val bufferLatDeg = (maxDistanceMeters / 111000.0) + 0.02
-        val refLat = legPoints.map { it.lat }.average()
-        val cosRefLat = cos(Math.toRadians(refLat)).coerceAtLeast(0.01)
-        val bufferLngDeg = (maxDistanceMeters / (111000.0 * cosRefLat)) + 0.02
-        val minLat = legPoints.minOf { it.lat } - bufferLatDeg
-        val maxLat = legPoints.maxOf { it.lat } + bufferLatDeg
-        val minLng = legPoints.minOf { it.lng } - bufferLngDeg
-        val maxLng = legPoints.maxOf { it.lng } + bufferLngDeg
 
         val candidatePois =
             SpatialGridIndex.queryCandidatePois(cacheStore, minLat, maxLat, minLng, maxLng)
@@ -107,9 +124,6 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         targetLng: Double,
         maxDistanceMeters: Double = 35000.0,
     ): List<TownInfo> {
-        val cacheStore = getOrBuildCache(pbfPath)
-        if (cacheStore.towns.isEmpty()) return emptyList()
-
         val bufferLatDeg = maxDistanceMeters / 111000.0
         val cosTargetLat = cos(Math.toRadians(targetLat)).coerceAtLeast(0.01)
         val bufferLngDeg = maxDistanceMeters / (111000.0 * cosTargetLat)
@@ -117,6 +131,9 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val maxLat = targetLat + bufferLatDeg
         val minLng = targetLng - bufferLngDeg
         val maxLng = targetLng + bufferLngDeg
+
+        val cacheStore = getCacheForBoundingBox(pbfPath, minLat, maxLat, minLng, maxLng)
+        if (cacheStore.towns.isEmpty()) return emptyList()
 
         val candidateTowns =
             SpatialGridIndex.queryCandidateTowns(cacheStore, minLat, maxLat, minLng, maxLng)
@@ -150,8 +167,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         userPrompt: String? = null,
         radiusMiles: Double = config.townScoringRadiusMiles,
     ): List<ScoredTown> {
-        val cacheStore = getOrBuildCache(pbfPath)
-        if (cacheStore.towns.isEmpty() || routePoints.size < 2) return emptyList()
+        if (routePoints.size < 2) return emptyList()
 
         val minProgress = (targetProgressFraction - windowFraction).coerceIn(0.0, 1.0)
         val maxProgress = (targetProgressFraction + windowFraction).coerceIn(0.0, 1.0)
@@ -198,19 +214,30 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val targetMilestone = targetMilestoneCoords ?: routePoints[routePoints.size / 2]
         val sampledPoints = targetPointCoords.ifEmpty { routePoints }
 
-        val candidateTowns = mutableSetOf<TownInfo>()
         val bufferLatDeg = maxDistanceMeters / 111000.0
+        val minLat = sampledPoints.minOf { it.lat } - bufferLatDeg
+        val maxLat = sampledPoints.maxOf { it.lat } + bufferLatDeg
+        val refLat = sampledPoints.map { it.lat }.average()
+        val cosRefLat = cos(Math.toRadians(refLat)).coerceAtLeast(0.01)
+        val bufferLngDeg = maxDistanceMeters / (111000.0 * cosRefLat)
+        val minLng = sampledPoints.minOf { it.lng } - bufferLngDeg
+        val maxLng = sampledPoints.maxOf { it.lng } + bufferLngDeg
+
+        val cacheStore = getCacheForBoundingBox(pbfPath, minLat, maxLat, minLng, maxLng)
+        if (cacheStore.towns.isEmpty()) return emptyList()
+
+        val candidateTowns = mutableSetOf<TownInfo>()
 
         for ((lat, lng) in sampledPoints) {
             val cosLat = cos(Math.toRadians(lat)).coerceAtLeast(0.01)
-            val bufferLngDeg = maxDistanceMeters / (111000.0 * cosLat)
-            val minLat = lat - bufferLatDeg
-            val maxLat = lat + bufferLatDeg
-            val minLng = lng - bufferLngDeg
-            val maxLng = lng + bufferLngDeg
+            val pointBufferLngDeg = maxDistanceMeters / (111000.0 * cosLat)
+            val pMinLat = lat - bufferLatDeg
+            val pMaxLat = lat + bufferLatDeg
+            val pMinLng = lng - pointBufferLngDeg
+            val pMaxLng = lng + pointBufferLngDeg
 
             candidateTowns.addAll(
-                SpatialGridIndex.queryCandidateTowns(cacheStore, minLat, maxLat, minLng, maxLng)
+                SpatialGridIndex.queryCandidateTowns(cacheStore, pMinLat, pMaxLat, pMinLng, pMaxLng)
             )
         }
 

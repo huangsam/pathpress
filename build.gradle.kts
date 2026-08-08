@@ -71,6 +71,10 @@ tasks.test {
             excludeTags("network")
         }
     }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = false
+    }
 }
 
 tasks.shadowJar {

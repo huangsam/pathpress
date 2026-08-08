@@ -1,7 +1,5 @@
 package com.pathpress.poi
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.poi.rules.PersonaExclusionFilterRule
@@ -103,18 +101,15 @@ class PoiExtractorTest {
     }
 
     @Test
-    fun `getOrBuildCache creates and loads JSON cache file`() {
+    fun `getOrBuildCache creates and loads tile cache`() {
         PoiCacheManager.clearInMemCache()
-        val tempCacheFile = java.io.File.createTempFile("test_pois_cache", ".json")
-        tempCacheFile.deleteOnExit()
+        val tempTilesDir = java.nio.file.Files.createTempDirectory("test_pois_tiles").toFile()
+        tempTilesDir.deleteOnExit()
 
         // Call getOrBuildCache with non-existent pbfPath so it creates empty PoiCacheStore if no
         // pbf
         val store =
-            PoiCacheManager.getOrBuildCache(
-                pbfPath = "non_existent.pbf",
-                cacheFilePath = tempCacheFile.absolutePath,
-            )
+            PoiCacheManager.getOrBuildCache(pbfPath = "non_existent.pbf", baseDir = tempTilesDir)
         assertEquals(0, store.pois.size)
         assertEquals(0, store.towns.size)
 
@@ -362,18 +357,22 @@ class PoiExtractorTest {
                 type = "gallery",
             )
 
-        // Populate cache store into PoiCacheManager via temporary cache file
+        // Populate cache store into SpatialTileStorage via temporary tile directory
         PoiCacheManager.clearInMemCache()
-        val dummyStore = PoiCacheStore(pois = listOf(poi1, poi2))
-        val tempCacheFile = File.createTempFile("dummy_pois_cache", ".json")
-        tempCacheFile.deleteOnExit()
-        ObjectMapper().registerKotlinModule().writeValue(tempCacheFile, dummyStore)
-        PoiCacheManager.getOrBuildCache("dummy.pbf", tempCacheFile.absolutePath)
+        val tempTilesDir = java.nio.file.Files.createTempDirectory("dummy_pois_tiles").toFile()
+        tempTilesDir.deleteOnExit()
+        SpatialTileStorage.writeTile(
+            latBucket = 37,
+            lngBucket = -123,
+            pois = listOf(poi1, poi2),
+            towns = emptyList(),
+            baseDir = tempTilesDir,
+        )
 
         val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
 
         val resultWithExclusion =
-            PoiExtractor()
+            PoiExtractor(baseTilesDir = tempTilesDir)
                 .extractPoisForLeg(
                     pbfPath = "dummy.pbf",
                     legPoints = routePoints,
@@ -471,21 +470,15 @@ class PoiExtractorTest {
     }
 
     @Test
-    fun `resolveCacheFilePath derives state-qualified cache paths`() {
+    fun `SpatialTileStorage resolves 2-level hierarchical shard paths`() {
+        val baseDir = File(".pois_cache/tiles")
         assertEquals(
-            ".pois_cache/pois_cache_california-latest.json",
-            PoiCacheManager.resolveCacheFilePath("data/california-latest.osm.pbf"),
+            File(File(baseDir, "37"), "-123.json").path,
+            SpatialTileStorage.getTileFile(37.77, -122.41, baseDir).path,
         )
         assertEquals(
-            ".pois_cache/pois_cache_texas-latest.json",
-            PoiCacheManager.resolveCacheFilePath("data/texas-latest.osm.pbf"),
-        )
-        assertEquals(
-            "custom_cache.json",
-            PoiCacheManager.resolveCacheFilePath(
-                "data/california-latest.osm.pbf",
-                "custom_cache.json",
-            ),
+            File(File(baseDir, "30"), "-98.json").path,
+            SpatialTileStorage.getTileFile(30.26, -97.74, baseDir).path,
         )
     }
 
