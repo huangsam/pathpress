@@ -48,21 +48,6 @@ object PoiRanker {
         )
     }
 
-    fun rankAndSelectPois(
-        candidates: List<POI>,
-        limit: Int,
-        legPoints: List<LocationCoords>,
-        userPrompt: String?,
-        rulesEngine: PoiRulesEngine = PoiRulesEngine.default,
-    ): List<POI> =
-        rankAndSelectPois(
-            candidates,
-            limit,
-            legPoints,
-            PoiEvaluationContext(userPrompt = userPrompt),
-            rulesEngine,
-        )
-
     private fun selectBySegments(
         candidates: List<POI>,
         limit: Int,

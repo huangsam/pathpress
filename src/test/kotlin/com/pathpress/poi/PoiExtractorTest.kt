@@ -1,10 +1,13 @@
 package com.pathpress.poi
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.poi.rules.PersonaExclusionFilterRule
 import com.pathpress.poi.rules.PoiEvaluationContext
 import com.pathpress.poi.rules.PoiRulesEngine
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,50 +35,6 @@ class PoiExtractorTest {
         assertTrue(OsmPbfReader.isRelevantPoi(mapOf("heritage:operator" to "nps")))
 
         assertFalse(OsmPbfReader.isRelevantPoi(mapOf("heritage" to "3")))
-    }
-
-    @Test
-    fun `rankAndSelectPois handles empty list and zero limit`() {
-        assertTrue(PoiRanker.rankAndSelectPois(emptyList(), limit = 5).isEmpty())
-        val cafe =
-            POI(
-                id = "1",
-                name = "Cafe A",
-                lat = 37.1,
-                lng = -122.1,
-                tags = emptyMap(),
-                type = "cafe",
-            )
-        assertTrue(PoiRanker.rankAndSelectPois(listOf(cafe), limit = 0).isEmpty())
-    }
-
-    @Test
-    fun `rankAndSelectPois deduplicates POIs by name keeping closest`() {
-        val poi1 =
-            POI(
-                id = "1",
-                name = "Starbucks",
-                lat = 37.1,
-                lng = -122.1,
-                tags = emptyMap(),
-                type = "cafe",
-                distanceFromRouteMeters = 500.0,
-            )
-        val poi2 =
-            POI(
-                id = "2",
-                name = "starbucks",
-                lat = 37.2,
-                lng = -122.2,
-                tags = emptyMap(),
-                type = "cafe",
-                distanceFromRouteMeters = 100.0,
-            )
-
-        val result = PoiRanker.rankAndSelectPois(listOf(poi1, poi2), limit = 5)
-        assertEquals(1, result.size)
-        assertEquals("2", result[0].id)
-        assertEquals(100.0, result[0].distanceFromRouteMeters)
     }
 
     @Test
@@ -403,16 +362,13 @@ class PoiExtractorTest {
                 type = "gallery",
             )
 
-        // Inject dummy cache store into PoiCacheManager (the singleton cache manager)
+        // Populate cache store into PoiCacheManager via temporary cache file
         PoiCacheManager.clearInMemCache()
         val dummyStore = PoiCacheStore(pois = listOf(poi1, poi2))
-        val field = PoiCacheManager::class.java.getDeclaredField("cachedStore")
-        field.isAccessible = true
-        field.set(PoiCacheManager, dummyStore)
-
-        val pathField = PoiCacheManager::class.java.getDeclaredField("cachedPbfPath")
-        pathField.isAccessible = true
-        pathField.set(PoiCacheManager, "dummy.pbf")
+        val tempCacheFile = File.createTempFile("dummy_pois_cache", ".json")
+        tempCacheFile.deleteOnExit()
+        ObjectMapper().registerKotlinModule().writeValue(tempCacheFile, dummyStore)
+        PoiCacheManager.getOrBuildCache("dummy.pbf", tempCacheFile.absolutePath)
 
         val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
 

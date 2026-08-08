@@ -61,7 +61,7 @@ object PbfPathResolver {
         }
 
         val rootPbf = File(baseDir, "california-latest.osm.pbf")
-        if (rootPbf.exists()) return rootPbf.name
+        if (rootPbf.exists()) return rootPbf.path
 
         return "data/california-latest.osm.pbf"
     }

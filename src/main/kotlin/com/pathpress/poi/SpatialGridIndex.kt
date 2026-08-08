@@ -113,9 +113,6 @@ object SpatialGridIndex {
     fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
         GeoUtils.haversineMeters(lat1, lon1, lat2, lon2)
 
-    fun minDistanceToPolyline(lat: Double, lng: Double, polyline: List<LocationCoords>): Double =
-        GeoUtils.minDistanceToPolyline(lat, lng, polyline)
-
     fun segmentProjectionParam(
         pLat: Double,
         pLng: Double,
@@ -124,13 +121,4 @@ object SpatialGridIndex {
         bLat: Double,
         bLng: Double,
     ): Double = GeoUtils.segmentProjectionParam(pLat, pLng, aLat, aLng, bLat, bLng)
-
-    fun pointToSegmentDistanceMeters(
-        pLat: Double,
-        pLng: Double,
-        aLat: Double,
-        aLng: Double,
-        bLat: Double,
-        bLng: Double,
-    ): Double = GeoUtils.pointToSegmentDistanceMeters(pLat, pLng, aLat, aLng, bLat, bLng)
 }

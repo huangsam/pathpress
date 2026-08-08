@@ -79,7 +79,7 @@ class PbfPathResolverTest {
         rootCaliFile.createNewFile()
 
         val result = PbfPathResolver.defaultPath(baseDir = tempDir, envLookup = { null })
-        assertEquals(rootCaliFile.name, result)
+        assertEquals(rootCaliFile.path, result)
     }
 
     @Test
