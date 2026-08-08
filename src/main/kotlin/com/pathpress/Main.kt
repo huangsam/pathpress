@@ -20,7 +20,7 @@ object BuildConfig {
             val props = java.util.Properties()
             props.load(stream)
             props.getProperty("version")
-        } ?: "0.1.0-SNAPSHOT"
+        } ?: "SNAPSHOT"
     }
 }
 

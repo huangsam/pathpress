@@ -21,7 +21,7 @@ import time
 from dataclasses import dataclass, field
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.1.0-standalone.jar")
+JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.5.0-standalone.jar")
 
 DEFAULT_MODELS = [
     "qwen3.6:35b-mlx",

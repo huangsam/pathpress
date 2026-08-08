@@ -54,7 +54,7 @@ fi
 if [ -f "$DEST_PATH" ] && [ -s "$DEST_PATH" ]; then
     echo "✓ Download complete: $DEST_PATH ($(du -h "$DEST_PATH" | cut -f1))"
     echo "You can now run PathPress specifying this OSM file if needed:"
-    echo "  java -jar build/libs/pathpress-0.1.0-standalone.jar --start \"Austin, TX\" --end \"San Antonio, TX\" --pbf data/$FILENAME ..."
+    echo "  java -jar build/libs/pathpress-0.5.0-standalone.jar --start \"Austin, TX\" --end \"San Antonio, TX\" --pbf data/$FILENAME ..."
 else
     echo "❌ Download failed or file is empty."
     rm -f "$DEST_PATH"

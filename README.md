@@ -32,13 +32,13 @@ Pure LLM travel planners frequently suffer from "spatial amnesia"—hallucinatin
 ### 2. Run PathPress Examples
 ```bash
 # Example 1: Quick offline run (no LLM required)
-java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end "Monterey, CA" --days 1 --pbf data/california-latest.osm.pbf
+java -jar build/libs/pathpress-0.5.0-standalone.jar --start "San Jose, CA" --end "Monterey, CA" --days 1 --pbf data/california-latest.osm.pbf
 
 # Example 2: Multi-day AI trip with Ollama, custom prompt & imperial units
-java -jar build/libs/pathpress-0.1.0-standalone.jar --start "San Jose, CA" --end "San Diego, CA" --days 2 --pbf data/california-latest.osm.pbf --llm-provider ollama --prompt "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay" --units imperial
+java -jar build/libs/pathpress-0.5.0-standalone.jar --start "San Jose, CA" --end "San Diego, CA" --days 2 --pbf data/california-latest.osm.pbf --llm-provider ollama --prompt "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay" --units imperial
 ```
 
-> **Tip**: Run `java -jar build/libs/pathpress-0.1.0-standalone.jar --help` to view all available CLI flags, default values, and usage options.
+> **Tip**: Run `java -jar build/libs/pathpress-0.5.0-standalone.jar --help` to view all available CLI flags, default values, and usage options.
 
 ### 3. Downloading Map Data for Other US States
 PathPress includes a helper script to fetch free OpenStreetMap data for any US state on demand:
@@ -47,5 +47,5 @@ PathPress includes a helper script to fetch free OpenStreetMap data for any US s
 ./scripts/download_state.sh texas
 
 # Run PathPress using the downloaded Texas map data
-java -jar build/libs/pathpress-0.1.0-standalone.jar --start "Austin, TX" --end "San Antonio, TX" --pbf data/texas-latest.osm.pbf
+java -jar build/libs/pathpress-0.5.0-standalone.jar --start "Austin, TX" --end "San Antonio, TX" --pbf data/texas-latest.osm.pbf
 ```

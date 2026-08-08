@@ -62,7 +62,7 @@ object OsmTileStitcher {
             val conn = URI(tileUrl).toURL().openConnection() as HttpURLConnection
             conn.setRequestProperty(
                 "User-Agent",
-                "PathPress/0.1.0 (https://github.com/huangsam/pathpress)",
+                "PathPress/0.5.0 (https://github.com/huangsam/pathpress)",
             )
             conn.connectTimeout = 3000
             conn.readTimeout = 3000

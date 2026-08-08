@@ -17,7 +17,7 @@ val versionProps =
         }
     }
 
-version = versionProps.getProperty("version") ?: "0.1.0-SNAPSHOT"
+version = versionProps.getProperty("version") ?: "SNAPSHOT"
 
 repositories { mavenCentral() }
 
