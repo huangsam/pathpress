@@ -9,7 +9,6 @@ class ConfigTest {
     @Test
     fun `default Config contains expected constant default values`() {
         val config = Config()
-        assertEquals(0.05, config.gridCellSizeDeg)
         assertEquals(6, config.defaultPoisPerLeg)
         assertEquals("gemini-1.5-flash", config.defaultGeminiModel)
         assertEquals("claude-3-haiku-20240307", config.defaultClaudeModel)
@@ -27,7 +26,6 @@ class ConfigTest {
     fun `fromEnv overrides configuration when environment variables are present`() {
         val customEnv =
             mapOf(
-                "GRID_CELL_SIZE_DEG" to "0.1",
                 "DEFAULT_POIS_PER_LEG" to "25",
                 "DEFAULT_GEMINI_MODEL" to "gemini-2.0-flash-custom",
                 "CLAUDE_MODEL" to "claude-3-5-sonnet-custom",
@@ -39,7 +37,6 @@ class ConfigTest {
             )
 
         val config = Config.fromEnv(customEnv)
-        assertEquals(0.1, config.gridCellSizeDeg)
         assertEquals(25, config.defaultPoisPerLeg)
         assertEquals("gemini-2.0-flash-custom", config.defaultGeminiModel)
         assertEquals("claude-3-5-sonnet-custom", config.defaultClaudeModel)

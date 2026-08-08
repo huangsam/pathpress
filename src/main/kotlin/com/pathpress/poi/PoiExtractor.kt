@@ -7,7 +7,6 @@ import com.pathpress.model.POI
 import com.pathpress.poi.rules.PoiEvaluationContext
 import com.pathpress.poi.rules.PoiRulesEngine
 import kotlin.math.cos
-import kotlin.math.floor
 
 /** Container for town location attributes parsed from OpenStreetMap nodes. */
 data class TownInfo(val name: String, val lat: Double, val lng: Double, val type: String)
@@ -31,7 +30,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
      * duplicate in-memory state tracking across multiple [PoiExtractor] instances.
      */
     fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore =
-        PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath, config.gridCellSizeDeg)
+        PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath)
 
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
@@ -70,19 +69,8 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val minLng = legPoints.minOf { it.lng } - bufferLngDeg
         val maxLng = legPoints.maxOf { it.lng } + bufferLngDeg
 
-        val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
-        val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
-        val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
-        val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
-
         val candidatePois =
-            SpatialGridIndex.queryCandidatePois(
-                cacheStore,
-                minLatCell,
-                maxLatCell,
-                minLngCell,
-                maxLngCell,
-            )
+            SpatialGridIndex.queryCandidatePois(cacheStore, minLat, maxLat, minLng, maxLng)
 
         val candidates = mutableListOf<POI>()
         for (poi in candidatePois) {
@@ -130,19 +118,8 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
         val minLng = targetLng - bufferLngDeg
         val maxLng = targetLng + bufferLngDeg
 
-        val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
-        val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
-        val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
-        val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
-
         val candidateTowns =
-            SpatialGridIndex.queryCandidateTowns(
-                cacheStore,
-                minLatCell,
-                maxLatCell,
-                minLngCell,
-                maxLngCell,
-            )
+            SpatialGridIndex.queryCandidateTowns(cacheStore, minLat, maxLat, minLng, maxLng)
 
         val matches = mutableListOf<TownInfo>()
         for (town in candidateTowns) {
@@ -232,19 +209,8 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
             val minLng = lng - bufferLngDeg
             val maxLng = lng + bufferLngDeg
 
-            val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
-            val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
-            val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
-            val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
-
             candidateTowns.addAll(
-                SpatialGridIndex.queryCandidateTowns(
-                    cacheStore,
-                    minLatCell,
-                    maxLatCell,
-                    minLngCell,
-                    maxLngCell,
-                )
+                SpatialGridIndex.queryCandidateTowns(cacheStore, minLat, maxLat, minLng, maxLng)
             )
         }
 

@@ -61,42 +61,6 @@ class TownScorerTest {
     }
 
     @Test
-    fun `scoreTownForOvernight handles custom gridCellSizeDeg configuration correctly`() {
-        val customConfig = com.pathpress.config.Config(gridCellSizeDeg = 0.15)
-        val town = TownInfo(name = "Custom Grid Town", lat = 36.5, lng = -119.5, type = "town")
-        val hotel =
-            POI(
-                id = "h_custom",
-                name = "Custom Motel",
-                lat = 36.501,
-                lng = -119.501,
-                tags = emptyMap(),
-                type = "motel",
-            )
-        val park =
-            POI(
-                id = "f_custom",
-                name = "Custom Park",
-                lat = 36.502,
-                lng = -119.502,
-                tags = mapOf("leisure" to "park"),
-                type = "park",
-            )
-        val store =
-            PoiCacheStore(
-                pois = listOf(hotel, park),
-                towns = listOf(town),
-                gridCellSizeDeg = customConfig.gridCellSizeDeg,
-            )
-
-        val scored = TownScorer.scoreTownForOvernight(town, store, config = customConfig)
-        assertEquals(1, scored.hotelCount)
-        assertEquals(1, scored.familyCount)
-        assertEquals(0, scored.diningCount)
-        assertEquals(5 + 3, scored.score)
-    }
-
-    @Test
     fun `scoreTownForOvernight dynamically boosts family weight for family prompts`() {
         val town = TownInfo(name = "Family Hub", lat = 37.0, lng = -122.0, type = "town")
         val park =

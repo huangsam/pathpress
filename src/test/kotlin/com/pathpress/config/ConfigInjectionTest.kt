@@ -23,7 +23,7 @@ class ConfigInjectionTest {
 
     @Test
     fun `RouteCalculator threads custom Config to PoiExtractor`() {
-        val customConfig = Config(defaultPoisPerLeg = 42, gridCellSizeDeg = 0.12)
+        val customConfig = Config(defaultPoisPerLeg = 42)
         val routeCalculator =
             RouteCalculator(
                 graphHopper = TestGraphHopper(),

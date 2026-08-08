@@ -404,10 +404,8 @@ class PoiExtractorTest {
             )
 
         // Inject dummy cache store into PoiCacheManager (the singleton cache manager)
-        val customConfig = com.pathpress.config.Config(gridCellSizeDeg = 0.12)
         PoiCacheManager.clearInMemCache()
-        val dummyStore =
-            PoiCacheStore(pois = listOf(poi1, poi2), gridCellSizeDeg = customConfig.gridCellSizeDeg)
+        val dummyStore = PoiCacheStore(pois = listOf(poi1, poi2))
         val field = PoiCacheManager::class.java.getDeclaredField("cachedStore")
         field.isAccessible = true
         field.set(PoiCacheManager, dummyStore)
@@ -419,7 +417,7 @@ class PoiExtractorTest {
         val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
 
         val resultWithExclusion =
-            PoiExtractor(customConfig)
+            PoiExtractor()
                 .extractPoisForLeg(
                     pbfPath = "dummy.pbf",
                     legPoints = routePoints,

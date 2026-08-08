@@ -1,6 +1,5 @@
 package com.pathpress.poi
 
-import com.pathpress.config.Config
 import com.pathpress.geo.GeoUtils
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
@@ -10,51 +9,56 @@ import kotlin.math.floor
  * 2D spatial grid cell index used for $O(1)$ spatial binning and fast bounding box candidate
  * retrieval.
  *
- * Cell dimensions are determined by [gridCellSizeDeg] (~0.05° ≈ 5.5 km or 3.4 miles).
+ * Cell dimensions are determined by [GRID_CELL_SIZE_DEG] (~0.05° ≈ 5.5 km or 3.4 miles).
  */
 data class GridCell(val latIndex: Int, val lngIndex: Int) {
     companion object {
+        const val GRID_CELL_SIZE_DEG: Double = 0.05
+
         /** Map lat/lng coordinates to a discrete [GridCell] bucket. */
-        fun fromCoords(
-            lat: Double,
-            lng: Double,
-            gridCellSizeDeg: Double = Config.DEFAULT_GRID_CELL_SIZE_DEG,
-        ): GridCell =
-            GridCell(floor(lat / gridCellSizeDeg).toInt(), floor(lng / gridCellSizeDeg).toInt())
+        fun fromCoords(lat: Double, lng: Double): GridCell =
+            GridCell(
+                floor(lat / GRID_CELL_SIZE_DEG).toInt(),
+                floor(lng / GRID_CELL_SIZE_DEG).toInt(),
+            )
     }
 }
 
 /** Handles spatial indexing candidate retrieval and geometric polyline calculations. */
 object SpatialGridIndex {
 
-    /** Query candidate POIs in spatial grid cell bounding range. */
+    /** Query candidate POIs in geographic coordinate bounding range. */
     fun queryCandidatePois(
         cacheStore: PoiCacheStore,
-        minLatCell: Int,
-        maxLatCell: Int,
-        minLngCell: Int,
-        maxLngCell: Int,
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double,
     ): Set<POI> {
+        val minCell = GridCell.fromCoords(minLat, minLng)
+        val maxCell = GridCell.fromCoords(maxLat, maxLng)
         val candidates = mutableSetOf<POI>()
-        for (latIdx in minLatCell..maxLatCell) {
-            for (lngIdx in minLngCell..maxLngCell) {
+        for (latIdx in minCell.latIndex..maxCell.latIndex) {
+            for (lngIdx in minCell.lngIndex..maxCell.lngIndex) {
                 cacheStore.spatialIndex[GridCell(latIdx, lngIdx)]?.let { candidates.addAll(it) }
             }
         }
         return candidates
     }
 
-    /** Query candidate towns in spatial grid cell bounding range. */
+    /** Query candidate towns in geographic coordinate bounding range. */
     fun queryCandidateTowns(
         cacheStore: PoiCacheStore,
-        minLatCell: Int,
-        maxLatCell: Int,
-        minLngCell: Int,
-        maxLngCell: Int,
+        minLat: Double,
+        maxLat: Double,
+        minLng: Double,
+        maxLng: Double,
     ): Set<TownInfo> {
+        val minCell = GridCell.fromCoords(minLat, minLng)
+        val maxCell = GridCell.fromCoords(maxLat, maxLng)
         val candidates = mutableSetOf<TownInfo>()
-        for (latIdx in minLatCell..maxLatCell) {
-            for (lngIdx in minLngCell..maxLngCell) {
+        for (latIdx in minCell.latIndex..maxCell.latIndex) {
+            for (lngIdx in minCell.lngIndex..maxCell.lngIndex) {
                 cacheStore.townSpatialIndex[GridCell(latIdx, lngIdx)]?.let { candidates.addAll(it) }
             }
         }

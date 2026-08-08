@@ -23,7 +23,6 @@ import java.time.Duration
  * @property diningWeight Relative scoring weight multiplier for dining options.
  */
 data class Config(
-    val gridCellSizeDeg: Double = DEFAULT_GRID_CELL_SIZE_DEG,
     val defaultPoisPerLeg: Int = DEFAULT_POIS_PER_LEG,
     val defaultGeminiModel: String = DEFAULT_GEMINI_MODEL,
     val defaultClaudeModel: String = DEFAULT_CLAUDE_MODEL,
@@ -48,9 +47,6 @@ data class Config(
         get() = Duration.ofSeconds(geocoderTimeoutSeconds)
 
     companion object {
-        /** Default spatial grid bucket size in lat/lng degrees (0.05° ≈ 5.5 km / 3.4 miles). */
-        const val DEFAULT_GRID_CELL_SIZE_DEG: Double = 0.05
-
         /** Default maximum POIs returned per route leg. */
         const val DEFAULT_POIS_PER_LEG: Int = 6
 
@@ -98,8 +94,6 @@ data class Config(
         /** Loads configuration populated with optional environment variable overrides. */
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
             return Config(
-                gridCellSizeDeg =
-                    env["GRID_CELL_SIZE_DEG"]?.toDoubleOrNull() ?: DEFAULT_GRID_CELL_SIZE_DEG,
                 defaultPoisPerLeg =
                     env["DEFAULT_POIS_PER_LEG"]?.toIntOrNull() ?: DEFAULT_POIS_PER_LEG,
                 defaultGeminiModel =

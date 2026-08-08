@@ -2,9 +2,7 @@ package com.pathpress.poi
 
 import com.pathpress.config.Config
 import com.pathpress.geo.GeoUtils
-import com.pathpress.model.POI
 import kotlin.math.cos
-import kotlin.math.floor
 
 /**
  * Represents a candidate overnight town evaluated for amenity density and route milestone
@@ -80,19 +78,9 @@ object TownScorer {
         val minLng = town.lng - bufferLngDeg
         val maxLng = town.lng + bufferLngDeg
 
-        // Determine spatial grid cell indices covering the search bounding box
-        val minLatCell = floor(minLat / config.gridCellSizeDeg).toInt()
-        val maxLatCell = floor(maxLat / config.gridCellSizeDeg).toInt()
-        val minLngCell = floor(minLng / config.gridCellSizeDeg).toInt()
-        val maxLngCell = floor(maxLng / config.gridCellSizeDeg).toInt()
-
         // Gather candidate POIs across overlapping spatial grid cells
-        val candidatePois = mutableSetOf<POI>()
-        for (latIdx in minLatCell..maxLatCell) {
-            for (lngIdx in minLngCell..maxLngCell) {
-                cacheStore.spatialIndex[GridCell(latIdx, lngIdx)]?.let { candidatePois.addAll(it) }
-            }
-        }
+        val candidatePois =
+            SpatialGridIndex.queryCandidatePois(cacheStore, minLat, maxLat, minLng, maxLng)
 
         var hotelCount = 0
         var familyCount = 0
