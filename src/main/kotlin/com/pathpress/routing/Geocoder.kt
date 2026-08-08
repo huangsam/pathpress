@@ -1,5 +1,6 @@
 package com.pathpress.routing
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.pathpress.config.Config
@@ -16,15 +17,38 @@ import org.slf4j.LoggerFactory
 
 data class GeocodedLocation(val coords: LocationCoords, val displayName: String)
 
+@JsonIgnoreProperties(ignoreUnknown = true)
+private data class PhotonResponse(val features: List<PhotonFeature> = emptyList())
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+private data class PhotonFeature(
+    val geometry: PhotonGeometry? = null,
+    val properties: Map<String, Any?> = emptyMap(),
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+private data class PhotonGeometry(val coordinates: List<Double> = emptyList())
+
 /**
- * Geocoding utility using OpenStreetMap's Nominatim API to resolve location names into coordinates
- * and clean display names globally, backed by an in-memory query cache and rate limiter.
+ * Geocoding utility using OpenStreetMap's Photon (Komoot) API as primary and Nominatim API as
+ * fallback to resolve location names into coordinates and clean display names, backed by an
+ * in-memory query cache and rate limiting.
  */
 object Geocoder {
 
     private val logger = LoggerFactory.getLogger(Geocoder::class.java)
 
-    private val httpClient: HttpClient =
+    private val SETTLEMENT_TYPES =
+        setOf("city", "town", "village", "hamlet", "municipality", "locality", "suburb")
+
+    private val SECONDARY_PLACE_TYPES =
+        setOf("neighbourhood", "borough", "park", "attraction", "tourism", "place")
+
+    private val NOMINATIM_PLACE_TYPES =
+        setOf("city", "town", "village", "hamlet", "municipality", "locality")
+
+    @Volatile
+    internal var httpClient: HttpClient =
         HttpClient.newBuilder()
             .connectTimeout(Config.fromEnv().geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -32,7 +56,8 @@ object Geocoder {
 
     private val mapper = jacksonObjectMapper()
     private val cache = ConcurrentHashMap<String, GeocodedLocation>()
-    private val lastRequestTimeMs = AtomicLong(0)
+    private val lastPhotonRequestTimeMs = AtomicLong(0)
+    private val lastNominatimRequestTimeMs = AtomicLong(0)
 
     /** Clear in-memory geocoding cache (useful for testing). */
     fun clearCache() {
@@ -64,9 +89,18 @@ object Geocoder {
             return it
         }
 
-        // 2. Query Nominatim API with query caching and rate limiting
         val queriesToTry = listOf(trimmed, "$trimmed, USA")
 
+        // 2. Query Photon (OSM) first for all query variants
+        for (query in queriesToTry) {
+            val result = queryPhoton(query)
+            if (result != null) {
+                cache[cacheKey] = result
+                return result
+            }
+        }
+
+        // 3. Fallback to Nominatim API with query caching and rate limiting
         for (query in queriesToTry) {
             val result = queryNominatim(query)
             if (result != null) {
@@ -75,32 +109,139 @@ object Geocoder {
             }
         }
 
-        logger.warn("Could not geocode location '$trimmed' via OSM/Nominatim")
+        logger.warn("Could not geocode location '$trimmed' via OSM/Photon/Nominatim")
         return null
+    }
+
+    private fun throttlePhoton() {
+        synchronized(lastPhotonRequestTimeMs) {
+            val now = System.currentTimeMillis()
+            val lastTime = lastPhotonRequestTimeMs.get()
+            val elapsed = now - lastTime
+            if (elapsed < 1000) {
+                Thread.sleep(1000 - elapsed)
+            }
+            lastPhotonRequestTimeMs.set(System.currentTimeMillis())
+        }
+    }
+
+    private fun queryPhoton(queryString: String): GeocodedLocation? {
+        try {
+            throttlePhoton()
+
+            val encodedQuery = URLEncoder.encode(queryString, "UTF-8")
+            val uri = URI.create("https://photon.komoot.io/api/?q=$encodedQuery&limit=5")
+            val timeout = Duration.ofSeconds(Config.fromEnv().geocoderTimeoutSeconds)
+            val request =
+                HttpRequest.newBuilder()
+                    .uri(uri)
+                    .header("User-Agent", "PathPressRoadTripPlanner/1.0 (contact@pathpress.org)")
+                    .timeout(timeout)
+                    .GET()
+                    .build()
+
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            if (response.statusCode() == 200 && !response.body().isNullOrBlank()) {
+                val root: PhotonResponse = mapper.readValue(response.body())
+                val features = root.features
+                if (features.isNotEmpty()) {
+                    val usSettlement = features.firstOrNull { feat ->
+                        val props = feat.properties
+                        val countryCode = props["countrycode"]?.toString()?.uppercase()
+                        val type = props["type"]?.toString()?.lowercase()
+                        val osmKey = props["osm_key"]?.toString()?.lowercase()
+                        val osmValue = props["osm_value"]?.toString()?.lowercase()
+
+                        countryCode == "US" &&
+                            (type in SETTLEMENT_TYPES ||
+                                (osmKey == "place" && osmValue in SETTLEMENT_TYPES) ||
+                                (osmKey == "place" && osmValue != "park" && osmValue != "tourism"))
+                    }
+
+                    val selected =
+                        usSettlement
+                            ?: features.firstOrNull { feat ->
+                                val props = feat.properties
+                                val countryCode = props["countrycode"]?.toString()?.uppercase()
+                                val type = props["type"]?.toString()?.lowercase()
+                                val osmKey = props["osm_key"]?.toString()?.lowercase()
+                                val osmValue = props["osm_value"]?.toString()?.lowercase()
+
+                                countryCode == "US" &&
+                                    (type in SECONDARY_PLACE_TYPES ||
+                                        osmKey == "place" ||
+                                        osmKey == "tourism" ||
+                                        osmKey == "historic" ||
+                                        osmValue in SECONDARY_PLACE_TYPES)
+                            }
+                            ?: features.firstOrNull { feat ->
+                                feat.properties["countrycode"]?.toString()?.uppercase() == "US"
+                            }
+                            ?: return null
+
+                    val coordsList = selected.geometry?.coordinates
+                    val props = selected.properties
+
+                    if (coordsList != null && coordsList.size >= 2) {
+                        val lon = coordsList[0]
+                        val lat = coordsList[1]
+                        val rawName =
+                            props["name"]?.toString()
+                                ?: props["city"]?.toString()
+                                ?: props["town"]?.toString()
+                                ?: props["village"]?.toString()
+                                ?: props["municipality"]?.toString()
+                                ?: props["county"]?.toString()
+                                ?: props["state"]?.toString()
+                                ?: queryString
+                        val state = props["state"]?.toString()
+                        val shortName =
+                            if (
+                                !state.isNullOrBlank() &&
+                                    !rawName.contains(state, ignoreCase = true)
+                            ) {
+                                "$rawName, $state"
+                            } else {
+                                rawName
+                            }
+                        return GeocodedLocation(LocationCoords(lat, lon), shortName.trim())
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Photon geocoding query failed for '$queryString': ${e.message}")
+        }
+        return null
+    }
+
+    private fun throttleNominatim() {
+        synchronized(lastNominatimRequestTimeMs) {
+            val now = System.currentTimeMillis()
+            val lastTime = lastNominatimRequestTimeMs.get()
+            val elapsed = now - lastTime
+            if (elapsed < 1000) {
+                Thread.sleep(1000 - elapsed)
+            }
+            lastNominatimRequestTimeMs.set(System.currentTimeMillis())
+        }
     }
 
     private fun queryNominatim(queryString: String): GeocodedLocation? {
         try {
             // Enforce Nominatim 1 request / second policy
-            val now = System.currentTimeMillis()
-            val lastTime = lastRequestTimeMs.get()
-            val elapsed = now - lastTime
-            if (elapsed < 1000) {
-                Thread.sleep(1000 - elapsed)
-            }
-            lastRequestTimeMs.set(System.currentTimeMillis())
+            throttleNominatim()
 
             val encodedQuery = URLEncoder.encode(queryString, "UTF-8")
             val uri =
                 URI.create(
                     "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=5"
                 )
-
+            val timeout = Duration.ofSeconds(Config.fromEnv().geocoderTimeoutSeconds)
             val request =
                 HttpRequest.newBuilder()
                     .uri(uri)
                     .header("User-Agent", "PathPressRoadTripPlanner/1.0 (contact@pathpress.org)")
-                    .timeout(Duration.ofSeconds(5))
+                    .timeout(timeout)
                     .GET()
                     .build()
 
@@ -109,8 +250,6 @@ object Geocoder {
             if (response.statusCode() == 200 && !response.body().isNullOrBlank()) {
                 val jsonNodes: List<Map<String, Any>> = mapper.readValue(response.body())
                 if (jsonNodes.isNotEmpty()) {
-                    val placeTypes =
-                        setOf("city", "town", "village", "hamlet", "municipality", "locality")
                     val selected =
                         jsonNodes.firstOrNull { node ->
                             val clazz = node["class"]?.toString()?.lowercase()
@@ -118,7 +257,9 @@ object Geocoder {
                             val addresstype = node["addresstype"]?.toString()?.lowercase()
                             val displayName = node["display_name"]?.toString()?.lowercase() ?: ""
 
-                            (clazz == "place" || type in placeTypes || addresstype in placeTypes) &&
+                            (clazz == "place" ||
+                                type in NOMINATIM_PLACE_TYPES ||
+                                addresstype in NOMINATIM_PLACE_TYPES) &&
                                 !displayName.startsWith("county")
                         } ?: jsonNodes[0]
 
