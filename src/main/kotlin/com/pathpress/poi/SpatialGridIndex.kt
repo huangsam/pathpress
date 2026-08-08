@@ -110,10 +110,10 @@ object SpatialGridIndex {
         return bestProgress
     }
 
-    fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
+    internal fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double =
         GeoUtils.haversineMeters(lat1, lon1, lat2, lon2)
 
-    fun segmentProjectionParam(
+    internal fun segmentProjectionParam(
         pLat: Double,
         pLng: Double,
         aLat: Double,
