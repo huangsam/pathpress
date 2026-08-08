@@ -111,11 +111,10 @@ def check_prerequisites(state: str, jar_path: str, custom_pbf: str | None = None
         if not os.path.exists(pbf_path) and os.path.exists(os.path.join(REPO_ROOT, pbf_filename)):
             pbf_path = os.path.join(REPO_ROOT, pbf_filename)
 
-    if not os.path.exists(pbf_path):
         print(f"{Colors.YELLOW}[!]{Colors.RESET} OSM PBF file missing at: {pbf_path}")
-        print(f"    Attempting to download via ./scripts/download_state.sh {state} ...")
-        downloader = os.path.join(REPO_ROOT, "scripts", "download_state.sh")
-        dl_res = subprocess.run([downloader, state], cwd=REPO_ROOT, capture_output=True, text=True)
+        print(f"    Attempting to download via python3 scripts/download_pbf.py {state} ...")
+        downloader = os.path.join(REPO_ROOT, "scripts", "download_pbf.py")
+        dl_res = subprocess.run([sys.executable, downloader, state], cwd=REPO_ROOT, capture_output=True, text=True)
         if dl_res.returncode != 0 or not os.path.exists(pbf_path):
             print(f"{Colors.RED}[ERROR] Failed to download OSM PBF file for state '{state}':{Colors.RESET}")
             print(dl_res.stderr or dl_res.stdout)
@@ -472,14 +471,21 @@ def main():
     if args.no_color or not sys.stdout.isatty():
         Colors.disable()
 
-    target_state = args.state.lower()
+    target_state = args.state.lower().replace("_", "-").replace(" ", "-")
     if target_state == "all":
-        states_to_run = list(STATE_MATRICES.keys())
+        seen_matrices = set()
+        states_to_run = []
+        for s, matrix in STATE_MATRICES.items():
+            matrix_id = id(matrix)
+            if matrix_id not in seen_matrices:
+                seen_matrices.add(matrix_id)
+                states_to_run.append(s)
     elif target_state in STATE_MATRICES:
         states_to_run = [target_state]
     else:
         print(f"{Colors.RED}[ERROR] Unknown state '{args.state}'.{Colors.RESET}")
-        print(f"        Valid options are: {', '.join(STATE_MATRICES.keys())}, or 'all'.")
+        canonical_states = [s for s in STATE_MATRICES.keys() if "_" not in s]
+        print(f"        Valid options are: {', '.join(canonical_states)}, or 'all'.")
         sys.exit(1)
 
     all_states_passed = True

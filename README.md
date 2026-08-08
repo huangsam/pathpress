@@ -41,10 +41,13 @@ java -jar build/libs/pathpress-0.5.0-standalone.jar --start "San Jose, CA" --end
 > **Tip**: Run `java -jar build/libs/pathpress-0.5.0-standalone.jar --help` to view all available CLI flags, default values, and usage options.
 
 ### 3. Downloading Map Data for Other US States
-PathPress includes a helper script to fetch free OpenStreetMap data for any US state on demand:
+PathPress includes a helper script to fetch free OpenStreetMap data for US states:
 ```bash
 # Download Texas map data
-./scripts/download_state.sh texas
+python3 scripts/download_pbf.py texas
+
+# Or download all 50 US states + DC in parallel
+python3 scripts/download_pbf.py --all
 
 # Run PathPress using the downloaded Texas map data
 java -jar build/libs/pathpress-0.5.0-standalone.jar --start "Austin, TX" --end "San Antonio, TX" --pbf data/texas-latest.osm.pbf
