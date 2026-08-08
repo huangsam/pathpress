@@ -2,6 +2,7 @@ package com.pathpress.poi
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.pathpress.config.Config
 import com.pathpress.model.POI
 import java.io.File
 import org.slf4j.LoggerFactory
@@ -15,15 +16,17 @@ import org.slf4j.LoggerFactory
 data class PoiCacheStore(
     val pois: List<POI> = emptyList(),
     val towns: List<TownInfo> = emptyList(),
+    @get:com.fasterxml.jackson.annotation.JsonIgnore
+    val gridCellSizeDeg: Double = Config.DEFAULT_GRID_CELL_SIZE_DEG,
 ) {
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     val spatialIndex: Map<GridCell, List<POI>> by lazy {
-        pois.groupBy { GridCell.fromCoords(it.lat, it.lng) }
+        pois.groupBy { GridCell.fromCoords(it.lat, it.lng, gridCellSizeDeg) }
     }
 
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     val townSpatialIndex: Map<GridCell, List<TownInfo>> by lazy {
-        towns.groupBy { GridCell.fromCoords(it.lat, it.lng) }
+        towns.groupBy { GridCell.fromCoords(it.lat, it.lng, gridCellSizeDeg) }
     }
 }
 
@@ -35,7 +38,7 @@ object PoiCacheManager {
     private val logger = LoggerFactory.getLogger(PoiCacheManager::class.java)
     private val mapper = ObjectMapper().registerKotlinModule()
 
-    @Volatile private var cachedStore: PoiCacheStore? = null
+    private var cachedStore: PoiCacheStore? = null
     private var cachedPbfPath: String? = null
 
     /** Clear in-memory cache reference (useful for testing). */
@@ -71,9 +74,17 @@ object PoiCacheManager {
      * over the PBF file is executed to generate it.
      */
     @Synchronized
-    fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore {
+    fun getOrBuildCache(
+        pbfPath: String,
+        cacheFilePath: String? = null,
+        gridCellSizeDeg: Double = Config.DEFAULT_GRID_CELL_SIZE_DEG,
+    ): PoiCacheStore {
         val resolvedCachePath = resolveCacheFilePath(pbfPath, cacheFilePath)
-        if (cachedStore != null && cachedPbfPath == pbfPath) {
+        if (
+            cachedStore != null &&
+                cachedPbfPath == pbfPath &&
+                cachedStore?.gridCellSizeDeg == gridCellSizeDeg
+        ) {
             return cachedStore!!
         }
 
@@ -85,7 +96,10 @@ object PoiCacheManager {
                 (!pbfFile.exists() || cacheFile.lastModified() >= pbfFile.lastModified())
         ) {
             try {
-                val store = mapper.readValue(cacheFile, PoiCacheStore::class.java)
+                val store =
+                    mapper
+                        .readValue(cacheFile, PoiCacheStore::class.java)
+                        .copy(gridCellSizeDeg = gridCellSizeDeg)
                 cachedStore = store
                 cachedPbfPath = pbfPath
                 logger.info(
@@ -106,7 +120,7 @@ object PoiCacheManager {
         }
 
         if (!pbfFile.exists()) {
-            return PoiCacheStore()
+            return PoiCacheStore(gridCellSizeDeg = gridCellSizeDeg)
         }
 
         logger.info("Building POI cache from {}...", pbfPath)
@@ -116,7 +130,7 @@ object PoiCacheManager {
 
         val readSuccess = OsmPbfReader.readPbfFile(pbfFile, pois, towns)
 
-        val store = PoiCacheStore(pois = pois, towns = towns)
+        val store = PoiCacheStore(pois = pois, towns = towns, gridCellSizeDeg = gridCellSizeDeg)
         if (readSuccess) {
             try {
                 cacheFile.parentFile?.mkdirs()

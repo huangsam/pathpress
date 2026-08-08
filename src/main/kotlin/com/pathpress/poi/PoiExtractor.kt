@@ -31,7 +31,7 @@ open class PoiExtractor(val config: Config = Config.fromEnv()) {
      * duplicate in-memory state tracking across multiple [PoiExtractor] instances.
      */
     fun getOrBuildCache(pbfPath: String, cacheFilePath: String? = null): PoiCacheStore =
-        PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath)
+        PoiCacheManager.getOrBuildCache(pbfPath, cacheFilePath, config.gridCellSizeDeg)
 
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
