@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SpatialTileStorageTest {
@@ -245,5 +246,172 @@ class SpatialTileStorageTest {
         assertTrue(aggregatedStore.pois.any { it.id == "n2" })
         assertTrue(aggregatedStore.towns.any { it.name == "Town A" })
         assertTrue(aggregatedStore.towns.any { it.name == "Town B" })
+    }
+
+    @Test
+    fun `getTilesForPolyline discovers only corridor tiles and excludes non-corridor tiles in bounding box`() {
+        val tempDir = Files.createTempDirectory("tile_corridor_test").toFile()
+        tempDir.deleteOnExit()
+
+        val poi1 =
+            POI(id = "p1", name = "P1", lat = 34.5, lng = -118.5, tags = emptyMap(), type = "cafe")
+        val poi2 =
+            POI(id = "p2", name = "P2", lat = 35.5, lng = -119.5, tags = emptyMap(), type = "cafe")
+        val poi3 =
+            POI(id = "p3", name = "P3", lat = 36.5, lng = -120.5, tags = emptyMap(), type = "cafe")
+        val poiOffRoute =
+            POI(
+                id = "pOff",
+                name = "POff",
+                lat = 36.5,
+                lng = -118.5,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+
+        // Diagonal corridor: (34, -119), (35, -120), (36, -121)
+        SpatialTileStorage.writeTile(34, -119, listOf(poi1), emptyList(), tempDir)
+        SpatialTileStorage.writeTile(35, -120, listOf(poi2), emptyList(), tempDir)
+        SpatialTileStorage.writeTile(36, -121, listOf(poi3), emptyList(), tempDir)
+        // Off-corridor tile inside the bounding box [34..36, -121..-118]
+        SpatialTileStorage.writeTile(36, -119, listOf(poiOffRoute), emptyList(), tempDir)
+
+        val polyline =
+            listOf(
+                com.pathpress.model.LocationCoords(34.5, -118.5),
+                com.pathpress.model.LocationCoords(35.5, -119.5),
+                com.pathpress.model.LocationCoords(36.5, -120.5),
+            )
+
+        val corridorTiles =
+            SpatialTileStorage.getTilesForPolyline(
+                polyline,
+                bufferMeters = 5000.0,
+                baseDir = tempDir,
+            )
+        val filePaths = corridorTiles.map { "${it.parentFile.name}/${it.name}" }.toSet()
+
+        assertEquals(
+            3,
+            corridorTiles.size,
+            "Should only discover 3 corridor tiles, not the 4th off-corridor tile",
+        )
+        assertTrue(filePaths.contains("34/-119.json"))
+        assertTrue(filePaths.contains("35/-120.json"))
+        assertTrue(filePaths.contains("36/-121.json"))
+        assertFalse(
+            filePaths.contains("36/-119.json"),
+            "Off-corridor tile 36/-119.json should NOT be included",
+        )
+
+        val corridorStore =
+            SpatialTileStorage.loadPolylineStore(polyline, bufferMeters = 5000.0, baseDir = tempDir)
+        assertEquals(3, corridorStore.pois.size)
+        assertFalse(corridorStore.pois.any { it.id == "pOff" })
+    }
+
+    @Test
+    fun `getTilesForPolyline interpolates sparse polyline across tile boundaries`() {
+        val tempDir = Files.createTempDirectory("tile_sparse_corridor_test").toFile()
+        tempDir.deleteOnExit()
+
+        val poiStart =
+            POI(
+                id = "pStart",
+                name = "Start",
+                lat = 34.2,
+                lng = -118.2,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+        val poiMid =
+            POI(
+                id = "pMid",
+                name = "Mid",
+                lat = 35.5,
+                lng = -119.5,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+        val poiEnd =
+            POI(
+                id = "pEnd",
+                name = "End",
+                lat = 36.8,
+                lng = -120.8,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+
+        SpatialTileStorage.writeTile(34, -119, listOf(poiStart), emptyList(), tempDir)
+        SpatialTileStorage.writeTile(35, -120, listOf(poiMid), emptyList(), tempDir)
+        SpatialTileStorage.writeTile(36, -121, listOf(poiEnd), emptyList(), tempDir)
+
+        // Polyline with ONLY 2 endpoints spanning 3 tile shards diagonally
+        val sparsePolyline =
+            listOf(
+                com.pathpress.model.LocationCoords(34.2, -118.2),
+                com.pathpress.model.LocationCoords(36.8, -120.8),
+            )
+
+        val tiles =
+            SpatialTileStorage.getTilesForPolyline(
+                sparsePolyline,
+                bufferMeters = 5000.0,
+                baseDir = tempDir,
+            )
+        val filePaths = tiles.map { "${it.parentFile.name}/${it.name}" }.toSet()
+
+        assertTrue(filePaths.contains("34/-119.json"))
+        assertTrue(
+            filePaths.contains("35/-120.json"),
+            "Intermediate tile 35/-120.json must be discovered by segment interpolation",
+        )
+        assertTrue(filePaths.contains("36/-121.json"))
+    }
+
+    @Test
+    fun `SpatialTileStorage in-memory cache returns cached store and clearCache flushes it`() {
+        val tempDir = Files.createTempDirectory("tile_cache_mem_test").toFile()
+        tempDir.deleteOnExit()
+
+        SpatialTileStorage.clearCache()
+
+        val poi =
+            POI(
+                id = "pMem1",
+                name = "Cached Cafe",
+                lat = 37.5,
+                lng = -122.5,
+                tags = emptyMap(),
+                type = "cafe",
+            )
+        SpatialTileStorage.writeTile(37, -123, listOf(poi), emptyList(), tempDir)
+
+        val tileFile = SpatialTileStorage.getTileFile(37, -123, tempDir)
+        val store1 = SpatialTileStorage.readTile(tileFile)
+        assertEquals(1, store1.pois.size)
+        assertEquals("Cached Cafe", store1.pois[0].name)
+
+        // Delete tile file on disk; in-memory cache should still return store1 without throwing or
+        // returning empty
+        tileFile.delete()
+
+        val store2 = SpatialTileStorage.readTile(tileFile)
+        assertEquals(
+            1,
+            store2.pois.size,
+            "Should return cached store from in-memory cache even if disk file deleted",
+        )
+
+        // Flush in-memory cache
+        SpatialTileStorage.clearCache()
+
+        val storeAfterClear = SpatialTileStorage.readTile(tileFile)
+        assertEquals(
+            0,
+            storeAfterClear.pois.size,
+            "After clearing cache and deleting disk file, should return empty store",
+        )
     }
 }

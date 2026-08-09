@@ -49,6 +49,14 @@ open class PoiExtractor(
             baseTilesDir,
         )
 
+    /** Retrieve a [PoiCacheStore] scoped to the polyline corridor defined by [points]. */
+    fun getCacheForPolyline(
+        pbfPath: String,
+        points: List<LocationCoords>,
+        bufferMeters: Double = 5000.0,
+    ): PoiCacheStore =
+        PoiCacheManager.getCacheForPolyline(pbfPath, points, bufferMeters, baseTilesDir)
+
     /** Extract real POIs along a route leg polyline within a corridor buffer. */
     fun extractPoisForLeg(
         pbfPath: String,
@@ -74,7 +82,7 @@ open class PoiExtractor(
         val minLng = legPoints.minOf { it.lng } - bufferLngDeg
         val maxLng = legPoints.maxOf { it.lng } + bufferLngDeg
 
-        val cacheStore = getCacheForBoundingBox(pbfPath, minLat, maxLat, minLng, maxLng)
+        val cacheStore = getCacheForPolyline(pbfPath, legPoints, maxDistanceMeters)
         if (cacheStore.pois.isEmpty()) {
             return emptyList()
         }
@@ -214,19 +222,11 @@ open class PoiExtractor(
         val targetMilestone = targetMilestoneCoords ?: routePoints[routePoints.size / 2]
         val sampledPoints = targetPointCoords.ifEmpty { routePoints }
 
-        val bufferLatDeg = maxDistanceMeters / 111000.0
-        val minLat = sampledPoints.minOf { it.lat } - bufferLatDeg
-        val maxLat = sampledPoints.maxOf { it.lat } + bufferLatDeg
-        val refLat = sampledPoints.map { it.lat }.average()
-        val cosRefLat = cos(Math.toRadians(refLat)).coerceAtLeast(0.01)
-        val bufferLngDeg = maxDistanceMeters / (111000.0 * cosRefLat)
-        val minLng = sampledPoints.minOf { it.lng } - bufferLngDeg
-        val maxLng = sampledPoints.maxOf { it.lng } + bufferLngDeg
-
-        val cacheStore = getCacheForBoundingBox(pbfPath, minLat, maxLat, minLng, maxLng)
+        val cacheStore = getCacheForPolyline(pbfPath, sampledPoints, maxDistanceMeters)
         if (cacheStore.towns.isEmpty()) return emptyList()
 
         val candidateTowns = mutableSetOf<TownInfo>()
+        val bufferLatDeg = maxDistanceMeters / 111000.0
 
         for ((lat, lng) in sampledPoints) {
             val cosLat = cos(Math.toRadians(lat)).coerceAtLeast(0.01)

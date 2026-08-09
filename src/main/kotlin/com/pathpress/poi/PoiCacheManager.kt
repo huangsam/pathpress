@@ -38,7 +38,10 @@ object PoiCacheManager {
 
     /** Clear in-memory cache reference and ingestion history (useful for testing). */
     fun clearInMemCache() {
-        synchronized(this) { ingestedPbfs.clear() }
+        synchronized(this) {
+            ingestedPbfs.clear()
+            SpatialTileStorage.clearCache()
+        }
     }
 
     /**
@@ -84,6 +87,20 @@ object PoiCacheManager {
         if (pbfFile.exists() && !ingestedPbfs.contains(pbfFile.absolutePath)) {
             ingestPbf(pbfFile, baseDir)
         }
+    }
+
+    /**
+     * Retrieves a [PoiCacheStore] scoped to the polyline corridor defined by [points] by loading
+     * only intersecting 1.0° × 1.0° geographic tile shards from [baseDir].
+     */
+    fun getCacheForPolyline(
+        pbfPath: String,
+        points: List<com.pathpress.model.LocationCoords>,
+        bufferMeters: Double = 5000.0,
+        baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
+    ): PoiCacheStore {
+        ensurePbfIngested(pbfPath, baseDir)
+        return SpatialTileStorage.loadPolylineStore(points, bufferMeters, baseDir)
     }
 
     /**
