@@ -571,21 +571,21 @@ US_NORTHEAST_MATRIX: list[MatrixTestCase] = [
 ]
 
 US_PACIFIC_MATRIX: list[MatrixTestCase] = [
-    MatrixTestCase(1, "West Coast Corridor", "Seattle, WA", "San Francisco, CA", 5, "imperial"),
-    MatrixTestCase(2, "Pacific Multi-State", "Portland, OR", "Los Angeles, CA", 6, "metric"),
-    MatrixTestCase(3, "Pacific Border-to-Border", "San Diego, CA", "Seattle, WA", 7, "imperial"),
-    MatrixTestCase(4, "Pacific Northwest Link", "Sacramento, CA", "Portland, OR", 2, "metric"),
-    MatrixTestCase(5, "Cascades to Bay Area", "Eugene, OR", "San Francisco, CA", 2, "imperial"),
-    MatrixTestCase(6, "Raw Coordinates", "47.6062,-122.3321", "37.7749,-122.4194", 2, "imperial"),
+    MatrixTestCase(1, "Alaska Highway Corridor", "Anchorage, AK", "Fairbanks, AK", 2, "imperial"),
+    MatrixTestCase(2, "Kenai Peninsula Scenic", "Seward, AK", "Homer, AK", 2, "metric"),
+    MatrixTestCase(3, "Interior / National Parks", "Denali National Park, AK", "Valdez, AK", 3, "imperial"),
+    MatrixTestCase(4, "Oahu Island Traverse", "Honolulu, HI", "Kailua, Honolulu County, HI", 1, "metric"),
+    MatrixTestCase(5, "Mat-Su to Glennallen", "Palmer, AK", "Glennallen, AK", 2, "imperial"),
+    MatrixTestCase(6, "Raw Coordinates", "61.2181,-149.9003", "64.8378,-147.7164", 2, "metric"),
 ]
 
 US_WEST_MATRIX: list[MatrixTestCase] = [
-    MatrixTestCase(1, "Coast to Desert Corridor", "San Francisco, CA", "Las Vegas, NV", 3, "imperial"),
-    MatrixTestCase(2, "Pacific NW to Rockies", "Seattle, WA", "Denver, CO", 5, "metric"),
-    MatrixTestCase(3, "Great Basin to Desert SW", "Salt Lake City, UT", "Phoenix, AZ", 3, "imperial"),
-    MatrixTestCase(4, "Intermountain Traversal", "Boise, ID", "Albuquerque, NM", 4, "metric"),
-    MatrixTestCase(5, "Columbia Gorge to Wasatch", "Portland, OR", "Salt Lake City, UT", 2, "imperial"),
-    MatrixTestCase(6, "Raw Coordinates", "37.7749,-122.4194", "36.1699,-115.1398", 1, "metric"),
+    MatrixTestCase(1, "West Coast Corridor", "Seattle, WA", "San Francisco, CA", 5, "imperial"),
+    MatrixTestCase(2, "Pacific Multi-State", "Portland, OR", "Los Angeles, CA", 6, "metric"),
+    MatrixTestCase(3, "Pacific Border-to-Border", "San Diego, CA", "Seattle, WA", 7, "imperial"),
+    MatrixTestCase(4, "Coast to Desert Corridor", "San Francisco, CA", "Las Vegas, NV", 3, "imperial"),
+    MatrixTestCase(5, "Pacific NW to Rockies", "Seattle, WA", "Denver, CO", 5, "metric"),
+    MatrixTestCase(6, "Great Basin to Desert SW", "Salt Lake City, UT", "Phoenix, AZ", 3, "imperial"),
 ]
 
 US_MIDWEST_MATRIX: list[MatrixTestCase] = [
@@ -660,24 +660,15 @@ REGION_STATES: dict[str, list[str]] = {
     ],
     "us-pacific": [
         "alaska",
-        "california",
         "hawaii",
-        "oregon",
-        "washington",
     ],
     "us_pacific": [
         "alaska",
-        "california",
         "hawaii",
-        "oregon",
-        "washington",
     ],
     "pacific": [
         "alaska",
-        "california",
         "hawaii",
-        "oregon",
-        "washington",
     ],
     "us-west": [
         "arizona",
