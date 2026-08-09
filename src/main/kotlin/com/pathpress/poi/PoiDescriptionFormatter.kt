@@ -58,7 +58,7 @@ object PoiDescriptionFormatter {
                     "Cultural landmark featuring regional history, art, and heritage$locationSuffix."
                 sanitizedType in listOf("park", "nature_reserve", "beach") ->
                     "Serene natural highlight ideal for a quick scenic walk, fresh air, and outdoor relaxation$locationSuffix."
-                natural == "peak" || !ele.isNullOrBlank() -> {
+                natural == "peak" || sanitizedType == "peak" -> {
                     val eleStr = if (!ele.isNullOrBlank()) " ($ele m)" else ""
                     "Scenic mountain peak$eleStr offering panoramic views of the surrounding landscape."
                 }

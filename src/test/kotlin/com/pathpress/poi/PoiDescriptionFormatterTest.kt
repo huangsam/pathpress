@@ -95,4 +95,37 @@ class PoiDescriptionFormatterTest {
         val tip = PoiDescriptionFormatter.formatInsiderTip(poi)
         assertEquals("Located just 1.5 km off the route.", tip)
     }
+
+    @Test
+    fun `formatDescription does not describe non-peak POI with ele tag as mountain peak`() {
+        val poi =
+            POI(
+                id = "node/106",
+                name = "Summit Viewpoint",
+                lat = 37.88,
+                lng = -121.91,
+                tags = mapOf("tourism" to "viewpoint", "ele" to "1100"),
+                type = "viewpoint",
+            )
+        val desc = PoiDescriptionFormatter.formatDescription(poi)
+        assertEquals("Scenic viewpoint providing sweeping views of the surrounding corridor.", desc)
+    }
+
+    @Test
+    fun `formatDescription handles mountain peak without elevation`() {
+        val poi =
+            POI(
+                id = "node/107",
+                name = "Eagle Peak",
+                lat = 37.88,
+                lng = -121.91,
+                tags = mapOf("natural" to "peak"),
+                type = "peak",
+            )
+        val desc = PoiDescriptionFormatter.formatDescription(poi)
+        assertEquals(
+            "Scenic mountain peak offering panoramic views of the surrounding landscape.",
+            desc,
+        )
+    }
 }
