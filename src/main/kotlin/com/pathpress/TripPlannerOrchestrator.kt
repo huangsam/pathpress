@@ -86,10 +86,13 @@ class TripPlannerOrchestrator(
         )
 
         // 2. Initialize GraphHopper Routing Engine
-        logger.info("Loading spatial routing data from $pbfPath...")
+        val resolvedGraphPath = PbfPathResolver.resolveGraphPath(request.graphPath, pbfPath)
+        logger.info(
+            "Loading spatial routing data from $pbfPath (graph storage: $resolvedGraphPath)..."
+        )
         val routeCalculator =
             try {
-                routeCalculatorFactory(request.graphPath, pbfPath, config)
+                routeCalculatorFactory(resolvedGraphPath, pbfPath, config)
             } catch (e: Exception) {
                 throw com.pathpress.routing.TripPlanningException(
                     "Failed to initialize GraphHopper. Ensure PBF file exists at $pbfPath\n" +

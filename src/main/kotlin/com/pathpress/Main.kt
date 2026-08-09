@@ -63,7 +63,11 @@ open class PathPressCommand(
     val rawPbfPath by
         option("--pbf", help = "Path to OSM PBF file").default(PbfPathResolver.defaultPath())
     val graphPath by
-        option("--graph", help = "GraphHopper graph storage directory").default(".graphhopper")
+        option(
+                "--graph",
+                help = "GraphHopper graph storage directory (defaults to .graphhopper/<pbf-slug>)",
+            )
+            .default(".graphhopper")
     val prompt by
         option(
             "--prompt",

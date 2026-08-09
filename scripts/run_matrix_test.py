@@ -436,7 +436,7 @@ def run_state_matrix(
 
     pbf_path = check_prerequisites(state, jar_path, custom_pbf)
     output_dir = os.path.join(output_base, state)
-    graph_dir = os.path.join(REPO_ROOT, f".graphhopper_{state}")
+    graph_dir = os.path.join(REPO_ROOT, ".graphhopper", state)
 
     print(f"Running {len(test_cases)} test cases for {Colors.BOLD}{state.capitalize()}{Colors.RESET}...\n")
     results = []

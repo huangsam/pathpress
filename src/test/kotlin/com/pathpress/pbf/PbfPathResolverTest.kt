@@ -122,4 +122,56 @@ class PbfPathResolverTest {
         assertEquals(caliFile.path, result.primaryPath)
         assertEquals(emptyList(), result.supplementaryHints)
     }
+
+    @Test
+    fun `extractSlug extracts normalized slug from various PBF filename formats`() {
+        assertEquals("california", PbfPathResolver.extractSlug("california-latest.osm.pbf"))
+        assertEquals("hawaii", PbfPathResolver.extractSlug("data/hawaii-latest.osm.pbf"))
+        assertEquals(
+            "district-of-columbia",
+            PbfPathResolver.extractSlug("DISTRICT_OF_COLUMBIA-latest.osm.pbf"),
+        )
+        assertEquals("us-northeast", PbfPathResolver.extractSlug("data/us-northeast.osm.pbf"))
+        assertEquals("custom-map", PbfPathResolver.extractSlug("/tmp/custom_map.pbf"))
+    }
+
+    @Test
+    fun `resolveGraphPath defaults to nested dot-graphhopper directory based on pbf slug`(
+        @TempDir tempDir: File
+    ) {
+        val defaultResult =
+            PbfPathResolver.resolveGraphPath(
+                requestedGraphPath = ".graphhopper",
+                pbfPath = "data/california-latest.osm.pbf",
+                baseDir = tempDir,
+            )
+        assertEquals(File(File(tempDir, ".graphhopper"), "california").path, defaultResult)
+
+        val nullResult =
+            PbfPathResolver.resolveGraphPath(
+                requestedGraphPath = null,
+                pbfPath = "hawaii-latest.osm.pbf",
+                baseDir = tempDir,
+            )
+        assertEquals(File(File(tempDir, ".graphhopper"), "hawaii").path, nullResult)
+
+        val blankResult =
+            PbfPathResolver.resolveGraphPath(
+                requestedGraphPath = "  ",
+                pbfPath = "texas.osm.pbf",
+                baseDir = tempDir,
+            )
+        assertEquals(File(File(tempDir, ".graphhopper"), "texas").path, blankResult)
+    }
+
+    @Test
+    fun `resolveGraphPath preserves explicit custom graph path override`(@TempDir tempDir: File) {
+        val customResult =
+            PbfPathResolver.resolveGraphPath(
+                requestedGraphPath = "custom/cache/dir",
+                pbfPath = "data/california-latest.osm.pbf",
+                baseDir = tempDir,
+            )
+        assertEquals("custom/cache/dir", customResult)
+    }
 }

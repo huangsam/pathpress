@@ -59,6 +59,51 @@ object PbfPathResolver {
     }
 
     /**
+     * Extracts a normalized slug identifier from a PBF file path.
+     *
+     * Strips leading path components, extensions (`.osm.pbf`, `.pbf`), trailing `-latest`, and
+     * normalizes underscores to hyphens in lowercase.
+     *
+     * Example: `"data/california-latest.osm.pbf"` -> `"california"`, `"/tmp/custom_map.pbf"` ->
+     * `"custom-map"`.
+     */
+    fun extractSlug(pbfPath: String): String {
+        val fileName = File(pbfPath).name.lowercase()
+        return fileName
+            .removeSuffix(".osm.pbf")
+            .removeSuffix(".pbf")
+            .removeSuffix("-latest")
+            .replace("_", "-")
+    }
+
+    /**
+     * Resolves the GraphHopper graph directory path.
+     *
+     * When [requestedGraphPath] is null, blank, or the default `".graphhopper"`, the path is
+     * automatically derived as `.graphhopper/<slug>` under [baseDir] based on [pbfPath]. If an
+     * explicit custom path is passed (e.g. `"/custom/path"` or `"my_graph"`), it is preserved
+     * as-is.
+     *
+     * @param requestedGraphPath Explicit graph directory passed via CLI/config, or null/default.
+     * @param pbfPath The PBF file path to derive the slug from if using automatic resolution.
+     * @param baseDir Working directory base for relative nested path generation.
+     * @return Path to the resolved GraphHopper graph directory.
+     */
+    fun resolveGraphPath(
+        requestedGraphPath: String?,
+        pbfPath: String,
+        baseDir: File = File("."),
+    ): String {
+        if (!requestedGraphPath.isNullOrBlank() && requestedGraphPath.trim() != ".graphhopper") {
+            return requestedGraphPath
+        }
+
+        val slug = extractSlug(pbfPath)
+        val parent = File(baseDir, ".graphhopper")
+        return File(parent, slug).path
+    }
+
+    /**
      * Resolves a PBF file path along with any recommended supplementary candidate regions.
      *
      * @param requestedPath The user-provided or default PBF path
@@ -70,9 +115,7 @@ object PbfPathResolver {
         baseDir: File = File("."),
     ): ResolvedPbfResult {
         val resolvedPath = resolve(requestedPath, baseDir)
-        val fileName = File(resolvedPath).name.lowercase()
-        val normalizedSlug =
-            fileName.removeSuffix(".osm.pbf").removeSuffix("-latest").replace("_", "-")
+        val normalizedSlug = extractSlug(resolvedPath)
 
         val hints = SUPPLEMENTARY_REGION_MAP[normalizedSlug] ?: emptyList()
         return ResolvedPbfResult(primaryPath = resolvedPath, supplementaryHints = hints)
