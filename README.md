@@ -52,3 +52,7 @@ python3 scripts/download_pbf.py --all
 # Run PathPress using the downloaded Texas map data
 java -jar build/libs/pathpress-0.5.0-standalone.jar --start "Austin, TX" --end "San Antonio, TX" --pbf data/texas-latest.osm.pbf
 ```
+
+## Documentation
+
+See the [**Documentation Hub**](docs/README.md) for technical guides and architecture blueprints.
