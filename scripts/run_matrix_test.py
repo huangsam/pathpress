@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass
 
 # Local imports
-from matrix_cases import STATE_MATRICES, MatrixTestCase
+from matrix_cases import REGION_STATES, REGIONAL_MATRICES, STATE_MATRICES, MatrixTestCase
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.5.0-standalone.jar")
@@ -85,14 +85,16 @@ class TestResult:
     total_distance: str
     total_duration: str
     warnings: list[str]
+    leg_summaries: list[str] | None = None
     error_message: str | None = None
 
 
-def check_prerequisites(state: str, jar_path: str, custom_pbf: str | None = None) -> str:
+def check_prerequisites(target: str, jar_path: str, custom_pbf: str | None = None, is_region: bool = False) -> str:
     """Verify java, PBF file, and compile standalone shadow JAR if missing."""
     border = f"{Colors.CYAN}{Colors.BOLD}{'═' * 80}{Colors.RESET}"
+    header_label = f"REGION: {target.upper()}" if is_region else target.upper()
     print(border)
-    print(f"{Colors.CYAN}{Colors.BOLD} PATHPRESS MATRIX TEST RUNNER - SETUP [{state.upper()}]{Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD} PATHPRESS MATRIX TEST RUNNER - SETUP [{header_label}]{Colors.RESET}")
     print(border)
 
     # 1. Check java executable
@@ -106,21 +108,21 @@ def check_prerequisites(state: str, jar_path: str, custom_pbf: str | None = None
     if custom_pbf:
         pbf_path = os.path.abspath(custom_pbf)
     else:
-        pbf_filename = f"{state}-latest.osm.pbf"
+        pbf_filename = f"{target}-latest.osm.pbf"
         pbf_path = os.path.join(REPO_ROOT, "data", pbf_filename)
         if not os.path.exists(pbf_path) and os.path.exists(os.path.join(REPO_ROOT, pbf_filename)):
             pbf_path = os.path.join(REPO_ROOT, pbf_filename)
 
         if not os.path.exists(pbf_path):
             print(f"{Colors.YELLOW}[!]{Colors.RESET} OSM PBF file missing at: {pbf_path}")
-            print(f"    Attempting to download via python3 scripts/download_pbf.py {state} ...")
+            print(f"    Attempting to download via python3 scripts/download_pbf.py {target} ...")
             downloader = os.path.join(REPO_ROOT, "scripts", "download_pbf.py")
-            dl_res = subprocess.run([sys.executable, downloader, state], cwd=REPO_ROOT, capture_output=True, text=True)
+            dl_res = subprocess.run([sys.executable, downloader, target], cwd=REPO_ROOT, capture_output=True, text=True)
             if dl_res.returncode != 0 or not os.path.exists(pbf_path):
-                print(f"{Colors.RED}[ERROR] Failed to download OSM PBF file for state '{state}':{Colors.RESET}")
+                print(f"{Colors.RED}[ERROR] Failed to download OSM PBF file for '{target}':{Colors.RESET}")
                 print(dl_res.stderr or dl_res.stdout)
                 sys.exit(1)
-            print(f"{Colors.GREEN}[✓]{Colors.RESET} {state.capitalize()} OSM PBF file downloaded successfully.")
+            print(f"{Colors.GREEN}[✓]{Colors.RESET} {target.capitalize()} OSM PBF file downloaded successfully.")
 
     pbf_size_mb = os.path.getsize(pbf_path) / (1024 * 1024)
     print(f"{Colors.GREEN}[✓]{Colors.RESET} OSM PBF file verified ({pbf_size_mb:.1f} MB) -> {Colors.DIM}{pbf_path}{Colors.RESET}")
@@ -145,7 +147,7 @@ def check_prerequisites(state: str, jar_path: str, custom_pbf: str | None = None
 
 def run_test_case(
     tc: MatrixTestCase,
-    state: str,
+    target: str,
     jar_path: str,
     pbf_path: str,
     output_dir: str,
@@ -153,7 +155,7 @@ def run_test_case(
 ) -> TestResult:
     """Execute a single test case using java -jar pathpress-standalone.jar."""
     os.makedirs(output_dir, exist_ok=True)
-    pdf_file = os.path.join(output_dir, f"{state}_case_{tc.id}.pdf")
+    pdf_file = os.path.join(output_dir, f"{target}_case_{tc.id}.pdf")
     if os.path.exists(pdf_file):
         os.remove(pdf_file)
 
@@ -202,6 +204,20 @@ def run_test_case(
         if sum_dist_match:
             total_dist = sum_dist_match.group(1)
 
+    # Parse multi-day leg summary if present
+    leg_summaries = []
+    in_daily_summary = False
+    for line in combined_output.splitlines():
+        if "Daily Summary:" in line:
+            in_daily_summary = True
+            continue
+        if in_daily_summary:
+            stripped = line.strip()
+            if stripped.startswith("Day "):
+                leg_summaries.append(stripped)
+            elif not stripped or stripped.startswith("["):
+                in_daily_summary = False
+
     errors = []
     if proc.returncode != 0:
         errors.append(f"Exit code {proc.returncode} != 0")
@@ -228,12 +244,13 @@ def run_test_case(
         total_distance=total_dist,
         total_duration=total_dur,
         warnings=warnings,
+        leg_summaries=leg_summaries if leg_summaries else None,
         error_message=error_msg,
     )
 
 
-def print_summary_report(state: str, results: list[TestResult], output_dir: str) -> bool:
-    """Print polished Unicode box-drawing summary table of test results for a state."""
+def print_summary_report(target: str, results: list[TestResult], output_dir: str, is_region: bool = False) -> bool:
+    """Print polished Unicode box-drawing summary table of test results."""
     # Define column widths
     w_id = 4
     w_cat = 22
@@ -325,7 +342,8 @@ def print_summary_report(state: str, results: list[TestResult], output_dir: str)
     total_table_width = visible_len(top_border)
 
     # Header title banner
-    title_text = f" {state.upper()} LOCATION MATRIX TEST SUITE RESULTS "
+    title_kind = "REGION " + target.upper() if is_region else target.upper()
+    title_text = f" {title_kind} LOCATION MATRIX TEST SUITE RESULTS "
     side_dash_count = max(0, total_table_width - visible_len(title_text)) // 2
     right_dash_count = total_table_width - visible_len(title_text) - side_dash_count
     banner_line = f"{'═' * side_dash_count}{title_text}{'═' * right_dash_count}"
@@ -387,6 +405,10 @@ def print_summary_report(state: str, results: list[TestResult], output_dir: str)
         row_str = f"{v_bar}{cell_id}{v_bar}{cell_cat}{v_bar}{cell_route}{v_bar}{cell_days}{v_bar}{cell_units}{v_bar}{cell_status}{v_bar}{cell_time}{v_bar}{cell_dist}{v_bar}{cell_warn}{v_bar}"
         print(row_str)
 
+        if r.leg_summaries:
+            for leg in r.leg_summaries:
+                print(f"{Colors.DIM}    ├─ {leg}{Colors.RESET}")
+
         if not r.passed and r.error_message:
             fail_msg = f"{Colors.RED}    └─> FAILURE DETAILS: {r.error_message}{Colors.RESET}"
             print(fail_msg)
@@ -402,7 +424,7 @@ def print_summary_report(state: str, results: list[TestResult], output_dir: str)
     pass_color = Colors.GREEN if failed_count == 0 else Colors.RED
     status_summary = f"{pass_color}{Colors.BOLD}{passed_count}/{total_tests} Passed ({pass_rate:.1f}%){Colors.RESET}"
 
-    card_header = f" EXECUTIVE SUMMARY [{state.upper()}] "
+    card_header = f" EXECUTIVE SUMMARY [{title_kind}] "
     right_dash_summary = max(0, total_table_width - 2 - visible_len(card_header) - 1)
     summary_top = f"┌─{card_header}{'─' * right_dash_summary}┐"
     summary_bot = f"└{'─' * (total_table_width - 2)}┘"
@@ -434,7 +456,7 @@ def run_state_matrix(
         print(f"        Available states: {', '.join(STATE_MATRICES.keys())}")
         return False
 
-    pbf_path = check_prerequisites(state, jar_path, custom_pbf)
+    pbf_path = check_prerequisites(state, jar_path, custom_pbf, is_region=False)
     output_dir = os.path.join(output_base, state)
     graph_dir = os.path.join(REPO_ROOT, ".graphhopper", state)
 
@@ -451,7 +473,68 @@ def run_state_matrix(
         print(f"{status_label} ({res.elapsed_sec:.2f}s, {res.total_distance})")
         results.append(res)
 
-    return print_summary_report(state, results, output_dir)
+    return print_summary_report(state, results, output_dir, is_region=False)
+
+
+def run_region_matrix(
+    region: str,
+    jar_path: str,
+    custom_pbf: str | None = None,
+    output_base: str = DEFAULT_OUTPUT_BASE,
+) -> bool:
+    """Run multi-state corridor matrix test suite for a given region."""
+    test_cases = REGIONAL_MATRICES.get(region.lower())
+    if not test_cases:
+        print(f"{Colors.RED}[ERROR] No regional matrix test cases defined for region '{region}'.{Colors.RESET}")
+        canonical_regions = [r for r in REGIONAL_MATRICES.keys() if "_" not in r]
+        print(f"        Available regions: {', '.join(canonical_regions)}")
+        return False
+
+    pbf_path = check_prerequisites(region, jar_path, custom_pbf, is_region=True)
+    output_dir = os.path.join(output_base, region)
+    graph_dir = os.path.join(REPO_ROOT, ".graphhopper", region)
+
+    print(f"Running {len(test_cases)} multi-state corridor test cases for region {Colors.BOLD}{region.upper()}{Colors.RESET}...\n")
+    results = []
+    for tc in test_cases:
+        print(
+            f"[{tc.id:02d}/{len(test_cases):02d}] Testing [{tc.category}] {tc.start} ➔ {tc.end} ({tc.days}d, {tc.units})... ",
+            end="",
+            flush=True,
+        )
+        res = run_test_case(tc, region, jar_path, pbf_path, output_dir, graph_dir)
+        status_label = f"{Colors.GREEN}✓ PASS{Colors.RESET}" if res.passed else f"{Colors.RED}✗ FAIL{Colors.RESET}"
+        print(f"{status_label} ({res.elapsed_sec:.2f}s, {res.total_distance})")
+        results.append(res)
+
+    return print_summary_report(region, results, output_dir, is_region=True)
+
+
+def run_batch_region_states(
+    region: str,
+    jar_path: str,
+    custom_pbf: str | None = None,
+    output_base: str = DEFAULT_OUTPUT_BASE,
+) -> bool:
+    """Run state matrices for all individual states in a region sequentially."""
+    states = REGION_STATES.get(region.lower())
+    if not states:
+        print(f"{Colors.RED}[ERROR] No state mapping defined for region '{region}'.{Colors.RESET}")
+        canonical_regions = [r for r in REGION_STATES.keys() if "_" not in r]
+        print(f"        Available regions: {', '.join(canonical_regions)}")
+        return False
+
+    # Deduplicate states while preserving order
+    seen = set()
+    unique_states = [s for s in states if not (s in seen or seen.add(s))]
+
+    print(f"\n{Colors.CYAN}{Colors.BOLD}=== BATCH EXECUTION: States in {region.upper()} ({len(unique_states)} states) ==={Colors.RESET}\n")
+    all_passed = True
+    for s in unique_states:
+        success = run_state_matrix(s, jar_path, custom_pbf, output_base)
+        if not success:
+            all_passed = False
+    return all_passed
 
 
 def main():
@@ -459,8 +542,19 @@ def main():
     parser.add_argument(
         "--state",
         type=str,
-        default="california",
-        help=f"State matrix to test ({', '.join(STATE_MATRICES.keys())}, or 'all'). Default: california",
+        default=None,
+        help=f"State matrix to test ({', '.join([s for s in STATE_MATRICES.keys() if '_' not in s])}, or 'all').",
+    )
+    parser.add_argument(
+        "--region",
+        type=str,
+        default=None,
+        help="Regional corridor matrix to test (us-northeast, us-pacific, us-west, us-midwest, us-south, or 'all').",
+    )
+    parser.add_argument(
+        "--batch-states",
+        action="store_true",
+        help="When provided with --region, sequentially execute state matrices for all individual states in that region.",
     )
     parser.add_argument("--jar", type=str, default=DEFAULT_JAR_PATH, help="Path to standalone shadow JAR")
     parser.add_argument("--pbf", type=str, default=None, help="Explicit path to OSM PBF data file")
@@ -472,30 +566,55 @@ def main():
     if args.no_color or not sys.stdout.isatty():
         Colors.disable()
 
-    target_state = args.state.lower().replace("_", "-").replace(" ", "-")
-    if target_state == "all":
-        seen_matrices = set()
-        states_to_run = []
-        for s, matrix in STATE_MATRICES.items():
-            matrix_id = id(matrix)
-            if matrix_id not in seen_matrices:
-                seen_matrices.add(matrix_id)
-                states_to_run.append(s)
-    elif target_state in STATE_MATRICES:
-        states_to_run = [target_state]
+    if args.region:
+        target_region = args.region.lower().replace("_", "-").replace(" ", "-")
+        if target_region == "all":
+            canonical_regions = ["us-northeast", "us-pacific", "us-west", "us-midwest", "us-south"]
+            all_passed = True
+            for r in canonical_regions:
+                if args.batch_states:
+                    success = run_batch_region_states(r, args.jar, args.pbf, args.output_dir)
+                else:
+                    success = run_region_matrix(r, args.jar, args.pbf, args.output_dir)
+                if not success:
+                    all_passed = False
+            sys.exit(0 if all_passed else 1)
+        elif target_region in REGIONAL_MATRICES:
+            if args.batch_states:
+                success = run_batch_region_states(target_region, args.jar, args.pbf, args.output_dir)
+            else:
+                success = run_region_matrix(target_region, args.jar, args.pbf, args.output_dir)
+            sys.exit(0 if success else 1)
+        else:
+            print(f"{Colors.RED}[ERROR] Unknown region '{args.region}'.{Colors.RESET}")
+            canonical_regions = ["us-northeast", "us-pacific", "us-west", "us-midwest", "us-south"]
+            print(f"        Valid options are: {', '.join(canonical_regions)}, or 'all'.")
+            sys.exit(1)
     else:
-        print(f"{Colors.RED}[ERROR] Unknown state '{args.state}'.{Colors.RESET}")
-        canonical_states = [s for s in STATE_MATRICES.keys() if "_" not in s]
-        print(f"        Valid options are: {', '.join(canonical_states)}, or 'all'.")
-        sys.exit(1)
+        target_state = (args.state or "california").lower().replace("_", "-").replace(" ", "-")
+        if target_state == "all":
+            seen_matrices = set()
+            states_to_run = []
+            for s, matrix in STATE_MATRICES.items():
+                matrix_id = id(matrix)
+                if matrix_id not in seen_matrices:
+                    seen_matrices.add(matrix_id)
+                    states_to_run.append(s)
+        elif target_state in STATE_MATRICES:
+            states_to_run = [target_state]
+        else:
+            print(f"{Colors.RED}[ERROR] Unknown state '{args.state}'.{Colors.RESET}")
+            canonical_states = [s for s in STATE_MATRICES.keys() if "_" not in s]
+            print(f"        Valid options are: {', '.join(canonical_states)}, or 'all'.")
+            sys.exit(1)
 
-    all_states_passed = True
-    for state in states_to_run:
-        success = run_state_matrix(state, args.jar, args.pbf, args.output_dir)
-        if not success:
-            all_states_passed = False
+        all_states_passed = True
+        for state in states_to_run:
+            success = run_state_matrix(state, args.jar, args.pbf, args.output_dir)
+            if not success:
+                all_states_passed = False
 
-    sys.exit(0 if all_states_passed else 1)
+        sys.exit(0 if all_states_passed else 1)
 
 
 if __name__ == "__main__":
