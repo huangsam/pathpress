@@ -9,8 +9,6 @@ import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URI
 import java.util.Base64
 import javax.imageio.ImageIO
 import kotlin.math.cos
@@ -32,7 +30,6 @@ object OsmTileStitcher {
 
     private val logger = LoggerFactory.getLogger(OsmTileStitcher::class.java)
     private const val TILE_SIZE = 256
-    private val cacheDir = File(".map_cache").apply { mkdirs() }
 
     private fun lonToTileX(lon: Double, zoom: Int): Double {
         val n = 1 shl zoom
@@ -45,46 +42,13 @@ object OsmTileStitcher {
         return (1.0 - ln(tan(rad) + 1.0 / cos(rad)) / Math.PI) / 2.0 * n
     }
 
-    private fun fetchTile(zoom: Int, x: Int, y: Int): BufferedImage? {
-        val cacheFile = File(cacheDir, "tile_v_${zoom}_${x}_${y}.png")
-        if (cacheFile.exists()) {
-            try {
-                return ImageIO.read(cacheFile)
-            } catch (e: Exception) {
-                logger.warn("Failed to read cached tile {}: {}", cacheFile, e.message, e)
-            }
-        }
-
-        // CartoDB Voyager travel tiles
-        val tileUrl =
-            "https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/$zoom/$x/$y.png"
-        try {
-            val conn = URI(tileUrl).toURL().openConnection() as HttpURLConnection
-            conn.setRequestProperty(
-                "User-Agent",
-                "PathPress/0.5.0 (https://github.com/huangsam/pathpress)",
-            )
-            conn.connectTimeout = 3000
-            conn.readTimeout = 3000
-            if (conn.responseCode == 200) {
-                val image = ImageIO.read(conn.inputStream)
-                if (image != null) {
-                    try {
-                        ImageIO.write(image, "png", cacheFile)
-                    } catch (e: Exception) {
-                        logger.warn("Failed to write tile cache {}: {}", cacheFile, e.message, e)
-                    }
-                    return image
-                }
-            }
-        } catch (e: Exception) {
-            logger.warn("Failed to fetch map tile ($zoom/$x/$y): {}", e.message, e)
-        }
-        return null
-    }
-
     /** Render a clean line-shape route map as a raw Data URI. */
-    fun renderLegMapDataUri(leg: RouteLeg, width: Int = 260, height: Int = 260): String {
+    fun renderLegMapDataUri(
+        leg: RouteLeg,
+        width: Int = 260,
+        height: Int = 260,
+        baseDir: File = MapTileStorage.DEFAULT_BASE_DIR,
+    ): String {
         val points = mutableListOf<LocationCoords>()
         points.addAll(leg.geometry)
         return renderPointsMapDataUri(
@@ -95,6 +59,7 @@ object OsmTileStitcher {
             endLng = leg.endLng,
             width = width,
             height = height,
+            baseDir = baseDir,
         )
     }
 
@@ -103,6 +68,7 @@ object OsmTileStitcher {
         route: com.pathpress.model.Route,
         width: Int = 560,
         height: Int = 220,
+        baseDir: File = MapTileStorage.DEFAULT_BASE_DIR,
     ): String {
         if (route.legs.isEmpty()) return ""
         val points = mutableListOf<LocationCoords>()
@@ -119,6 +85,7 @@ object OsmTileStitcher {
             endLng = lastLeg.endLng,
             width = width,
             height = height,
+            baseDir = baseDir,
         )
     }
 
@@ -130,6 +97,7 @@ object OsmTileStitcher {
         endLng: Double,
         width: Int,
         height: Int,
+        baseDir: File = MapTileStorage.DEFAULT_BASE_DIR,
     ): String {
         if (points.isEmpty()) return ""
 
@@ -182,7 +150,7 @@ object OsmTileStitcher {
         var tilesLoaded = 0
         for (ty in startTileY..endTileY) {
             for (tx in startTileX..endTileX) {
-                val tile = fetchTile(zoom, tx, ty)
+                val tile = MapTileStorage.getTile(zoom, tx, ty, baseDir)
                 val drawX = (tx - startTileX) * TILE_SIZE
                 val drawY = (ty - startTileY) * TILE_SIZE
                 if (tile != null) {
@@ -271,8 +239,13 @@ object OsmTileStitcher {
     }
 
     /** Render a clean line-shape route map as an HTML img tag. */
-    fun renderLegMapHtml(leg: RouteLeg, width: Int = 260, height: Int = 260): String {
-        val dataUri = renderLegMapDataUri(leg, width, height)
+    fun renderLegMapHtml(
+        leg: RouteLeg,
+        width: Int = 260,
+        height: Int = 260,
+        baseDir: File = MapTileStorage.DEFAULT_BASE_DIR,
+    ): String {
+        val dataUri = renderLegMapDataUri(leg, width, height, baseDir)
         if (dataUri.isBlank()) return ""
         return "<img src=\"$dataUri\" style=\"width: ${width}px; height: auto; max-width: 100%; border-radius: 8px; border: 1px solid #cbd5e1;\" />"
     }
