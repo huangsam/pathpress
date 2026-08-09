@@ -414,4 +414,71 @@ class SpatialTileStorageTest {
             "After clearing cache and deleting disk file, should return empty store",
         )
     }
+
+    @Test
+    fun `benchmark comparison of bounding box vs corridor discovery with caching`() {
+        val baseDir = File(".pois_cache/tiles")
+        if (!baseDir.exists()) return
+
+        val sfToLaPolyline =
+            listOf(
+                com.pathpress.model.LocationCoords(37.7749, -122.4194),
+                com.pathpress.model.LocationCoords(37.3382, -121.8863),
+                com.pathpress.model.LocationCoords(36.6777, -121.6555),
+                com.pathpress.model.LocationCoords(35.2828, -120.6596),
+                com.pathpress.model.LocationCoords(34.4208, -119.6982),
+                com.pathpress.model.LocationCoords(34.0522, -118.2437),
+            )
+
+        val minLat = sfToLaPolyline.minOf { it.lat }
+        val maxLat = sfToLaPolyline.maxOf { it.lat }
+        val minLng = sfToLaPolyline.minOf { it.lng }
+        val maxLng = sfToLaPolyline.maxOf { it.lng }
+
+        // Bbox
+        SpatialTileStorage.clearCache()
+        val bboxTiles =
+            SpatialTileStorage.getIntersectingTiles(minLat, maxLat, minLng, maxLng, baseDir)
+        val t0 = System.currentTimeMillis()
+        val bboxStore =
+            SpatialTileStorage.loadIntersectingStore(minLat, maxLat, minLng, maxLng, baseDir)
+        val bboxDuration = System.currentTimeMillis() - t0
+
+        // Corridor Cold
+        SpatialTileStorage.clearCache()
+        val corridorTiles =
+            SpatialTileStorage.getTilesForPolyline(
+                sfToLaPolyline,
+                bufferMeters = 5000.0,
+                baseDir = baseDir,
+            )
+        val t1 = System.currentTimeMillis()
+        val corridorStoreCold =
+            SpatialTileStorage.loadPolylineStore(
+                sfToLaPolyline,
+                bufferMeters = 5000.0,
+                baseDir = baseDir,
+            )
+        val corridorColdDuration = System.currentTimeMillis() - t1
+
+        // Corridor Warm (In-memory cached)
+        val t2 = System.currentTimeMillis()
+        val corridorStoreWarm =
+            SpatialTileStorage.loadPolylineStore(
+                sfToLaPolyline,
+                bufferMeters = 5000.0,
+                baseDir = baseDir,
+            )
+        val corridorWarmDuration = System.currentTimeMillis() - t2
+
+        println(
+            "BENCHMARK_RESULT: BboxTiles=${bboxTiles.size}, BboxPois=${bboxStore.pois.size}, BboxTimeMs=${bboxDuration}"
+        )
+        println(
+            "BENCHMARK_RESULT: CorridorTiles=${corridorTiles.size}, CorridorPois=${corridorStoreCold.pois.size}, CorridorColdTimeMs=${corridorColdDuration}"
+        )
+        println("BENCHMARK_RESULT: CorridorWarmTimeMs=${corridorWarmDuration}")
+
+        assertTrue(corridorTiles.size <= bboxTiles.size)
+    }
 }
