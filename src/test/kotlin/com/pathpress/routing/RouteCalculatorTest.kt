@@ -317,4 +317,88 @@ class RouteCalculatorTest {
         assertEquals(false, lats.any { kotlin.math.abs(it - 34.4208) < 0.001 }) // SB trimmed
         assertEquals(true, lats.any { kotlin.math.abs(it - 36.6002) < 0.001 }) // Monterey kept
     }
+
+    @Test
+    fun `calculateRouteWithLegs throws RouteCalculationException when route fails`() {
+        class AlwaysFailingGraphHopper : GraphHopper() {
+            override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
+                val response = com.graphhopper.GHResponse()
+                response.addError(RuntimeException("No connection between coordinates"))
+                return response
+            }
+        }
+
+        val calculator =
+            RouteCalculator(graphHopper = AlwaysFailingGraphHopper(), pbfFilePath = "dummy.pbf")
+
+        val exception =
+            kotlin.test.assertFailsWith<RouteCalculationException> {
+                calculator.calculateRouteWithLegs(
+                    startLat = 37.7749,
+                    startLng = -122.4194,
+                    endLat = 34.0522,
+                    endLng = -118.2437,
+                    days = 1,
+                )
+            }
+
+        assertEquals(RouteFailureKind.NO_ROUTE_FOUND, exception.kind)
+    }
+
+    @Test
+    fun `calculateRouteWithLegs throws RouteCalculationException with SNAP_TOO_FAR when snap is excessive and route fails`() {
+        val farSnap =
+            object : com.graphhopper.storage.index.Snap(37.7749, -122.4194) {
+                override fun isValid(): Boolean = true
+            }
+        // 38.0 is ~25 km away
+        farSnap.snappedPoint = com.graphhopper.util.shapes.GHPoint3D(38.0000, -122.4194, 0.0)
+
+        val stubIndex =
+            object : com.graphhopper.storage.index.LocationIndex {
+                override fun findClosest(
+                    lat: Double,
+                    lon: Double,
+                    edgeFilter: com.graphhopper.routing.util.EdgeFilter,
+                ): com.graphhopper.storage.index.Snap = farSnap
+
+                override fun query(
+                    filter: com.graphhopper.storage.index.LocationIndex.TileFilter?,
+                    visitor: com.graphhopper.storage.index.LocationIndex.Visitor?,
+                ) {}
+
+                override fun close() {}
+            }
+
+        class FailingFarSnapGraphHopper(
+            private val idx: com.graphhopper.storage.index.LocationIndex
+        ) : GraphHopper() {
+            override fun getLocationIndex(): com.graphhopper.storage.index.LocationIndex = idx
+
+            override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
+                val response = com.graphhopper.GHResponse()
+                response.addError(RuntimeException("Disconnected graph"))
+                return response
+            }
+        }
+
+        val calculator =
+            RouteCalculator(
+                graphHopper = FailingFarSnapGraphHopper(stubIndex),
+                pbfFilePath = "dummy.pbf",
+            )
+
+        val exception =
+            kotlin.test.assertFailsWith<RouteCalculationException> {
+                calculator.calculateRouteWithLegs(
+                    startLat = 37.7749,
+                    startLng = -122.4194,
+                    endLat = 34.0522,
+                    endLng = -118.2437,
+                    days = 1,
+                )
+            }
+
+        assertEquals(RouteFailureKind.SNAP_TOO_FAR, exception.kind)
+    }
 }

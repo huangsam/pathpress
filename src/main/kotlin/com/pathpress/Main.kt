@@ -2,6 +2,7 @@ package com.pathpress
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
@@ -12,7 +13,28 @@ import com.pathpress.config.Config
 import com.pathpress.export.PdfExporter
 import com.pathpress.model.DistanceUnit
 import com.pathpress.pbf.PbfPathResolver
+import com.pathpress.routing.GeocodingException
+import com.pathpress.routing.RouteCalculationException
+import com.pathpress.routing.TripPlanningException
 import org.slf4j.LoggerFactory
+
+/** Standardized application process exit codes. */
+object ExitCode {
+    /** Successful execution. */
+    const val SUCCESS: Int = 0
+
+    /** Invalid command line parameters or CLI usage error. */
+    const val USAGE_ERROR: Int = 1
+
+    /** Spatial route calculation or graph connectivity failure. */
+    const val ROUTING_ERROR: Int = 2
+
+    /** Location geocoding or address resolution failure. */
+    const val GEOCODING_ERROR: Int = 3
+
+    /** Internal or unhandled application error. */
+    const val INTERNAL_ERROR: Int = 4
+}
 
 object BuildConfig {
     val VERSION: String by lazy {
@@ -110,28 +132,46 @@ open class PathPressCommand(
                 graphPath = graphPath,
             )
 
-        CliReporter.reportHeader(request, outputFile, verbose)
+        try {
+            CliReporter.reportHeader(request, outputFile, verbose)
 
-        val result = orchestrator.planTrip(request)
+            val result = orchestrator.planTrip(request)
 
-        CliReporter.reportRouteSummary(result.route, request.distanceUnit)
+            CliReporter.reportRouteSummary(result.route, request.distanceUnit)
 
-        if (verbose) {
-            CliReporter.reportVerboseBreakdown(result.route, request.distanceUnit)
+            if (verbose) {
+                CliReporter.reportVerboseBreakdown(result.route, request.distanceUnit)
+            }
+
+            logger.info("Exporting itinerary to PDF ($outputFile)...")
+            val htmlContent =
+                PdfExporter.generateHtml(
+                    result.route,
+                    result.startGeo.displayName,
+                    result.endGeo.displayName,
+                    unit = request.distanceUnit,
+                )
+            PdfExporter.exportToPdf(htmlContent, outputFile)
+            logger.info("✓ PDF exported successfully to: $outputFile")
+
+            CliReporter.reportDailySummary(result.route, request.distanceUnit)
+        } catch (e: RouteCalculationException) {
+            logger.error("Route calculation failed [${e.kind}]: ${e.message}")
+            System.err.println("Error [RouteCalculation - ${e.kind}]: ${e.message}")
+            throw ProgramResult(ExitCode.ROUTING_ERROR)
+        } catch (e: GeocodingException) {
+            logger.error("Geocoding failed for '${e.locationName}': ${e.message}")
+            System.err.println("Error [Geocoding]: ${e.message}")
+            throw ProgramResult(ExitCode.GEOCODING_ERROR)
+        } catch (e: TripPlanningException) {
+            logger.error("Trip planning failure: ${e.message}", e)
+            System.err.println("Error [TripPlanning]: ${e.message}")
+            throw ProgramResult(ExitCode.INTERNAL_ERROR)
+        } catch (e: Exception) {
+            logger.error("Unexpected failure: ${e.message}", e)
+            System.err.println("Error [Internal]: ${e.message}")
+            throw ProgramResult(ExitCode.INTERNAL_ERROR)
         }
-
-        logger.info("Exporting itinerary to PDF ($outputFile)...")
-        val htmlContent =
-            PdfExporter.generateHtml(
-                result.route,
-                result.startGeo.displayName,
-                result.endGeo.displayName,
-                unit = request.distanceUnit,
-            )
-        PdfExporter.exportToPdf(htmlContent, outputFile)
-        logger.info("✓ PDF exported successfully to: $outputFile")
-
-        CliReporter.reportDailySummary(result.route, request.distanceUnit)
     }
 }
 

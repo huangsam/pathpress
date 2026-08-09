@@ -3,6 +3,18 @@ package com.pathpress.pbf
 import java.io.File
 
 /**
+ * Result of resolving a PBF file, including any candidate adjacent regions for micro-extracts.
+ *
+ * @property primaryPath Path to the resolved primary PBF file.
+ * @property supplementaryHints Ordered candidate region slugs that provide better graph
+ *   connectivity.
+ */
+data class ResolvedPbfResult(
+    val primaryPath: String,
+    val supplementaryHints: List<String> = emptyList(),
+)
+
+/**
  * Resolves PBF file paths for GraphHopper routing.
  *
  * This utility resolves OSM PBF file paths with fallback logic:
@@ -11,6 +23,21 @@ import java.io.File
  * 3. Falls back to default paths or throws an error
  */
 object PbfPathResolver {
+
+    /**
+     * Maps micro-extract slugs to ordered fallback candidate regions.
+     *
+     * Micro-extracts like `district-of-columbia` strictly clip ways at administrative borders,
+     * truncating major commuter arterials and bridges that cross state lines into Maryland or
+     * Virginia. Routing engines operating solely on micro-extracts may fail when routes touch
+     * border segments. This map specifies adjacent/enclosing regions that provide complete
+     * topological graph connectivity.
+     */
+    val SUPPLEMENTARY_REGION_MAP: Map<String, List<String>> =
+        mapOf(
+            "district-of-columbia" to listOf("maryland", "virginia", "us-northeast"),
+            "dc" to listOf("maryland", "virginia", "us-northeast"),
+        )
 
     /**
      * Resolves a PBF file path with fallback logic.
@@ -29,6 +56,26 @@ object PbfPathResolver {
         if (dataFile.exists()) return dataFile.path
 
         return requestedPath
+    }
+
+    /**
+     * Resolves a PBF file path along with any recommended supplementary candidate regions.
+     *
+     * @param requestedPath The user-provided or default PBF path
+     * @param baseDir Base working directory for checking relative paths
+     * @return [ResolvedPbfResult] containing the primary path and candidate fallback region slugs.
+     */
+    fun resolveWithSupplementaryHints(
+        requestedPath: String,
+        baseDir: File = File("."),
+    ): ResolvedPbfResult {
+        val resolvedPath = resolve(requestedPath, baseDir)
+        val fileName = File(resolvedPath).name.lowercase()
+        val normalizedSlug =
+            fileName.removeSuffix(".osm.pbf").removeSuffix("-latest").replace("_", "-")
+
+        val hints = SUPPLEMENTARY_REGION_MAP[normalizedSlug] ?: emptyList()
+        return ResolvedPbfResult(primaryPath = resolvedPath, supplementaryHints = hints)
     }
 
     /**

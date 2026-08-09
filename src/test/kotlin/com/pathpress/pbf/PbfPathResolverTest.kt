@@ -89,4 +89,37 @@ class PbfPathResolverTest {
         val result = PbfPathResolver.defaultPath(baseDir = tempDir, envLookup = { null })
         assertEquals("data/california-latest.osm.pbf", result)
     }
+
+    @Test
+    fun `resolveWithSupplementaryHints returns candidate regions for district of columbia`(
+        @TempDir tempDir: File
+    ) {
+        val dataDir = File(tempDir, "data")
+        dataDir.mkdirs()
+        val dcFile = File(dataDir, "district-of-columbia-latest.osm.pbf")
+        dcFile.createNewFile()
+
+        val result =
+            PbfPathResolver.resolveWithSupplementaryHints(
+                "district-of-columbia-latest.osm.pbf",
+                tempDir,
+            )
+        assertEquals(dcFile.path, result.primaryPath)
+        assertEquals(listOf("maryland", "virginia", "us-northeast"), result.supplementaryHints)
+    }
+
+    @Test
+    fun `resolveWithSupplementaryHints returns empty list for standard state without supplementary needs`(
+        @TempDir tempDir: File
+    ) {
+        val dataDir = File(tempDir, "data")
+        dataDir.mkdirs()
+        val caliFile = File(dataDir, "california-latest.osm.pbf")
+        caliFile.createNewFile()
+
+        val result =
+            PbfPathResolver.resolveWithSupplementaryHints("california-latest.osm.pbf", tempDir)
+        assertEquals(caliFile.path, result.primaryPath)
+        assertEquals(emptyList(), result.supplementaryHints)
+    }
 }

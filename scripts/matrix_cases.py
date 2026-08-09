@@ -67,12 +67,13 @@ ALASKA_MATRIX: list[MatrixTestCase] = [
 ]
 
 HAWAII_MATRIX: list[MatrixTestCase] = [
-    MatrixTestCase(1, "Oahu Island Traverse", "Honolulu, HI", "Kailua, HI", 1, "imperial"),
+    MatrixTestCase(1, "Oahu Island Traverse", "Honolulu, HI", "Kailua, Honolulu County, HI", 1, "imperial"),
     MatrixTestCase(2, "North Shore Scenic", "Waikiki, HI", "Haleiwa, HI", 1, "metric"),
     MatrixTestCase(3, "Windward Coast", "Kaneohe, HI", "Laie, HI", 1, "imperial"),
-    MatrixTestCase(4, "Leeward Coast", "Kapolei, HI", "Waianae, HI", 1, "metric"),
+    MatrixTestCase(4, "South Shore Corridor", "Honolulu, HI", "Kapolei, HI", 1, "metric"),
     MatrixTestCase(5, "Raw Coordinates", "21.3069,-157.8583", "21.5928,-158.1033", 1, "imperial"),
 ]
+
 
 
 # ==============================================================================
@@ -394,11 +395,12 @@ DELAWARE_MATRIX: list[MatrixTestCase] = [
 
 DISTRICT_OF_COLUMBIA_MATRIX: list[MatrixTestCase] = [
     MatrixTestCase(1, "Mall Traverse", "Georgetown, Washington, DC", "Capitol Hill, Washington, DC", 1, "imperial"),
-    MatrixTestCase(2, "North-South Corridor", "Dupont Circle, Washington, DC", "Navy Yard, Washington, DC", 1, "metric"),
-    MatrixTestCase(3, "East-West Crossing", "Foggy Bottom, Washington, DC", "Anacostia, Washington, DC", 1, "imperial"),
-    MatrixTestCase(4, "Rock Creek Border", "Tenleytown, Washington, DC", "Adams Morgan, Washington, DC", 1, "metric"),
-    MatrixTestCase(5, "Raw Coordinates", "38.9072,-77.0369", "38.8899,-77.0090", 1, "metric"),
+    MatrixTestCase(2, "East-West Crossing", "Foggy Bottom, Washington, DC", "Anacostia, Washington, DC", 1, "metric"),
+    MatrixTestCase(3, "Corridor Traverse", "Georgetown, Washington, DC", "Anacostia, Washington, DC", 1, "imperial"),
+    MatrixTestCase(4, "Cross-City Route", "38.8991,-77.0547", "38.8622,-76.9953", 1, "metric"),
+    MatrixTestCase(5, "Raw Coordinates", "38.9089,-77.0746", "38.8898,-77.0094", 1, "metric"),
 ]
+
 
 PENNSYLVANIA_MATRIX: list[MatrixTestCase] = [
     MatrixTestCase(1, "Turnpike Cross-State", "Philadelphia, PA", "Pittsburgh, PA", 2, "imperial"),

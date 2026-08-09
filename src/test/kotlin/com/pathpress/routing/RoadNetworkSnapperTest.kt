@@ -120,11 +120,35 @@ class RoadNetworkSnapperTest {
     }
 
     @Test
-    fun `snapFilterFor returns ALL_EDGES when profile initialization throws`() {
-        val gh = GraphHopper() // Uninitialized graph hopper
+    fun `snapFilterFor returns ALL_EDGES when profile initialization throws and car_access is missing`() {
+        val gh = GraphHopper() // Uninitialized graph hopper without encoding manager
         val snapper = RoadNetworkSnapper(graphHopper = gh, pbfFilePath = "dummy.pbf")
 
         val filter = snapper.snapFilterFor("unknown_profile")
         assertEquals(EdgeFilter.ALL_EDGES, filter)
+    }
+
+    @Test
+    fun `MAX_SNAP_WARNING_METERS constant is configured to 5000 meters`() {
+        assertEquals(5000.0, RoadNetworkSnapper.MAX_SNAP_WARNING_METERS)
+    }
+
+    @Test
+    fun `snapToRoadNetwork records excessive snap distance when point is far from road network`() {
+        val farSnap = ValidSnap(37.7749, -122.4194)
+        // 37.85 is ~8.3 km north of 37.7749
+        farSnap.snappedPoint = GHPoint3D(37.8500, -122.4194, 0.0)
+        val gh = TestGraphHopper(StubLocationIndex(farSnap))
+
+        val snapper =
+            RoadNetworkSnapper(
+                graphHopper = gh,
+                pbfFilePath = "dummy.pbf",
+                poiExtractor = TestPoiExtractor(),
+            )
+        val result = snapper.snapToRoadNetwork(37.7749, -122.4194)
+        assertTrue(result.snapDistanceMeters > RoadNetworkSnapper.MAX_SNAP_WARNING_METERS)
+        assertEquals(37.8500, result.coords.lat)
+        assertEquals(-122.4194, result.coords.lng)
     }
 }

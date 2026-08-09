@@ -152,9 +152,22 @@ class RouteCalculator(
             successfulResponse = executeRoute(emptyList())
         }
 
+        val snapTooFar =
+            startSnap.snapDistanceMeters > RoadNetworkSnapper.MAX_SNAP_WARNING_METERS ||
+                endSnap.snapDistanceMeters > RoadNetworkSnapper.MAX_SNAP_WARNING_METERS
+
         if (successfulResponse == null || successfulResponse.hasErrors()) {
-            throw IllegalStateException(
-                "Route calculation failed: unable to calculate route from start to end"
+            val failureKind =
+                if (snapTooFar) RouteFailureKind.SNAP_TOO_FAR else RouteFailureKind.NO_ROUTE_FOUND
+            val errorSummary =
+                if (successfulResponse != null && successfulResponse.hasErrors()) {
+                    successfulResponse.errors.joinToString("; ") { it.message ?: it.toString() }
+                } else {
+                    "No routable path between endpoints"
+                }
+            throw RouteCalculationException(
+                message = "Route calculation failed ($failureKind): $errorSummary",
+                kind = failureKind,
             )
         }
 

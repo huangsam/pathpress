@@ -58,4 +58,29 @@ class MainTest {
             "Expected empty waypoints but got hardcoded injection: ${resolution.waypoints.map { it.name }}",
         )
     }
+
+    @Test
+    fun `PathPressCommand exits with GEOCODING_ERROR when geocoding fails`() {
+        val orchestrator = TripPlannerOrchestrator(geocoder = { null })
+        val command = PathPressCommand(orchestrator = orchestrator)
+        val ex =
+            kotlin.test.assertFailsWith<com.github.ajalt.clikt.core.ProgramResult> {
+                command.parse(listOf("--start", "UnknownStart", "--end", "UnknownEnd"))
+            }
+        assertEquals(ExitCode.GEOCODING_ERROR, ex.statusCode)
+    }
+
+    @Test
+    fun `PathPressCommand exits with INTERNAL_ERROR on unexpected exception`() {
+        val orchestrator =
+            TripPlannerOrchestrator(
+                geocoder = { throw RuntimeException("Simulated unexpected disk/IO error") }
+            )
+        val command = PathPressCommand(orchestrator = orchestrator)
+        val ex =
+            kotlin.test.assertFailsWith<com.github.ajalt.clikt.core.ProgramResult> {
+                command.parse(listOf("--start", "SF", "--end", "LA"))
+            }
+        assertEquals(ExitCode.INTERNAL_ERROR, ex.statusCode)
+    }
 }

@@ -1,6 +1,5 @@
 package com.pathpress
 
-import com.github.ajalt.clikt.core.UsageError
 import com.graphhopper.GHRequest
 import com.graphhopper.GHResponse
 import com.graphhopper.GraphHopper
@@ -133,24 +132,32 @@ class TripPlannerOrchestratorTest {
     }
 
     @Test
-    fun `planTrip throws UsageError when start location cannot be geocoded`() {
+    fun `planTrip throws GeocodingException when start location cannot be geocoded`() {
         val orchestrator = TripPlannerOrchestrator(geocoder = stubGeocoder)
         val request =
             TripPlannerRequest(startLocation = "invalid_start_location", endLocation = "LA")
 
-        assertFailsWith<UsageError> { orchestrator.planTrip(request) }
+        val exception =
+            assertFailsWith<com.pathpress.routing.GeocodingException> {
+                orchestrator.planTrip(request)
+            }
+        assertEquals("invalid_start_location", exception.locationName)
     }
 
     @Test
-    fun `planTrip throws UsageError when end location cannot be geocoded`() {
+    fun `planTrip throws GeocodingException when end location cannot be geocoded`() {
         val orchestrator = TripPlannerOrchestrator(geocoder = stubGeocoder)
         val request = TripPlannerRequest(startLocation = "SF", endLocation = "invalid_end_location")
 
-        assertFailsWith<UsageError> { orchestrator.planTrip(request) }
+        val exception =
+            assertFailsWith<com.pathpress.routing.GeocodingException> {
+                orchestrator.planTrip(request)
+            }
+        assertEquals("invalid_end_location", exception.locationName)
     }
 
     @Test
-    fun `planTrip throws IllegalStateException when route calculator initialization fails`() {
+    fun `planTrip throws TripPlanningException when route calculator initialization fails`() {
         val orchestrator =
             TripPlannerOrchestrator(
                 geocoder = stubGeocoder,
@@ -161,6 +168,8 @@ class TripPlannerOrchestratorTest {
 
         val request = TripPlannerRequest(startLocation = "SF", endLocation = "LA")
 
-        assertFailsWith<IllegalStateException> { orchestrator.planTrip(request) }
+        assertFailsWith<com.pathpress.routing.TripPlanningException> {
+            orchestrator.planTrip(request)
+        }
     }
 }

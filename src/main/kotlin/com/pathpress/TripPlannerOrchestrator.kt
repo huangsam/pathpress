@@ -57,21 +57,27 @@ class TripPlannerOrchestrator(
     private val logger = LoggerFactory.getLogger(TripPlannerOrchestrator::class.java)
 
     fun planTrip(request: TripPlannerRequest): TripPlannerResult {
-        val pbfPath = PbfPathResolver.resolve(request.pbfPath)
+        val pbfResult = PbfPathResolver.resolveWithSupplementaryHints(request.pbfPath)
+        val pbfPath = pbfResult.primaryPath
         val mappedProfile = if (request.profile.lowercase() == "scenic") "car" else request.profile
+
+        if (pbfResult.supplementaryHints.isNotEmpty()) {
+            logger.warn(
+                "Selected PBF extract '{}' is a micro-extract. Administrative border clipping may disconnect regional highways. " +
+                    "For full graph connectivity across state lines, consider using adjacent region(s): {}.",
+                pbfPath,
+                pbfResult.supplementaryHints.joinToString(", "),
+            )
+        }
 
         // 1. Geocode start and end locations
         logger.info("Geocoding locations...")
         val startGeo =
             geocoder(request.startLocation)
-                ?: throw com.github.ajalt.clikt.core.UsageError(
-                    "Could not geocode start location '${request.startLocation}'"
-                )
+                ?: throw com.pathpress.routing.GeocodingException(request.startLocation)
         val endGeo =
             geocoder(request.endLocation)
-                ?: throw com.github.ajalt.clikt.core.UsageError(
-                    "Could not geocode end location '${request.endLocation}'"
-                )
+                ?: throw com.pathpress.routing.GeocodingException(request.endLocation)
         logger.info(
             "  -> Start: '${startGeo.displayName}' (${startGeo.coords.lat}, ${startGeo.coords.lng})"
         )
@@ -85,9 +91,10 @@ class TripPlannerOrchestrator(
             try {
                 routeCalculatorFactory(request.graphPath, pbfPath, config)
             } catch (e: Exception) {
-                error(
+                throw com.pathpress.routing.TripPlanningException(
                     "Failed to initialize GraphHopper. Ensure PBF file exists at $pbfPath\n" +
-                        "Error: ${e.message}"
+                        "Error: ${e.message}",
+                    cause = e,
                 )
             }
 
