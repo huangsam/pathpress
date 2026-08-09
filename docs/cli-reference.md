@@ -7,7 +7,7 @@ PathPress provides a unified command-line interface implemented using Clikt, com
 ## PathPress Standalone JAR CLI
 
 ```bash
-java -jar build/libs/pathpress-0.5.0-standalone.jar [OPTIONS]
+java -jar build/libs/pathpress-standalone.jar [OPTIONS]
 ```
 
 ### Core Trip Planning Options

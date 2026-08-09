@@ -87,4 +87,12 @@ tasks.shadowJar {
     mergeServiceFiles()
 }
 
-tasks.build { dependsOn(tasks.shadowJar) }
+val copyUnversionedJar =
+    tasks.register<Copy>("copyUnversionedJar") {
+        dependsOn(tasks.shadowJar)
+        from(tasks.shadowJar.flatMap { it.archiveFile })
+        into(layout.buildDirectory.dir("libs"))
+        rename { "pathpress-standalone.jar" }
+    }
+
+tasks.build { dependsOn(tasks.shadowJar, copyUnversionedJar) }

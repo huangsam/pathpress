@@ -3,7 +3,7 @@
 PathPress Location Pair Matrix Automated Test Runner.
 
 Executes test matrices of location pairs against the built standalone JAR
-(`build/libs/pathpress-0.5.0-standalone.jar`) using OSM PBF state spatial data.
+(`build/libs/pathpress-standalone.jar`) using OSM PBF state spatial data.
 
 Usage:
     python3 scripts/run_matrix_test.py --state california
@@ -28,7 +28,7 @@ from matrix_cases import (
 )
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.5.0-standalone.jar")
+DEFAULT_JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-standalone.jar")
 DEFAULT_OUTPUT_BASE = os.path.join(REPO_ROOT, "build", "matrix-output")
 
 
