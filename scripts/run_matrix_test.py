@@ -19,8 +19,13 @@ import sys
 import time
 from dataclasses import dataclass
 
-# Local imports
-from matrix_cases import REGION_STATES, REGIONAL_MATRICES, STATE_MATRICES, MatrixTestCase
+from matrix_cases import (
+    REGION_STATES,
+    REGIONAL_MATRICES,
+    STATE_MATRICES,
+    USA_NATIONWIDE_MATRIX,
+    MatrixTestCase,
+)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-0.5.0-standalone.jar")
@@ -108,7 +113,10 @@ def check_prerequisites(target: str, jar_path: str, custom_pbf: str | None = Non
     if custom_pbf:
         pbf_path = os.path.abspath(custom_pbf)
     else:
-        pbf_filename = f"{target}-latest.osm.pbf"
+        if target in ("us", "usa", "nationwide", "united-states"):
+            pbf_filename = "us-latest.osm.pbf"
+        else:
+            pbf_filename = f"{target}-latest.osm.pbf"
         pbf_path = os.path.join(REPO_ROOT, "data", pbf_filename)
         if not os.path.exists(pbf_path) and os.path.exists(os.path.join(REPO_ROOT, pbf_filename)):
             pbf_path = os.path.join(REPO_ROOT, pbf_filename)
@@ -510,6 +518,33 @@ def run_region_matrix(
     return print_summary_report(region, results, output_dir, is_region=True)
 
 
+def run_nationwide_matrix(
+    jar_path: str,
+    custom_pbf: str | None = None,
+    output_base: str = DEFAULT_OUTPUT_BASE,
+) -> bool:
+    """Run nationwide Coast-to-Coast corridor matrix test suite."""
+    test_cases = USA_NATIONWIDE_MATRIX
+    pbf_path = check_prerequisites("us", jar_path, custom_pbf, is_region=True)
+    output_dir = os.path.join(output_base, "nationwide")
+    graph_dir = os.path.join(REPO_ROOT, ".graphhopper", "us")
+
+    print(f"Running {len(test_cases)} nationwide Coast-to-Coast test cases for {Colors.BOLD}USA NATIONWIDE{Colors.RESET}...\n")
+    results = []
+    for tc in test_cases:
+        print(
+            f"[{tc.id:02d}/{len(test_cases):02d}] Testing [{tc.category}] {tc.start} ➔ {tc.end} ({tc.days}d, {tc.units})... ",
+            end="",
+            flush=True,
+        )
+        res = run_test_case(tc, "us", jar_path, pbf_path, output_dir, graph_dir)
+        status_label = f"{Colors.GREEN}✓ PASS{Colors.RESET}" if res.passed else f"{Colors.RED}✗ FAIL{Colors.RESET}"
+        print(f"{status_label} ({res.elapsed_sec:.2f}s, {res.total_distance})")
+        results.append(res)
+
+    return print_summary_report("NATIONWIDE USA", results, output_dir, is_region=True)
+
+
 def run_batch_region_states(
     region: str,
     jar_path: str,
@@ -552,6 +587,12 @@ def main():
         help="Regional corridor matrix to test (us-northeast, us-pacific, us-west, us-midwest, us-south, or 'all').",
     )
     parser.add_argument(
+        "--nationwide",
+        "--country",
+        action="store_true",
+        help="Run nationwide Coast-to-Coast test matrix against US nationwide PBF (data/us-latest.osm.pbf).",
+    )
+    parser.add_argument(
         "--batch-states",
         action="store_true",
         help="When provided with --region, sequentially execute state matrices for all individual states in that region.",
@@ -566,9 +607,16 @@ def main():
     if args.no_color or not sys.stdout.isatty():
         Colors.disable()
 
+    if args.nationwide:
+        success = run_nationwide_matrix(args.jar, args.pbf, args.output_dir)
+        sys.exit(0 if success else 1)
+
     if args.region:
         target_region = args.region.lower().replace("_", "-").replace(" ", "-")
-        if target_region == "all":
+        if target_region in ("usa", "us", "nationwide", "united-states"):
+            success = run_nationwide_matrix(args.jar, args.pbf, args.output_dir)
+            sys.exit(0 if success else 1)
+        elif target_region == "all":
             canonical_regions = ["us-northeast", "us-pacific", "us-west", "us-midwest", "us-south"]
             all_passed = True
             for r in canonical_regions:

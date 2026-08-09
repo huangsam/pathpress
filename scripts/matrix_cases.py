@@ -606,6 +606,18 @@ US_SOUTH_MATRIX: list[MatrixTestCase] = [
     MatrixTestCase(6, "Raw Coordinates", "33.7490,-84.3880", "29.9511,-90.0715", 2, "metric"),
 ]
 
+USA_NATIONWIDE_MATRIX: list[MatrixTestCase] = [
+    MatrixTestCase(1, "Trans-Continental Diagonal", "Seattle, WA", "Miami, FL", 10, "metric"),
+    MatrixTestCase(2, "Historic Coast-to-Coast", "New York, NY", "Los Angeles, CA", 8, "imperial"),
+]
+
+NATIONWIDE_MATRICES: dict[str, list[MatrixTestCase]] = {
+    "usa": USA_NATIONWIDE_MATRIX,
+    "us": USA_NATIONWIDE_MATRIX,
+    "united-states": USA_NATIONWIDE_MATRIX,
+    "nationwide": USA_NATIONWIDE_MATRIX,
+}
+
 REGIONAL_MATRICES: dict[str, list[MatrixTestCase]] = {
     "us-northeast": US_NORTHEAST_MATRIX,
     "us_northeast": US_NORTHEAST_MATRIX,
@@ -622,6 +634,9 @@ REGIONAL_MATRICES: dict[str, list[MatrixTestCase]] = {
     "us-south": US_SOUTH_MATRIX,
     "us_south": US_SOUTH_MATRIX,
     "south": US_SOUTH_MATRIX,
+    "usa": USA_NATIONWIDE_MATRIX,
+    "us": USA_NATIONWIDE_MATRIX,
+    "nationwide": USA_NATIONWIDE_MATRIX,
 }
 
 REGION_STATES: dict[str, list[str]] = {
