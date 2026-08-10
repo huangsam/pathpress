@@ -25,14 +25,19 @@ object PoiRanker {
         if (candidates.isEmpty() || limit <= 0) return emptyList()
 
         // Deduplicate by name (keeping the closest instance)
-        val distinctByName =
-            candidates
-                .groupBy { it.name?.lowercase() ?: it.id }
-                .mapValues { (_, list) ->
-                    list.minByOrNull { it.distanceFromRouteMeters ?: Double.MAX_VALUE }!!
-                }
-                .values
-                .toList()
+        val dedupMap = LinkedHashMap<String, POI>(candidates.size)
+        for (c in candidates) {
+            val key = c.name?.lowercase() ?: c.id
+            val existing = dedupMap[key]
+            if (
+                existing == null ||
+                    (c.distanceFromRouteMeters ?: Double.MAX_VALUE) <
+                        (existing.distanceFromRouteMeters ?: Double.MAX_VALUE)
+            ) {
+                dedupMap[key] = c
+            }
+        }
+        val distinctByName = dedupMap.values.toList()
 
         // Use segment-based selection when we have route geometry
         if (legPoints.size >= 2) {

@@ -1,5 +1,6 @@
 package com.pathpress.export
 
+import com.pathpress.export.PdfExporter.DAY_TITLE_PREFIX_REGEX
 import com.pathpress.export.PdfExporter.formatDistance
 import com.pathpress.export.PdfExporter.formatDuration
 import com.pathpress.export.PdfExporter.formatOffRouteDistance
@@ -14,6 +15,8 @@ import com.pathpress.poi.MapUrlFormatter
 import com.pathpress.poi.sanitizePoiType
 import com.pathpress.poi.toDirectionsUrl
 import kotlinx.html.*
+
+private val SPECIAL_ENDPOINT_TYPES = setOf("start", "finish", "origin", "destination")
 
 internal fun FlowContent.coverPage(
     route: Route,
@@ -42,9 +45,7 @@ internal fun FlowContent.tableOfContentsCard(route: Route) {
             for (leg in route.legs) {
                 val rawTitle = leg.dayTitle ?: "Scenic Drive"
                 val cleanTitle =
-                    rawTitle
-                        .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
-                        .ifBlank { "Scenic Drive" }
+                    rawTitle.replace(DAY_TITLE_PREFIX_REGEX, "").ifBlank { "Scenic Drive" }
                 li("toc-item") {
                     a(href = "#leg-${leg.dayNumber}", classes = "toc-link") {
                         +"Day ${leg.dayNumber}: ${sanitizeText(cleanTitle)}"
@@ -148,10 +149,7 @@ internal fun FlowContent.legCard(
     unit: DistanceUnit = DistanceUnit.METRIC,
 ) {
     val rawTitle = leg.dayTitle ?: "Scenic Drive"
-    val cleanTitle =
-        rawTitle.replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "").ifBlank {
-            "Scenic Drive"
-        }
+    val cleanTitle = rawTitle.replace(DAY_TITLE_PREFIX_REGEX, "").ifBlank { "Scenic Drive" }
     val distance = leg.distanceMeters ?: (route.totalDistanceMeters / route.legs.size)
     val duration = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
     val directionsUrl = leg.toDirectionsUrl()
@@ -205,7 +203,7 @@ internal fun FlowContent.legCard(
                 .filterNot { poi ->
                     val typeLower = poi.type.lowercase().trim()
                     val nameLower = poi.name?.lowercase()?.trim() ?: ""
-                    typeLower in setOf("start", "finish", "origin", "destination") ||
+                    typeLower in SPECIAL_ENDPOINT_TYPES ||
                         nameLower == "start" ||
                         nameLower == "finish" ||
                         nameLower == "origin" ||
@@ -293,9 +291,9 @@ internal fun FlowContent.navigationAppendix(route: Route) {
         for (leg in route.legs) {
             val rawTitle = leg.dayTitle ?: "Scenic Drive"
             val cleanTitle =
-                rawTitle
-                    .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
-                    .ifBlank { leg.endTownName?.let { "Drive to $it" } ?: "Scenic Drive" }
+                rawTitle.replace(DAY_TITLE_PREFIX_REGEX, "").ifBlank {
+                    leg.endTownName?.let { "Drive to $it" } ?: "Scenic Drive"
+                }
             val directionsUrl = leg.toDirectionsUrl()
             val qrDataUri = QrCodeGenerator.generateQrCodeDataUri(directionsUrl, 280, 280)
             val mapDataUri = OsmTileStitcher.renderLegMapDataUri(leg, 175, 175)

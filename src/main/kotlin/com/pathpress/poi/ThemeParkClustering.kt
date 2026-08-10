@@ -45,12 +45,13 @@ object ThemeParkClustering {
         return otherPois + clustered
     }
 
+    private val THEME_PARK_ATTRACTION_TYPES =
+        setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
+
     /** Checks if a POI represents a theme park node based on OSM tags or domain matching. */
     fun isThemeParkNode(poi: POI): Boolean {
         val attractionType = poi.tags["attraction"]
-        if (
-            attractionType in setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
-        ) {
+        if (attractionType in THEME_PARK_ATTRACTION_TYPES) {
             return true
         }
         val tourism = poi.tags["tourism"]

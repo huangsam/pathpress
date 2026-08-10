@@ -2,6 +2,9 @@ package com.pathpress.poi.rules
 
 import com.pathpress.model.POI
 
+val THEME_PARK_ATTRACTION_TYPES =
+    setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
+
 /**
  * Filters out theme park rides and sub-attractions unless explicitly requested in the user prompt.
  *
@@ -14,9 +17,7 @@ object ThemeParkFilterRule : PoiFilterRule {
         if (context.allowsThemeParksFromPrompt) return false
 
         val attractionType = poi.tags["attraction"]
-        if (
-            attractionType in setOf("roller_coaster", "amusement_ride", "water_slide", "carousel")
-        ) {
+        if (attractionType in THEME_PARK_ATTRACTION_TYPES) {
             return true
         }
 

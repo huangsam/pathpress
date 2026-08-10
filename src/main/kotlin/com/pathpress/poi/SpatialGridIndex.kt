@@ -11,7 +11,19 @@ import kotlin.math.floor
  *
  * Cell dimensions are determined by [GRID_CELL_SIZE_DEG] (~0.05° ≈ 5.5 km or 3.4 miles).
  */
-data class GridCell(val latIndex: Int, val lngIndex: Int) {
+@JvmInline
+value class GridCell(val packed: Long) {
+    val latIndex: Int
+        get() = (packed ushr 32).toInt()
+
+    val lngIndex: Int
+        get() = packed.toInt()
+
+    constructor(
+        latIndex: Int,
+        lngIndex: Int,
+    ) : this((latIndex.toLong() shl 32) or (lngIndex.toLong() and 0xFFFFFFFFL))
+
     companion object {
         /**
          * Spatial grid cell size in degrees.
@@ -74,26 +86,27 @@ object SpatialGridIndex {
     fun routeProgress(poiLat: Double, poiLng: Double, legPoints: List<LocationCoords>): Double {
         if (legPoints.size < 2) return 0.0
         val step = maxOf(1, legPoints.size / 80)
-        val sampled = (legPoints.indices step step).map { legPoints[it] }
+        val sampledCount = (legPoints.size - 1) / step + 1
+        if (sampledCount < 2) return 0.0
 
-        val segLengths =
-            (0 until sampled.size - 1).map { i ->
-                haversineMeters(
-                    sampled[i].lat,
-                    sampled[i].lng,
-                    sampled[i + 1].lat,
-                    sampled[i + 1].lng,
-                )
-            }
-        val totalLen = segLengths.sum().coerceAtLeast(1.0)
+        val segLengths = DoubleArray(sampledCount - 1)
+        var totalLen = 0.0
+        for (i in 0 until sampledCount - 1) {
+            val p1 = legPoints[i * step]
+            val p2 = legPoints[(i + 1) * step]
+            val segLen = haversineMeters(p1.lat, p1.lng, p2.lat, p2.lng)
+            segLengths[i] = segLen
+            totalLen += segLen
+        }
+        val safeTotalLen = totalLen.coerceAtLeast(1.0)
 
         var minDist = Double.MAX_VALUE
         var bestProgress = 0.0
         var cumLen = 0.0
 
-        for (i in 0 until sampled.size - 1) {
-            val p1 = sampled[i]
-            val p2 = sampled[i + 1]
+        for (i in 0 until sampledCount - 1) {
+            val p1 = legPoints[i * step]
+            val p2 = legPoints[(i + 1) * step]
             val segLen = segLengths[i]
 
             val t = segmentProjectionParam(poiLat, poiLng, p1.lat, p1.lng, p2.lat, p2.lng)
@@ -103,7 +116,7 @@ object SpatialGridIndex {
 
             if (dist < minDist) {
                 minDist = dist
-                bestProgress = (cumLen + t * segLen) / totalLen
+                bestProgress = (cumLen + t * segLen) / safeTotalLen
             }
             cumLen += segLen
         }

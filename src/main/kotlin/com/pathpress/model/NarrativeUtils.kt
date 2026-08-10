@@ -1,5 +1,8 @@
 package com.pathpress.model
 
+private val SENTENCE_SPLIT_REGEX = Regex("(?<=[.!?])\\s+")
+private val WHITESPACE_SPLIT_REGEX = Regex("\\s+")
+
 /**
  * Extension helper to filter out null, blank, or `"null"` literal strings (commonly produced when
  * parsing unquoted or raw LLM output and stringified JSON).
@@ -14,11 +17,11 @@ fun String?.takeValidText(): String? =
 fun String.boundNarrative(maxWords: Int = 55, maxSentences: Int = 3): String {
     val clean = this.trim()
     if (clean.isBlank()) return clean
-    val sentences = clean.split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }
+    val sentences = clean.split(SENTENCE_SPLIT_REGEX).filter { it.isNotBlank() }
     val result = mutableListOf<String>()
     var totalWords = 0
     for (sentence in sentences) {
-        val wordCount = sentence.split(Regex("\\s+")).count { it.isNotBlank() }
+        val wordCount = sentence.split(WHITESPACE_SPLIT_REGEX).count { it.isNotBlank() }
         if (
             result.isEmpty() || (result.size < maxSentences && totalWords + wordCount <= maxWords)
         ) {

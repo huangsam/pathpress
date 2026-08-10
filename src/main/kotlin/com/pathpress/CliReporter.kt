@@ -90,9 +90,9 @@ object CliReporter {
                 val legDur = leg.durationSeconds ?: (route.totalDurationSeconds / route.legs.size)
                 val rawTitle = leg.dayTitle ?: "Scenic Leg"
                 val cleanTitle =
-                    rawTitle
-                        .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
-                        .ifBlank { "Scenic Leg" }
+                    rawTitle.replace(PdfExporter.DAY_TITLE_PREFIX_REGEX, "").ifBlank {
+                        "Scenic Leg"
+                    }
                 val endTown = leg.endTownName?.let { " -> Overnight in $it" } ?: ""
                 appendLine(
                     "  Day ${leg.dayNumber}: $cleanTitle$endTown - ${PdfExporter.formatDistance(legDist, distanceUnit)} (${formatDuration(legDur)})"

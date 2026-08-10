@@ -151,6 +151,28 @@ object MetadataNotabilityScoringRule : PoiScoringRule {
     }
 }
 
+private val HIGH_ENGAGEMENT_KID_TYPES =
+    setOf("playground", "zoo", "aquarium", "theme_park", "water_park", "beach")
+private val LEISURE_KID_TYPES = setOf("playground", "water_park", "amusement_park")
+private val TOURISM_KID_TYPES = setOf("zoo", "aquarium", "theme_park")
+private val GENERAL_FAMILY_TYPES = setOf("park", "museum", "cafe")
+private val CORE_SCENIC_TYPES =
+    setOf(
+        "viewpoint",
+        "attraction",
+        "museum",
+        "park",
+        "nature_reserve",
+        "historic",
+        "monument",
+        "peak",
+        "beach",
+        "artwork",
+        "playground",
+        "zoo",
+        "cafe",
+    )
+
 /**
  * Rewards high-value categories (viewpoints, parks, beaches) and family/toddler travel persona
  * matches.
@@ -165,37 +187,19 @@ object CategoryAndPersonaScoringRule : PoiScoringRule {
         val tags = poi.tags
 
         val isHighEngagementKidSpot =
-            poi.type in
-                setOf("playground", "zoo", "aquarium", "theme_park", "water_park", "beach") ||
-                tags["leisure"] in setOf("playground", "water_park", "amusement_park") ||
-                tags["tourism"] in setOf("zoo", "aquarium", "theme_park") ||
+            poi.type in HIGH_ENGAGEMENT_KID_TYPES ||
+                tags["leisure"] in LEISURE_KID_TYPES ||
+                tags["tourism"] in TOURISM_KID_TYPES ||
                 tags["natural"] == "beach"
 
         val isGeneralFamilyFriendly =
             isHighEngagementKidSpot ||
-                poi.type in setOf("park", "museum", "cafe") ||
+                poi.type in GENERAL_FAMILY_TYPES ||
                 tags["leisure"] == "park" ||
                 tags["tourism"] == "museum" ||
                 tags["amenity"] == "cafe"
 
-        if (
-            poi.type in
-                setOf(
-                    "viewpoint",
-                    "attraction",
-                    "museum",
-                    "park",
-                    "nature_reserve",
-                    "historic",
-                    "monument",
-                    "peak",
-                    "beach",
-                    "artwork",
-                    "playground",
-                    "zoo",
-                    "cafe",
-                ) || isGeneralFamilyFriendly
-        ) {
+        if (poi.type in CORE_SCENIC_TYPES || isGeneralFamilyFriendly) {
             score += 8.0
         }
 

@@ -45,6 +45,12 @@ object TownScorer {
         )
     private val DINING_TYPES =
         setOf("restaurant", "cafe", "bakery", "fast_food", "ice_cream", "pub", "food_court", "bar")
+    private val FAMILY_PROMPT_KEYWORDS =
+        listOf("family", "kid", "toddler", "children", "play", "child")
+    private val DINING_PROMPT_KEYWORDS =
+        listOf("food", "dining", "culinary", "bakery", "coffee", "restaurant", "cafe")
+    private val LODGING_PROMPT_KEYWORDS =
+        listOf("lodging", "hotel", "motel", "resort", "stay", "overnight")
 
     /**
      * Scores a candidate [town] based on local lodging, family, and dining amenity density within
@@ -123,25 +129,13 @@ object TownScorer {
 
         if (!userPrompt.isNullOrBlank()) {
             val lowerPrompt = userPrompt.lowercase()
-            if (
-                listOf("family", "kid", "toddler", "children", "play", "child").any {
-                    lowerPrompt.contains(it)
-                }
-            ) {
+            if (FAMILY_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
                 fWeight = maxOf(fWeight, 5)
             }
-            if (
-                listOf("food", "dining", "culinary", "bakery", "coffee", "restaurant", "cafe").any {
-                    lowerPrompt.contains(it)
-                }
-            ) {
+            if (DINING_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
                 dWeight = maxOf(dWeight, 3)
             }
-            if (
-                listOf("lodging", "hotel", "motel", "resort", "stay", "overnight").any {
-                    lowerPrompt.contains(it)
-                }
-            ) {
+            if (LODGING_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
                 hWeight = maxOf(hWeight, 7)
             }
         }

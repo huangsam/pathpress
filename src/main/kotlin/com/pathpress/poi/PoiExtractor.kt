@@ -69,14 +69,29 @@ open class PoiExtractor(
             return emptyList()
         }
 
+        var minPtLat = Double.MAX_VALUE
+        var maxPtLat = -Double.MAX_VALUE
+        var minPtLng = Double.MAX_VALUE
+        var maxPtLng = -Double.MAX_VALUE
+        var sumLat = 0.0
+
+        for (i in legPoints.indices) {
+            val pt = legPoints[i]
+            if (pt.lat < minPtLat) minPtLat = pt.lat
+            if (pt.lat > maxPtLat) maxPtLat = pt.lat
+            if (pt.lng < minPtLng) minPtLng = pt.lng
+            if (pt.lng > maxPtLng) maxPtLng = pt.lng
+            sumLat += pt.lat
+        }
+
         val bufferLatDeg = (maxDistanceMeters / 111000.0) + 0.02
-        val refLat = legPoints.map { it.lat }.average()
+        val refLat = sumLat / legPoints.size
         val cosRefLat = cos(Math.toRadians(refLat)).coerceAtLeast(0.01)
         val bufferLngDeg = (maxDistanceMeters / (111000.0 * cosRefLat)) + 0.02
-        val minLat = legPoints.minOf { it.lat } - bufferLatDeg
-        val maxLat = legPoints.maxOf { it.lat } + bufferLatDeg
-        val minLng = legPoints.minOf { it.lng } - bufferLngDeg
-        val maxLng = legPoints.maxOf { it.lng } + bufferLngDeg
+        val minLat = minPtLat - bufferLatDeg
+        val maxLat = maxPtLat + bufferLatDeg
+        val minLng = minPtLng - bufferLngDeg
+        val maxLng = maxPtLng + bufferLngDeg
 
         val cacheStore = getCacheForPolyline(pbfPath, legPoints, maxDistanceMeters)
         if (cacheStore.pois.isEmpty()) {
@@ -176,12 +191,18 @@ open class PoiExtractor(
         val minProgress = (targetProgressFraction - windowFraction).coerceIn(0.0, 1.0)
         val maxProgress = (targetProgressFraction + windowFraction).coerceIn(0.0, 1.0)
 
-        val totalDist =
-            routePoints
-                .zipWithNext { a, b -> GeoUtils.haversineMeters(a.lat, a.lng, b.lat, b.lng) }
-                .sum()
-                .coerceAtLeast(1.0)
-        val targetDistMeters = totalDist * targetProgressFraction
+        var totalDist = 0.0
+        for (i in 0 until routePoints.size - 1) {
+            totalDist +=
+                GeoUtils.haversineMeters(
+                    routePoints[i].lat,
+                    routePoints[i].lng,
+                    routePoints[i + 1].lat,
+                    routePoints[i + 1].lng,
+                )
+        }
+        val safeTotalDist = totalDist.coerceAtLeast(1.0)
+        val targetDistMeters = safeTotalDist * targetProgressFraction
 
         var cumDist = 0.0
         val targetPointCoords = mutableListOf<LocationCoords>()
@@ -195,8 +216,8 @@ open class PoiExtractor(
                     routePoints[i + 1].lat,
                     routePoints[i + 1].lng,
                 )
-            val segStartProgress = cumDist / totalDist
-            val segEndProgress = (cumDist + segDist) / totalDist
+            val segStartProgress = cumDist / safeTotalDist
+            val segEndProgress = (cumDist + segDist) / safeTotalDist
 
             if (cumDist + segDist >= targetDistMeters && targetMilestoneCoords == null) {
                 val remain = targetDistMeters - cumDist

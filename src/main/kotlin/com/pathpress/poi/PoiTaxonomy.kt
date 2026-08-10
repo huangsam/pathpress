@@ -20,6 +20,9 @@ object PoiCategoryConstants {
     val INVALID_VALUES: Set<String> = setOf("yes", "no", "true", "false", "null", "")
 }
 
+private val GENERIC_POI_TYPES: Set<String> =
+    setOf("yes", "building", "point", "node", "null", "true", "false", "poi")
+
 /**
  * Sanitizes POI category type to avoid generic boolean/raw strings (e.g., "yes", "building",
  * "point").
@@ -34,12 +37,11 @@ object PoiCategoryConstants {
 fun sanitizePoiType(type: String?, tags: Map<String, String> = emptyMap()): String {
     if (type.isNullOrBlank()) return "landmark"
 
-    val genericTypes = setOf("yes", "building", "point", "node", "null", "true", "false", "poi")
     val trimmed = type.lowercase().trim()
 
     // Pass 1: Attempt tag re-resolution if the initial rawType was generic
     val resolved =
-        if (trimmed in genericTypes) {
+        if (trimmed in GENERIC_POI_TYPES) {
             val primaryVal =
                 PoiCategoryConstants.PRIMARY_KEYS.firstNotNullOfOrNull { k ->
                     val v = tags[k]

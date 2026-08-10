@@ -63,6 +63,10 @@ object PdfExporter {
         }
     }
 
+    val DAY_TITLE_PREFIX_REGEX = Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE)
+    private val DIACRITICS_REGEX = Regex("\\p{InCombiningDiacriticalMarks}+")
+    private val NON_ASCII_SPECIAL_REGEX = Regex("[^\\x20-\\x7E\\u201C\\u201D\\u2018\\u2019]")
+
     internal fun renderBookmarks(route: Route): String {
         return buildString {
             appendLine("<bookmarks>")
@@ -70,9 +74,7 @@ object PdfExporter {
             for (leg in route.legs) {
                 val rawTitle = leg.dayTitle ?: "Scenic Drive"
                 val cleanTitle =
-                    rawTitle
-                        .replace(Regex("^Day\\s+\\d+[:\\s-]*", RegexOption.IGNORE_CASE), "")
-                        .ifBlank { "Scenic Drive" }
+                    rawTitle.replace(DAY_TITLE_PREFIX_REGEX, "").ifBlank { "Scenic Drive" }
                 val bookmarkName = escapeXml("Day ${leg.dayNumber}: $cleanTitle")
                 appendLine("  <bookmark name=\"$bookmarkName\" href=\"#leg-${leg.dayNumber}\" />")
             }
@@ -86,7 +88,7 @@ object PdfExporter {
     internal fun sanitizeText(text: String): String {
         val normalized = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
         return normalized
-            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+            .replace(DIACRITICS_REGEX, "")
             .replace("Đ", "D")
             .replace("đ", "d")
             .replace("Æ", "Ae")
@@ -99,7 +101,7 @@ object PdfExporter {
             .replace("—", " - ")
             .replace("…", "...")
             .replace("\u00A0", " ")
-            .replace(Regex("[^\\x20-\\x7E\\u201C\\u201D\\u2018\\u2019]"), "")
+            .replace(NON_ASCII_SPECIAL_REGEX, "")
     }
 
     internal fun escapeXml(text: String): String {

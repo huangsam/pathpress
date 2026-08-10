@@ -92,7 +92,7 @@ object SpatialTileStorage {
         if (points.isEmpty()) return emptyList()
 
         val bufferLatDeg = (bufferMeters / 111000.0) + 0.01
-        val tileBuckets = mutableSetOf<Pair<Int, Int>>()
+        val tileBuckets = com.carrotsearch.hppc.LongHashSet()
 
         fun addBucketsForPoint(lat: Double, lng: Double) {
             val cosLat = kotlin.math.cos(Math.toRadians(lat)).coerceAtLeast(0.01)
@@ -103,7 +103,8 @@ object SpatialTileStorage {
             val maxLngB = floor(lng + bufferLngDeg).toInt()
             for (la in minLatB..maxLatB) {
                 for (ln in minLngB..maxLngB) {
-                    tileBuckets.add(Pair(la, ln))
+                    val packed = (la.toLong() shl 32) or (ln.toLong() and 0xFFFFFFFFL)
+                    tileBuckets.add(packed)
                 }
             }
         }
@@ -130,7 +131,10 @@ object SpatialTileStorage {
         }
 
         val files = mutableListOf<File>()
-        for ((latBucket, lngBucket) in tileBuckets) {
+        for (cursor in tileBuckets) {
+            val packed = cursor.value
+            val latBucket = (packed ushr 32).toInt()
+            val lngBucket = packed.toInt()
             val parent = File(baseDir, latBucket.toString())
             if (!parent.exists() || !parent.isDirectory) continue
             val tile = File(parent, "$lngBucket.json")

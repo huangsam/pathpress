@@ -180,8 +180,14 @@ object OsmTileStitcher {
         fun toPxY(lat: Double): Double = latToTileY(lat, zoom) * TILE_SIZE - cropMinY
 
         // Draw Driving Road Polyline
-        val polyX = points.map { toPxX(it.lng).toInt() }.toIntArray()
-        val polyY = points.map { toPxY(it.lat).toInt() }.toIntArray()
+        val nPoints = points.size
+        val polyX = IntArray(nPoints)
+        val polyY = IntArray(nPoints)
+        for (i in 0 until nPoints) {
+            val pt = points[i]
+            polyX[i] = toPxX(pt.lng).toInt()
+            polyY[i] = toPxY(pt.lat).toInt()
+        }
 
         // Outer white casing
         g.stroke = BasicStroke(9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
