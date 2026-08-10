@@ -282,27 +282,4 @@ object SpatialTileStorage {
 
         return PoiCacheStore(pois = allPois.values.toList(), towns = allTowns.distinct())
     }
-
-    /** Discovers and aggregates all tile files in [baseDir] into a single [PoiCacheStore]. */
-    fun loadAllTiles(baseDir: File = DEFAULT_BASE_DIR): PoiCacheStore {
-        if (!baseDir.exists() || !baseDir.isDirectory) return PoiCacheStore()
-        val latDirs = baseDir.listFiles { f -> f.isDirectory } ?: return PoiCacheStore()
-
-        val allPois = LinkedHashMap<String, POI>()
-        val allTowns = mutableListOf<TownInfo>()
-
-        for (latDir in latDirs) {
-            val tileFiles =
-                latDir.listFiles { f -> f.isFile && f.name.endsWith(".json") } ?: continue
-            for (tile in tileFiles) {
-                val store = readTile(tile)
-                for (p in store.pois) {
-                    allPois[p.id] = p
-                }
-                allTowns.addAll(store.towns)
-            }
-        }
-
-        return PoiCacheStore(pois = allPois.values.toList(), towns = allTowns.distinct())
-    }
 }

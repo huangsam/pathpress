@@ -118,13 +118,4 @@ object PoiCacheManager {
         ensurePbfIngested(pbfPath, baseDir)
         return SpatialTileStorage.loadIntersectingStore(minLat, maxLat, minLng, maxLng, baseDir)
     }
-
-    /** Retrieve or build the full [PoiCacheStore] across all available tiles in [baseDir]. */
-    fun getOrBuildCache(
-        pbfPath: String,
-        baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
-    ): PoiCacheStore {
-        ensurePbfIngested(pbfPath, baseDir)
-        return SpatialTileStorage.loadAllTiles(baseDir)
-    }
 }

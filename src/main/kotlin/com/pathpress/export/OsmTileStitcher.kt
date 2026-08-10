@@ -237,16 +237,4 @@ object OsmTileStitcher {
 
         return "data:image/png;base64,$base64"
     }
-
-    /** Render a clean line-shape route map as an HTML img tag. */
-    fun renderLegMapHtml(
-        leg: RouteLeg,
-        width: Int = 260,
-        height: Int = 260,
-        baseDir: File = MapTileStorage.DEFAULT_BASE_DIR,
-    ): String {
-        val dataUri = renderLegMapDataUri(leg, width, height, baseDir)
-        if (dataUri.isBlank()) return ""
-        return "<img src=\"$dataUri\" style=\"width: ${width}px; height: auto; max-width: 100%; border-radius: 8px; border: 1px solid #cbd5e1;\" />"
-    }
 }

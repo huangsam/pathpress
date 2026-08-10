@@ -22,10 +22,6 @@ fun String?.validateApiKey(type: LlmProviderType): String {
     return resolvedKey
 }
 
-/** Extension helper to resolve and validate an API key for a provider name string. */
-fun String?.validateApiKey(provider: String): String =
-    this.validateApiKey(LlmProviderType.fromId(provider))
-
 /**
  * Base class for HTTP-based LLM providers (OpenAI, Gemini, Claude, Ollama).
  *
@@ -66,10 +62,7 @@ abstract class HttpLlmProvider(val config: Config = Config.fromEnv()) : LlmProvi
                     NoOpFallbackProvider()
                         .planTrip(startName, endName, startCoords, endCoords, days, userPrompt)
                         .narrative
-                return sanitizeFalsifiableSpecifics(
-                    parseTripPlan(responseText, days),
-                    fallbackNarrative,
-                )
+                return sanitizeFalsifiableSpecifics(parseTripPlan(responseText), fallbackNarrative)
             }
         } catch (e: Exception) {
             logger.warn("LLM Provider warning: {}", e.message)
@@ -133,7 +126,7 @@ abstract class HttpLlmProvider(val config: Config = Config.fromEnv()) : LlmProvi
      * ([extractNarrativeFromRawJson]) to preserve narrative text if waypoint JSON deserialization
      * fails.
      */
-    protected fun parseTripPlan(jsonText: String, days: Int): TripPlanResponse {
+    protected fun parseTripPlan(jsonText: String): TripPlanResponse {
         val cleanJson = jsonText.substringAfter("{").substringBeforeLast("}").let { "{$it}" }
 
         // Extract narrative first independently - it's cheap and must survive any parse failure

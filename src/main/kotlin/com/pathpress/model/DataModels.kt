@@ -86,21 +86,6 @@ data class POI(
                 isFoodOrCoffee = isFood,
             )
         }
-
-        fun fromOsm(
-            id: Long,
-            lat: Double,
-            lng: Double,
-            tags: Map<String, String>,
-            distanceFromRouteMeters: Double? = null,
-        ): POI =
-            fromOsm(
-                id = id.toString(),
-                lat = lat,
-                lng = lng,
-                tags = tags,
-                distanceFromRouteMeters = distanceFromRouteMeters,
-            )
     }
 }
 

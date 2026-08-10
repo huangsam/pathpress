@@ -22,13 +22,13 @@ data class TripPlanResponse(val waypoints: List<LocationCoords>, val narrative: 
  */
 data class CuratedLegResult(val legStory: String, val curatedPois: List<POI>)
 
-/** Supported LLM provider backends and their API key requirements. */
-enum class LlmProviderType(val id: String, val requiresApiKey: Boolean, val envVarName: String?) {
-    GEMINI("gemini", requiresApiKey = true, envVarName = "GEMINI_API_KEY"),
-    CLAUDE("claude", requiresApiKey = true, envVarName = "ANTHROPIC_API_KEY"),
-    OPENAI("openai", requiresApiKey = true, envVarName = "OPENAI_API_KEY"),
-    OLLAMA("ollama", requiresApiKey = false, envVarName = null),
-    NONE("none", requiresApiKey = false, envVarName = null);
+/** Supported LLM provider backends. */
+enum class LlmProviderType(val id: String, val envVarName: String?) {
+    GEMINI("gemini", envVarName = "GEMINI_API_KEY"),
+    CLAUDE("claude", envVarName = "ANTHROPIC_API_KEY"),
+    OPENAI("openai", envVarName = "OPENAI_API_KEY"),
+    OLLAMA("ollama", envVarName = null),
+    NONE("none", envVarName = null);
 
     /**
      * Resolves the API key from [providedKey] or falls back to environment variable [envVarName].

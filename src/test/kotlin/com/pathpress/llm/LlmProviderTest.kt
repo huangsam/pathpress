@@ -347,14 +347,15 @@ class LlmProviderTest {
 
     @Test
     fun `validateApiKey throws IllegalArgumentException when API key is blank`() {
-        val exception = assertFailsWith<IllegalArgumentException> { "".validateApiKey("gemini") }
+        val exception =
+            assertFailsWith<IllegalArgumentException> { "".validateApiKey(LlmProviderType.GEMINI) }
         assertTrue(exception.message!!.contains("API key missing for gemini"))
         assertTrue(exception.message!!.contains("Set GEMINI_API_KEY or pass --llm-key"))
     }
 
     @Test
     fun `validateApiKey returns valid key`() {
-        assertEquals("valid-key", "valid-key".validateApiKey("gemini"))
+        assertEquals("valid-key", "valid-key".validateApiKey(LlmProviderType.GEMINI))
     }
 
     @Test
@@ -404,7 +405,7 @@ class LlmProviderTest {
             object : HttpLlmProvider() {
                 override fun complete(prompt: String): String? = null
 
-                fun testParse(json: String, days: Int) = parseTripPlan(json, days)
+                fun testParse(json: String) = parseTripPlan(json)
             }
 
         val stringWaypointsJson =
@@ -416,7 +417,7 @@ class LlmProviderTest {
             """
                 .trimIndent()
 
-        val stringResult = dummyProvider.testParse(stringWaypointsJson, 2)
+        val stringResult = dummyProvider.testParse(stringWaypointsJson)
         assertEquals(2, stringResult.waypoints.size)
         assertEquals("Monterey, CA", stringResult.waypoints[0].name)
         assertEquals(0.0, stringResult.waypoints[0].lat)
@@ -434,7 +435,7 @@ class LlmProviderTest {
             """
                 .trimIndent()
 
-        val objectResult = dummyProvider.testParse(objectWaypointsJson, 2)
+        val objectResult = dummyProvider.testParse(objectWaypointsJson)
         assertEquals(2, objectResult.waypoints.size)
         assertEquals(36.6002, objectResult.waypoints[0].lat)
         assertEquals(-121.8947, objectResult.waypoints[0].lng)
@@ -447,7 +448,7 @@ class LlmProviderTest {
             object : HttpLlmProvider() {
                 override fun complete(prompt: String): String? = null
 
-                fun testParse(json: String, days: Int) = parseTripPlan(json, days)
+                fun testParse(json: String) = parseTripPlan(json)
             }
 
         val oversizedWaypointsJson =
@@ -461,7 +462,7 @@ class LlmProviderTest {
             """
                 .trimIndent()
 
-        val result = dummyProvider.testParse(oversizedWaypointsJson, 2)
+        val result = dummyProvider.testParse(oversizedWaypointsJson)
         assertEquals(
             4,
             result.waypoints.size,

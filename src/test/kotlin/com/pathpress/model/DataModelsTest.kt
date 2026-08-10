@@ -2,7 +2,6 @@ package com.pathpress.model
 
 import com.pathpress.poi.sanitizePoiType
 import com.pathpress.poi.toDirectionsUrl
-import com.pathpress.poi.toMapUrl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,7 +20,7 @@ class DataModelsTest {
             )
         val poi =
             POI.fromOsm(
-                id = 1001L,
+                id = "1001",
                 lat = 37.8199,
                 lng = -122.4783,
                 tags = tags,
@@ -40,26 +39,27 @@ class DataModelsTest {
     @Test
     fun `POI fromOsm correctly identifies food and coffee places`() {
         val cafeTags = mapOf("name" to "Blue Bottle Coffee", "amenity" to "cafe")
-        val cafePoi = POI.fromOsm(id = 1002L, lat = 37.7, lng = -122.4, tags = cafeTags)
+        val cafePoi = POI.fromOsm(id = "1002", lat = 37.7, lng = -122.4, tags = cafeTags)
         assertTrue(cafePoi.isFoodOrCoffee)
         assertEquals("cafe", cafePoi.type)
 
         val restaurantTags = mapOf("name" to "Chez Panisse", "amenity" to "restaurant")
-        val restaurantPoi = POI.fromOsm(id = 1003L, lat = 37.8, lng = -122.2, tags = restaurantTags)
+        val restaurantPoi =
+            POI.fromOsm(id = "1003", lat = 37.8, lng = -122.2, tags = restaurantTags)
         assertTrue(restaurantPoi.isFoodOrCoffee)
     }
 
     @Test
     fun `POI fromOsm handles missing name and missing ref gracefully`() {
         val tags = mapOf("highway" to "milestone")
-        val poi = POI.fromOsm(id = 1004L, lat = 36.5, lng = -121.9, tags = tags)
+        val poi = POI.fromOsm(id = "1004", lat = 36.5, lng = -121.9, tags = tags)
         assertNull(poi.name)
         assertEquals("landmark", poi.type)
     }
 
     @Test
     fun `POI fromOsm handles empty tags map`() {
-        val poi = POI.fromOsm(id = 1005L, lat = 0.0, lng = 0.0, tags = emptyMap())
+        val poi = POI.fromOsm(id = "1005", lat = 0.0, lng = 0.0, tags = emptyMap())
         assertNull(poi.name)
         assertEquals("landmark", poi.type)
         assertFalse(poi.isFoodOrCoffee)
@@ -79,9 +79,6 @@ class DataModelsTest {
         val dirUrl = leg.toDirectionsUrl()
         assertTrue(dirUrl.contains("origin=37.7749,-122.4194"))
         assertTrue(dirUrl.contains("destination=36.9741,-122.0308"))
-
-        val mapUrl = leg.toMapUrl()
-        assertTrue(mapUrl.contains("center=37.3745,-122.2251"))
     }
 
     @Test
@@ -94,13 +91,13 @@ class DataModelsTest {
     @Test
     fun `POI fromOsm handles historic yes tag without creating type yes`() {
         val tags = mapOf("name" to "Old Mission Jail", "historic" to "yes")
-        val poi = POI.fromOsm(id = 1006L, lat = 36.6, lng = -121.6, tags = tags)
+        val poi = POI.fromOsm(id = "1006", lat = 36.6, lng = -121.6, tags = tags)
         assertEquals("historic", poi.type)
 
         val tagsWithBuilding =
             mapOf("name" to "Old Mission Jail", "historic" to "yes", "building" to "jail")
         val poiWithBuilding =
-            POI.fromOsm(id = 1007L, lat = 36.6, lng = -121.6, tags = tagsWithBuilding)
+            POI.fromOsm(id = "1007", lat = 36.6, lng = -121.6, tags = tagsWithBuilding)
         assertEquals("jail", poiWithBuilding.type)
     }
 

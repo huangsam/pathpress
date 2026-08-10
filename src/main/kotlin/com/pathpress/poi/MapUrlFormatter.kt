@@ -83,31 +83,12 @@ object MapUrlFormatter {
     }
 
     /**
-     * Generate a static map view URL for Google Maps.
-     *
-     * @param lat Latitude of the center point
-     * @param lng Longitude of the center point
-     * @return Google Maps URL string
-     */
-    fun formatMapUrl(lat: Double, lng: Double): String {
-        return "https://www.google.com/maps/?api=1&center=${roundCoord(lat)},${roundCoord(lng)}&zoom=10"
-    }
-
-    /**
      * Generate a Google Maps URL for a specific POI.
      *
      * @param poi The Point of Interest
      * @return Google Maps search URL for the POI
      */
     fun formatPoiUrl(poi: POI): String = formatMapSearchUrl(poi.lat, poi.lng)
-
-    /**
-     * Generate a single-stop navigation URL for a specific POI.
-     *
-     * @param poi The Point of Interest
-     * @return Google Maps single-destination navigation URL
-     */
-    fun formatPoiNavUrl(poi: POI): String = formatSingleStopNavUrl(poi.lat, poi.lng)
 }
 
 /** Generate a Google Maps URL for directions on this leg. */
@@ -119,7 +100,3 @@ fun RouteLeg.toDirectionsUrl(): String =
         endLng = endLng,
         waypoints = pois.map { LocationCoords(it.lat, it.lng) },
     )
-
-/** Generate a Google Maps URL for viewing the route on a map. */
-fun RouteLeg.toMapUrl(): String =
-    MapUrlFormatter.formatMapUrl(lat = (startLat + endLat) / 2, lng = (startLng + endLng) / 2)

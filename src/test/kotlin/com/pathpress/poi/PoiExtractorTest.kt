@@ -101,22 +101,6 @@ class PoiExtractorTest {
     }
 
     @Test
-    fun `getOrBuildCache creates and loads tile cache`() {
-        PoiCacheManager.clearInMemCache()
-        val tempTilesDir = java.nio.file.Files.createTempDirectory("test_pois_tiles").toFile()
-        tempTilesDir.deleteOnExit()
-
-        // Call getOrBuildCache with non-existent pbfPath so it creates empty PoiCacheStore if no
-        // pbf
-        val store =
-            PoiCacheManager.getOrBuildCache(pbfPath = "non_existent.pbf", baseDir = tempTilesDir)
-        assertEquals(0, store.pois.size)
-        assertEquals(0, store.towns.size)
-
-        PoiCacheManager.clearInMemCache()
-    }
-
-    @Test
     fun `isRelevantPoi recognizes leisure playground`() {
         assertTrue(OsmPbfReader.isRelevantPoi(mapOf("leisure" to "playground")))
     }

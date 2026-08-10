@@ -55,12 +55,6 @@ class MapUrlFormatterTest {
     }
 
     @Test
-    fun `formatMapUrl generates centered map link with zoom`() {
-        val url = MapUrlFormatter.formatMapUrl(38.5816, -121.4944)
-        assertEquals("https://www.google.com/maps/?api=1&center=38.5816,-121.4944&zoom=10", url)
-    }
-
-    @Test
     fun `formatPoiUrl delegates to formatMapSearchUrl using poi coordinates`() {
         val poi =
             POI(
@@ -73,23 +67,5 @@ class MapUrlFormatterTest {
             )
         val url = MapUrlFormatter.formatPoiUrl(poi)
         assertEquals("https://www.google.com/maps/search/?api=1&query=37.8024,-122.4058", url)
-    }
-
-    @Test
-    fun `formatPoiNavUrl delegates to formatSingleStopNavUrl using poi coordinates`() {
-        val poi =
-            POI(
-                id = "node/123",
-                name = "Capital One 360 Cafe",
-                lat = 37.3230,
-                lng = -121.9482,
-                tags = mapOf("amenity" to "cafe"),
-                type = "cafe",
-            )
-        val url = MapUrlFormatter.formatPoiNavUrl(poi)
-        assertEquals(
-            "https://www.google.com/maps/dir/?api=1&destination=37.3230,-121.9482&travelmode=driving",
-            url,
-        )
     }
 }
