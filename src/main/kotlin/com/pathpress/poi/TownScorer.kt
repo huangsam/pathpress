@@ -9,15 +9,13 @@ import kotlin.math.cos
  * proximity.
  *
  * @property town The underlying [TownInfo] location metadata.
- * @property score Aggregated quality score based on local hotel, family, dining, coastal, and
- *   historic amenity counts.
+ * @property score Aggregated quality score based on town asset counts.
  * @property hotelCount Number of verified lodging/hotel POIs within the scoring radius.
  * @property familyCount Number of verified family attraction POIs within the scoring radius.
  * @property diningCount Number of verified food and coffee POIs within the scoring radius.
  * @property coastalCount Number of verified coastal/beach POIs within the scoring radius.
  * @property historicCount Number of verified historic/heritage POIs within the scoring radius.
- * @property distanceFromTargetMeters Distance in meters from the ideal leg completion target
- *   milestone.
+ * @property distanceFromTargetMeters Distance in meters from the ideal leg completion target.
  */
 data class ScoredTown(
     val town: TownInfo,
