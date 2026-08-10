@@ -20,12 +20,6 @@ import org.slf4j.LoggerFactory
 
 /** Standardized application process exit codes. */
 object ExitCode {
-    /** Successful execution. */
-    const val SUCCESS: Int = 0
-
-    /** Invalid command line parameters or CLI usage error. */
-    const val USAGE_ERROR: Int = 1
-
     /** Spatial route calculation or graph connectivity failure. */
     const val ROUTING_ERROR: Int = 2
 
