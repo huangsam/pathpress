@@ -36,7 +36,9 @@ object PoiCacheManager {
 
     const val DEFAULT_TILE_FLUSH_THRESHOLD = 500
 
-    private val ingestedPbfs = mutableSetOf<String>()
+    private data class IngestedMarkerMeta(val pbfSize: Long, val pbfLastModified: Long)
+
+    private val ingestedPbfs = mutableMapOf<String, IngestedMarkerMeta>()
 
     internal var pbfReader: (File, (POI) -> Unit, (TownInfo) -> Unit) -> Boolean =
         OsmPbfReader::readPbfFile
@@ -57,7 +59,8 @@ object PoiCacheManager {
 
     /**
      * Checks if [pbfFile] has already been ingested into [baseDir], checking both in-memory state
-     * and the persistent on-disk marker file.
+     * and the persistent on-disk marker file against the file's current size and last-modified
+     * timestamp.
      */
     fun isPbfIngested(pbfFile: File, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR): Boolean {
         if (!pbfFile.exists()) return false
@@ -67,12 +70,54 @@ object PoiCacheManager {
             } catch (e: Exception) {
                 pbfFile.absolutePath
             }
-        synchronized(this) { if (ingestedPbfs.contains(canonicalPath)) return true }
+        val currentSize = pbfFile.length()
+        val currentLastModified = pbfFile.lastModified()
+
+        synchronized(this) {
+            val cached = ingestedPbfs[canonicalPath]
+            if (
+                cached != null &&
+                    cached.pbfSize == currentSize &&
+                    cached.pbfLastModified == currentLastModified
+            ) {
+                return true
+            }
+        }
+
         val markerFile = getMarkerFile(pbfFile, baseDir)
-        if (markerFile.exists() && markerFile.isFile && markerFile.length() > 0) {
-            synchronized(this) { ingestedPbfs.add(canonicalPath) }
+        if (!markerFile.exists() || !markerFile.isFile || markerFile.length() <= 0) {
+            return false
+        }
+
+        val markerProps =
+            try {
+                markerFile.useLines { lines ->
+                    val map = mutableMapOf<String, String>()
+                    for (line in lines) {
+                        val trimmed = line.trim()
+                        val idx = trimmed.indexOf('=')
+                        if (idx > 0) {
+                            val key = trimmed.substring(0, idx).trim()
+                            val value = trimmed.substring(idx + 1).trim()
+                            map[key] = value
+                        }
+                    }
+                    map
+                }
+            } catch (e: Exception) {
+                return false
+            }
+
+        val recordedSize = markerProps["pbfSize"]?.toLongOrNull() ?: return false
+        val recordedLastModified = markerProps["pbfLastModified"]?.toLongOrNull() ?: return false
+
+        if (recordedSize == currentSize && recordedLastModified == currentLastModified) {
+            synchronized(this) {
+                ingestedPbfs[canonicalPath] = IngestedMarkerMeta(currentSize, currentLastModified)
+            }
             return true
         }
+
         return false
     }
 
@@ -200,7 +245,10 @@ object PoiCacheManager {
                 } catch (e: Exception) {
                     pbfFile.absolutePath
                 }
-            ingestedPbfs.add(canonicalPath)
+            synchronized(this) {
+                ingestedPbfs[canonicalPath] =
+                    IngestedMarkerMeta(pbfFile.length(), pbfFile.lastModified())
+            }
             return true
         } else {
             logger.warn("PBF reading encountered errors. Ingestion to tile storage aborted.")

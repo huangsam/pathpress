@@ -201,4 +201,137 @@ class PoiCacheManagerTest {
             PoiCacheManager.pbfReader = OsmPbfReader::readPbfFile
         }
     }
+
+    @Test
+    fun `isPbfIngested returns false and re-ingests when pbfSize changes on disk`() {
+        val tempDir = Files.createTempDirectory("poi_cache_size_change_test").toFile()
+        tempDir.deleteOnExit()
+
+        val dummyPbf = File(tempDir, "size-test.osm.pbf")
+        dummyPbf.writeText("initial content")
+
+        var scanCount = 0
+        PoiCacheManager.pbfReader = { _, onPoi, onTown ->
+            scanCount++
+            onPoi(
+                POI(
+                    id = "n1",
+                    name = "Test Spot",
+                    lat = 37.5,
+                    lng = -122.5,
+                    tags = mapOf("amenity" to "cafe"),
+                    type = "cafe",
+                )
+            )
+            onTown(TownInfo(name = "Test Town", lat = 37.5, lng = -122.5, type = "town"))
+            true
+        }
+
+        try {
+            PoiCacheManager.clearInMemCache()
+            PoiCacheManager.ensurePbfIngested(dummyPbf.path, tempDir)
+            assertEquals(1, scanCount)
+            assertTrue(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
+
+            // Modify dummy PBF size
+            dummyPbf.writeText(
+                "initial content with additional appended data modifying file length"
+            )
+
+            // Should detect that size has changed and return false
+            assertFalse(
+                PoiCacheManager.isPbfIngested(dummyPbf, tempDir),
+                "Should return false when PBF size on disk differs from marker",
+            )
+
+            // ensurePbfIngested should re-ingest
+            PoiCacheManager.ensurePbfIngested(dummyPbf.path, tempDir)
+            assertEquals(2, scanCount, "Should re-ingest when PBF size changes")
+        } finally {
+            PoiCacheManager.clearInMemCache()
+            PoiCacheManager.pbfReader = OsmPbfReader::readPbfFile
+        }
+    }
+
+    @Test
+    fun `isPbfIngested returns false and re-ingests when pbfLastModified changes on disk`() {
+        val tempDir = Files.createTempDirectory("poi_cache_mtime_change_test").toFile()
+        tempDir.deleteOnExit()
+
+        val dummyPbf = File(tempDir, "mtime-test.osm.pbf")
+        dummyPbf.writeText("constant content")
+
+        var scanCount = 0
+        PoiCacheManager.pbfReader = { _, onPoi, onTown ->
+            scanCount++
+            onPoi(
+                POI(
+                    id = "n1",
+                    name = "Test Spot",
+                    lat = 37.5,
+                    lng = -122.5,
+                    tags = mapOf("amenity" to "cafe"),
+                    type = "cafe",
+                )
+            )
+            onTown(TownInfo(name = "Test Town", lat = 37.5, lng = -122.5, type = "town"))
+            true
+        }
+
+        try {
+            PoiCacheManager.clearInMemCache()
+            PoiCacheManager.ensurePbfIngested(dummyPbf.path, tempDir)
+            assertEquals(1, scanCount)
+            assertTrue(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
+
+            // Modify timestamp (keep content/size identical)
+            val newTime = dummyPbf.lastModified() + 100_000L
+            dummyPbf.setLastModified(newTime)
+
+            assertFalse(
+                PoiCacheManager.isPbfIngested(dummyPbf, tempDir),
+                "Should return false when PBF lastModified on disk differs from marker",
+            )
+
+            PoiCacheManager.ensurePbfIngested(dummyPbf.path, tempDir)
+            assertEquals(2, scanCount, "Should re-ingest when PBF timestamp changes")
+        } finally {
+            PoiCacheManager.clearInMemCache()
+            PoiCacheManager.pbfReader = OsmPbfReader::readPbfFile
+        }
+    }
+
+    @Test
+    fun `isPbfIngested returns false when marker file has missing or invalid metadata fields`() {
+        val tempDir = Files.createTempDirectory("poi_cache_corrupt_marker_test").toFile()
+        tempDir.deleteOnExit()
+
+        val dummyPbf = File(tempDir, "corrupt-marker.osm.pbf")
+        dummyPbf.writeText("pbf content")
+
+        val markerFile = PoiCacheManager.getMarkerFile(dummyPbf, tempDir)
+        markerFile.parentFile?.mkdirs()
+
+        // 1. Missing pbfLastModified
+        markerFile.writeText("pbfSize=${dummyPbf.length()}\n")
+        PoiCacheManager.clearInMemCache()
+        assertFalse(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
+
+        // 2. Missing pbfSize
+        markerFile.writeText("pbfLastModified=${dummyPbf.lastModified()}\n")
+        PoiCacheManager.clearInMemCache()
+        assertFalse(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
+
+        // 3. Invalid non-numeric values
+        markerFile.writeText("pbfSize=notANumber\npbfLastModified=${dummyPbf.lastModified()}\n")
+        PoiCacheManager.clearInMemCache()
+        assertFalse(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
+
+        // 4. Valid marker matching file
+        markerFile.writeText(
+            "pbfSize=${dummyPbf.length()}\npbfLastModified=${dummyPbf.lastModified()}\n"
+        )
+        PoiCacheManager.clearInMemCache()
+        assertTrue(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
+    }
 }
