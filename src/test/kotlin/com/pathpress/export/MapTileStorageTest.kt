@@ -190,4 +190,18 @@ class MapTileStorageTest {
         val recentTile = MapTileStorage.getTile(99, 129, 0, baseDir = tempDir)
         assertNotNull(recentTile)
     }
+
+    @Test
+    fun `getTile handles baseDir with canonicalPath failure gracefully`() {
+        val failingBaseDir =
+            object : File(tempDir, "failing_dir") {
+                override fun getCanonicalPath(): String {
+                    throw java.io.IOException("Simulated canonicalPath failure")
+                }
+            }
+        failingBaseDir.mkdirs()
+        MapTileStorage.clearCache()
+        val tile = MapTileStorage.getTile(zoom = 99, x = 99999, y = 99999, baseDir = failingBaseDir)
+        assertNull(tile)
+    }
 }

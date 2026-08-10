@@ -27,7 +27,7 @@ data class TripPlannerRequest(
     val poisPerLeg: Int = Config.DEFAULT_POIS_PER_LEG,
     val distanceUnit: DistanceUnit = DistanceUnit.METRIC,
     val pbfPath: String = PbfPathResolver.defaultPath(),
-    val graphPath: String = ".graphhopper",
+    val graphPath: String? = null,
 )
 
 /** Result produced by [TripPlannerOrchestrator]. */

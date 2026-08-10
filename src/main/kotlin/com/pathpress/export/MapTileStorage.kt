@@ -101,7 +101,12 @@ object MapTileStorage {
     }
 
     private fun ensureMigrated(baseDir: File) {
-        val canonical = baseDir.canonicalPath
+        val canonical =
+            try {
+                baseDir.canonicalPath
+            } catch (e: Exception) {
+                baseDir.absolutePath
+            }
         if (migratedDirs.add(canonical)) {
             migrateLegacyCache(baseDir)
         }

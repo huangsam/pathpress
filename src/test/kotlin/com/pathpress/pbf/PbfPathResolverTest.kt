@@ -126,10 +126,15 @@ class PbfPathResolverTest {
     @Test
     fun `extractSlug extracts normalized slug from various PBF filename formats`() {
         assertEquals("california", PbfPathResolver.extractSlug("california-latest.osm.pbf"))
+        assertEquals("california", PbfPathResolver.extractSlug("california_latest.osm.pbf"))
         assertEquals("hawaii", PbfPathResolver.extractSlug("data/hawaii-latest.osm.pbf"))
         assertEquals(
             "district-of-columbia",
             PbfPathResolver.extractSlug("DISTRICT_OF_COLUMBIA-latest.osm.pbf"),
+        )
+        assertEquals(
+            "district-of-columbia",
+            PbfPathResolver.extractSlug("district_of_columbia_latest.osm.pbf"),
         )
         assertEquals("us-northeast", PbfPathResolver.extractSlug("data/us-northeast.osm.pbf"))
         assertEquals("custom-map", PbfPathResolver.extractSlug("/tmp/custom_map.pbf"))
@@ -139,14 +144,6 @@ class PbfPathResolverTest {
     fun `resolveGraphPath defaults to nested dot-graphhopper directory based on pbf slug`(
         @TempDir tempDir: File
     ) {
-        val defaultResult =
-            PbfPathResolver.resolveGraphPath(
-                requestedGraphPath = ".graphhopper",
-                pbfPath = "data/california-latest.osm.pbf",
-                baseDir = tempDir,
-            )
-        assertEquals(File(File(tempDir, ".graphhopper"), "california").path, defaultResult)
-
         val nullResult =
             PbfPathResolver.resolveGraphPath(
                 requestedGraphPath = null,
@@ -173,5 +170,13 @@ class PbfPathResolverTest {
                 baseDir = tempDir,
             )
         assertEquals("custom/cache/dir", customResult)
+
+        val explicitDotGraphhopper =
+            PbfPathResolver.resolveGraphPath(
+                requestedGraphPath = ".graphhopper",
+                pbfPath = "data/california-latest.osm.pbf",
+                baseDir = tempDir,
+            )
+        assertEquals(".graphhopper", explicitDotGraphhopper)
     }
 }

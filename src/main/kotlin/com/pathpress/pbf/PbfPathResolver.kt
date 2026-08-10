@@ -70,20 +70,20 @@ object PbfPathResolver {
     fun extractSlug(pbfPath: String): String {
         val fileName = File(pbfPath).name.lowercase()
         return fileName
+            .replace("_", "-")
             .removeSuffix(".osm.pbf")
             .removeSuffix(".pbf")
             .removeSuffix("-latest")
-            .replace("_", "-")
     }
 
     /**
      * Resolves the GraphHopper graph directory path.
      *
-     * When [requestedGraphPath] is null, blank, or the default `".graphhopper"`, the path is
-     * automatically derived as `.graphhopper/<slug>` under [baseDir] based on [pbfPath]. If an
-     * explicit custom path is passed, it is preserved as-is.
+     * When [requestedGraphPath] is null or blank, the path is automatically derived as
+     * `.graphhopper/<slug>` under [baseDir] based on [pbfPath]. If an explicit custom path is
+     * passed, it is preserved as-is.
      *
-     * @param requestedGraphPath Explicit graph directory passed via CLI/config, or null/default.
+     * @param requestedGraphPath Explicit graph directory passed via CLI/config, or null/blank.
      * @param pbfPath The PBF file path to derive the slug from if using automatic resolution.
      * @param baseDir Working directory base for relative nested path generation.
      * @return Path to the resolved GraphHopper graph directory.
@@ -93,7 +93,7 @@ object PbfPathResolver {
         pbfPath: String,
         baseDir: File = File("."),
     ): String {
-        if (!requestedGraphPath.isNullOrBlank() && requestedGraphPath.trim() != ".graphhopper") {
+        if (!requestedGraphPath.isNullOrBlank()) {
             return requestedGraphPath
         }
 
