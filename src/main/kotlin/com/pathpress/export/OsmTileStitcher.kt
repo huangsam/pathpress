@@ -101,19 +101,19 @@ object OsmTileStitcher {
     ): String {
         if (points.isEmpty()) return ""
 
-        var minLat = points.minOf { it.lat }
-        var maxLat = points.maxOf { it.lat }
-        var minLng = points.minOf { it.lng }
-        var maxLng = points.maxOf { it.lng }
+        val rawMinLat = points.minOf { it.lat }
+        val rawMaxLat = points.maxOf { it.lat }
+        val rawMinLng = points.minOf { it.lng }
+        val rawMaxLng = points.maxOf { it.lng }
 
-        val latDiff = (maxLat - minLat).coerceAtLeast(0.005)
-        val lngDiff = (maxLng - minLng).coerceAtLeast(0.005)
+        val latDiff = (rawMaxLat - rawMinLat).coerceAtLeast(0.005)
+        val lngDiff = (rawMaxLng - rawMinLng).coerceAtLeast(0.005)
 
         // Buffer bounds tightly by 10%
-        minLat -= latDiff * 0.10
-        maxLat += latDiff * 0.10
-        minLng -= lngDiff * 0.10
-        maxLng += lngDiff * 0.10
+        val minLat = rawMinLat - (latDiff * 0.10)
+        val maxLat = rawMaxLat + (latDiff * 0.10)
+        val minLng = rawMinLng - (lngDiff * 0.10)
+        val maxLng = rawMaxLng + (lngDiff * 0.10)
 
         val targetW = width * 2
         val targetH = height * 2
