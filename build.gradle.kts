@@ -72,11 +72,7 @@ tasks.register<JavaExec>("run") {
         "-XX:+ExitOnOutOfMemoryError",
     )
 
-    providers
-        .gradleProperty("maxHeap")
-        .orElse(providers.environmentVariable("PATHPRESS_MAX_HEAP"))
-        .orNull
-        ?.let { customMax -> maxHeapSize = customMax }
+    providers.gradleProperty("maxHeap").orNull?.let { maxHeapSize = it }
 
     standardInput = System.`in`
 }
