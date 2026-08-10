@@ -34,7 +34,12 @@ data class PoiCacheStore(
 object PoiCacheManager {
     private val logger = LoggerFactory.getLogger(PoiCacheManager::class.java)
 
+    const val DEFAULT_TILE_FLUSH_THRESHOLD = 500
+
     private val ingestedPbfs = mutableSetOf<String>()
+
+    internal var pbfReader: (File, (POI) -> Unit, (TownInfo) -> Unit) -> Boolean =
+        OsmPbfReader::readPbfFile
 
     /** Clear in-memory cache reference and ingestion history (useful for testing). */
     fun clearInMemCache() {
@@ -44,36 +49,158 @@ object PoiCacheManager {
         }
     }
 
+    /** Resolves the persistent completion marker file path for [pbfFile] under [baseDir]. */
+    fun getMarkerFile(pbfFile: File, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR): File {
+        val slug = com.pathpress.pbf.PbfPathResolver.extractSlug(pbfFile.name)
+        return File(baseDir, ".ingested_${slug}.marker")
+    }
+
+    /**
+     * Checks if [pbfFile] has already been ingested into [baseDir], checking both in-memory state
+     * and the persistent on-disk marker file.
+     */
+    fun isPbfIngested(pbfFile: File, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR): Boolean {
+        if (!pbfFile.exists()) return false
+        val canonicalPath =
+            try {
+                pbfFile.canonicalPath
+            } catch (e: Exception) {
+                pbfFile.absolutePath
+            }
+        synchronized(this) { if (ingestedPbfs.contains(canonicalPath)) return true }
+        val markerFile = getMarkerFile(pbfFile, baseDir)
+        if (markerFile.exists() && markerFile.isFile && markerFile.length() > 0) {
+            synchronized(this) { ingestedPbfs.add(canonicalPath) }
+            return true
+        }
+        return false
+    }
+
+    private fun writeMarker(pbfFile: File, baseDir: File, poisCount: Int, townsCount: Int) {
+        try {
+            val markerFile = getMarkerFile(pbfFile, baseDir)
+            markerFile.parentFile?.mkdirs()
+            val canonicalPath =
+                try {
+                    pbfFile.canonicalPath
+                } catch (e: Exception) {
+                    pbfFile.absolutePath
+                }
+            val content = buildString {
+                appendLine("pbfPath=$canonicalPath")
+                appendLine("pbfSize=${pbfFile.length()}")
+                appendLine("pbfLastModified=${pbfFile.lastModified()}")
+                appendLine("ingestedAt=${System.currentTimeMillis()}")
+                appendLine("poisCount=$poisCount")
+                appendLine("townsCount=$townsCount")
+            }
+            markerFile.writeText(content)
+        } catch (e: Exception) {
+            logger.warn(
+                "Failed to write ingestion completion marker for {}: {}",
+                pbfFile.path,
+                e.message,
+                e,
+            )
+        }
+    }
+
     /**
      * Ingests an OSM PBF file by streaming its nodes and ways directly into 1.0° × 1.0° tile shards
-     * in [baseDir], deduplicating by OSM ID.
+     * in [baseDir], buffering per tile and flushing incrementally as shards fill to
+     * [tileFlushThreshold]. Deduplicates POIs idempotently by OSM ID and writes a completion
+     * marker.
      */
     @Synchronized
-    fun ingestPbf(pbfFile: File, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR): Boolean {
+    fun ingestPbf(
+        pbfFile: File,
+        baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
+        tileFlushThreshold: Int = DEFAULT_TILE_FLUSH_THRESHOLD,
+    ): Boolean {
         if (!pbfFile.exists()) return false
 
         logger.info(
-            "Ingesting PBF file {} into geographic tile shards under {}...",
+            "Ingesting PBF file {} into geographic tile shards under {} (flush threshold = {})...",
             pbfFile.path,
             baseDir.path,
+            tileFlushThreshold,
         )
         val startTime = System.currentTimeMillis()
-        val pois = mutableListOf<POI>()
-        val towns = mutableListOf<TownInfo>()
 
-        val readSuccess = OsmPbfReader.readPbfFile(pbfFile, pois, towns)
+        data class TileKey(val latBucket: Int, val lngBucket: Int)
+        val tilePois = mutableMapOf<TileKey, MutableList<POI>>()
+        val tileTowns = mutableMapOf<TileKey, MutableList<TownInfo>>()
+        val writtenFiles = mutableSetOf<File>()
+        var totalPoisCount = 0
+        var totalTownsCount = 0
+
+        fun flushTile(key: TileKey) {
+            val pois = tilePois.remove(key) ?: emptyList()
+            val towns = tileTowns.remove(key) ?: emptyList()
+            if (pois.isNotEmpty() || towns.isNotEmpty()) {
+                val file =
+                    SpatialTileStorage.writeTile(
+                        latBucket = key.latBucket,
+                        lngBucket = key.lngBucket,
+                        pois = pois,
+                        towns = towns,
+                        baseDir = baseDir,
+                    )
+                writtenFiles.add(file)
+            }
+        }
+
+        val onPoi: (POI) -> Unit = { poi ->
+            totalPoisCount++
+            val latBucket = kotlin.math.floor(poi.lat).toInt()
+            val lngBucket = kotlin.math.floor(poi.lng).toInt()
+            val key = TileKey(latBucket, lngBucket)
+            val list = tilePois.getOrPut(key) { mutableListOf() }
+            list.add(poi)
+            val townCount = tileTowns[key]?.size ?: 0
+            if (list.size + townCount >= tileFlushThreshold) {
+                flushTile(key)
+            }
+        }
+
+        val onTown: (TownInfo) -> Unit = { town ->
+            totalTownsCount++
+            val latBucket = kotlin.math.floor(town.lat).toInt()
+            val lngBucket = kotlin.math.floor(town.lng).toInt()
+            val key = TileKey(latBucket, lngBucket)
+            val list = tileTowns.getOrPut(key) { mutableListOf() }
+            list.add(town)
+            val poiCount = tilePois[key]?.size ?: 0
+            if (list.size + poiCount >= tileFlushThreshold) {
+                flushTile(key)
+            }
+        }
+
+        val readSuccess = pbfReader(pbfFile, onPoi, onTown)
         if (readSuccess) {
-            val writtenFiles = SpatialTileStorage.saveTiles(pois, towns, baseDir)
+            // Flush all remaining buffered shards
+            val remainingKeys = (tilePois.keys + tileTowns.keys).toSet()
+            for (key in remainingKeys) {
+                flushTile(key)
+            }
+
             val elapsed = System.currentTimeMillis() - startTime
             logger.info(
                 "Ingested {} POIs and {} towns into {} tile file(s) under {} in {} ms",
-                pois.size,
-                towns.size,
+                totalPoisCount,
+                totalTownsCount,
                 writtenFiles.size,
                 baseDir.path,
                 elapsed,
             )
-            ingestedPbfs.add(pbfFile.absolutePath)
+            writeMarker(pbfFile, baseDir, totalPoisCount, totalTownsCount)
+            val canonicalPath =
+                try {
+                    pbfFile.canonicalPath
+                } catch (e: Exception) {
+                    pbfFile.absolutePath
+                }
+            ingestedPbfs.add(canonicalPath)
             return true
         } else {
             logger.warn("PBF reading encountered errors. Ingestion to tile storage aborted.")
@@ -84,7 +211,7 @@ object PoiCacheManager {
     /** Ensures that [pbfPath] has been ingested into [baseDir] if the PBF file exists. */
     fun ensurePbfIngested(pbfPath: String, baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR) {
         val pbfFile = File(pbfPath)
-        if (pbfFile.exists() && !ingestedPbfs.contains(pbfFile.absolutePath)) {
+        if (pbfFile.exists() && !isPbfIngested(pbfFile, baseDir)) {
             ingestPbf(pbfFile, baseDir)
         }
     }

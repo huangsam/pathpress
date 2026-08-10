@@ -74,10 +74,10 @@ object OsmPbfReader {
     private val RELEVANT_PLACES = setOf("city", "town", "village", "hamlet")
 
     /**
-     * Executes 2-pass streaming scan over [pbfFile] to populate [pois] and [towns]. Returns true if
-     * successful without input stream errors.
+     * Executes 2-pass streaming scan over [pbfFile], invoking [onPoi] and [onTown] as elements are
+     * encountered. Returns true if successful without input stream errors.
      */
-    fun readPbfFile(pbfFile: File, pois: MutableList<POI>, towns: MutableList<TownInfo>): Boolean {
+    fun readPbfFile(pbfFile: File, onPoi: (POI) -> Unit, onTown: (TownInfo) -> Unit): Boolean {
         val neededNodeIds = LongHashSet()
         val wayCandidates = mutableListOf<WayPoiCandidate>()
         var readSuccess = true
@@ -120,8 +120,8 @@ object OsmPbfReader {
                             neededNodeIds,
                             neededNodeLats,
                             neededNodeLons,
-                            pois,
-                            towns,
+                            onPoi,
+                            onTown,
                         )
                     } else if (elem.type == ReaderElement.Type.WAY) {
                         // All NODE elements precede WAY elements in OSM PBF format, break early!
@@ -141,9 +141,17 @@ object OsmPbfReader {
         }
 
         // Post-processing: Compute centroids for way candidates
-        resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, pois)
+        resolveWayCentroids(wayCandidates, neededNodeLats, neededNodeLons, onPoi)
 
         return readSuccess
+    }
+
+    /**
+     * Executes 2-pass streaming scan over [pbfFile] to populate [pois] and [towns]. Returns true if
+     * successful without input stream errors.
+     */
+    fun readPbfFile(pbfFile: File, pois: MutableList<POI>, towns: MutableList<TownInfo>): Boolean {
+        return readPbfFile(pbfFile = pbfFile, onPoi = { pois.add(it) }, onTown = { towns.add(it) })
     }
 
     /** Builds a [PoiCacheStore] directly from an in-memory collection of [ReaderElement]s. */
@@ -208,8 +216,8 @@ object OsmPbfReader {
         neededNodeIds: LongHashSet,
         neededNodeLats: LongDoubleHashMap,
         neededNodeLons: LongDoubleHashMap,
-        pois: MutableList<POI>,
-        towns: MutableList<TownInfo>,
+        onPoi: (POI) -> Unit,
+        onTown: (TownInfo) -> Unit,
     ) {
         if (neededNodeIds.contains(node.id)) {
             neededNodeLats.put(node.id, node.lat)
@@ -228,20 +236,38 @@ object OsmPbfReader {
                         tags = tags,
                         distanceFromRouteMeters = null,
                     )
-                pois.add(poi)
+                onPoi(poi)
             }
             val placeType = tags["place"]
             if (placeType in RELEVANT_PLACES) {
-                towns.add(TownInfo(name, node.lat, node.lon, placeType!!))
+                onTown(TownInfo(name, node.lat, node.lon, placeType!!))
             }
         }
+    }
+
+    internal fun processNodeElementPass2(
+        node: ReaderNode,
+        neededNodeIds: LongHashSet,
+        neededNodeLats: LongDoubleHashMap,
+        neededNodeLons: LongDoubleHashMap,
+        pois: MutableList<POI>,
+        towns: MutableList<TownInfo>,
+    ) {
+        processNodeElementPass2(
+            node = node,
+            neededNodeIds = neededNodeIds,
+            neededNodeLats = neededNodeLats,
+            neededNodeLons = neededNodeLons,
+            onPoi = { pois.add(it) },
+            onTown = { towns.add(it) },
+        )
     }
 
     internal fun resolveWayCentroids(
         wayCandidates: List<WayPoiCandidate>,
         neededNodeLats: LongDoubleHashMap,
         neededNodeLons: LongDoubleHashMap,
-        pois: MutableList<POI>,
+        onPoi: (POI) -> Unit,
     ) {
         for (candidate in wayCandidates) {
             var sumLat = 0.0
@@ -280,9 +306,23 @@ object OsmPbfReader {
                         tags = candidate.tags,
                         distanceFromRouteMeters = null,
                     )
-                pois.add(poi)
+                onPoi(poi)
             }
         }
+    }
+
+    internal fun resolveWayCentroids(
+        wayCandidates: List<WayPoiCandidate>,
+        neededNodeLats: LongDoubleHashMap,
+        neededNodeLons: LongDoubleHashMap,
+        pois: MutableList<POI>,
+    ) {
+        resolveWayCentroids(
+            wayCandidates = wayCandidates,
+            neededNodeLats = neededNodeLats,
+            neededNodeLons = neededNodeLons,
+            onPoi = { pois.add(it) },
+        )
     }
 
     private fun extractTags(elem: ReaderElement): Map<String, String> {
