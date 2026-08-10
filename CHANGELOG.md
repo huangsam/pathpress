@@ -5,22 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [0.6.0] - 2026-08-09
+## [Unreleased]
 
 ### Added
-- Sharded 1-degree spatial tile disk caching (`SpatialTileStorage.kt`) for scalable regional extraction.
-- Hierarchical slippy-map tile storage (`MapTileStorage.kt`) with automatic legacy migration.
-- Regional corridor and nationwide Coast-to-Coast test suites (`scripts/matrix_cases.py`).
-- Comprehensive technical documentation hub under `docs/` covering architecture and routing.
-- Standalone unversioned JAR copy task (`pathpress-standalone.jar`) for seamless CLI usage.
+- Sharded 1-degree spatial tile disk caching (`SpatialTileStorage.kt`).
+- Hierarchical slippy-map tile storage (`MapTileStorage.kt`).
+- Regional corridor and coast-to-coast test matrix (`scripts/matrix_cases.py`).
+- Technical documentation hub under `docs/`.
+- Standalone unversioned JAR task (`pathpress-standalone.jar`).
+- Aspirational project `ROADMAP.md`.
 
 ### Changed
-- Upgraded Gradle build system to 9.7.0.
-- Streamlined PBF path resolution and graph storage isolation in `PbfPathResolver.kt`.
+- Reduced memory allocation and GC pressure during POI indexing and PDF generation.
+- Streamlined PBF path resolution and graph isolation in `PbfPathResolver.kt`.
 
 ### Fixed
-- Fixed POI description formatting edge cases for mountain peaks.
-- Hardened multi-state boundary resolution and intermediate waypoint validation.
+- Fixed POI description formatting for mountain peaks.
+- Hardened multi-state boundary resolution and waypoint validation.
 
 ## [0.5.0] - 2026-08-08
 
@@ -90,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - 2-pass streaming OSM PBF reader (`OsmPbfReader.kt`).
 - Publication-ready PDF itinerary export with OpenHTMLtoPDF.
 
-[0.6.0]: https://github.com/huangsam/pathpress/compare/v0.5.0...v0.6.0
+[Unreleased]: https://github.com/huangsam/pathpress/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/huangsam/pathpress/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/huangsam/pathpress/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/huangsam/pathpress/compare/v0.2.0...v0.3.0
