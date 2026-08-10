@@ -152,7 +152,9 @@ class RouteCalculator(
         }
 
         val snapTooFar =
-            startSnap.snapDistanceMeters > RoadNetworkSnapper.MAX_SNAP_WARNING_METERS ||
+            !startSnap.isSnapped ||
+                !endSnap.isSnapped ||
+                startSnap.snapDistanceMeters > RoadNetworkSnapper.MAX_SNAP_WARNING_METERS ||
                 endSnap.snapDistanceMeters > RoadNetworkSnapper.MAX_SNAP_WARNING_METERS
 
         if (successfulResponse == null || successfulResponse.hasErrors()) {

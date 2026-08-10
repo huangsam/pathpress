@@ -192,6 +192,7 @@ class RouteCalculatorTest {
         assertEquals(-122.4194, directSnap.coords.lng)
         assertEquals(0.0, directSnap.snapDistanceMeters)
         assertNull(directSnap.snappedToTown)
+        kotlin.test.assertTrue(directSnap.isSnapped)
 
         val townSnap =
             SnapResult(
@@ -201,6 +202,15 @@ class RouteCalculatorTest {
             )
         assertEquals(1500.5, townSnap.snapDistanceMeters)
         assertEquals("San Francisco", townSnap.snappedToTown)
+        kotlin.test.assertTrue(townSnap.isSnapped)
+
+        val unsnapped =
+            SnapResult(
+                coords = LocationCoords(37.7749, -122.4194),
+                snapDistanceMeters = 0.0,
+                isSnapped = false,
+            )
+        kotlin.test.assertFalse(unsnapped.isSnapped)
     }
 
     @Test
@@ -315,7 +325,32 @@ class RouteCalculatorTest {
 
     @Test
     fun `calculateRouteWithLegs throws RouteCalculationException when route fails`() {
+        val stubIndex =
+            object : com.graphhopper.storage.index.LocationIndex {
+                override fun findClosest(
+                    lat: Double,
+                    lon: Double,
+                    edgeFilter: com.graphhopper.routing.util.EdgeFilter,
+                ): com.graphhopper.storage.index.Snap {
+                    val snap =
+                        object : com.graphhopper.storage.index.Snap(lat, lon) {
+                            override fun isValid(): Boolean = true
+                        }
+                    snap.snappedPoint = com.graphhopper.util.shapes.GHPoint3D(lat, lon, 0.0)
+                    return snap
+                }
+
+                override fun query(
+                    filter: com.graphhopper.storage.index.LocationIndex.TileFilter?,
+                    visitor: com.graphhopper.storage.index.LocationIndex.Visitor?,
+                ) {}
+
+                override fun close() {}
+            }
+
         class AlwaysFailingGraphHopper : GraphHopper() {
+            override fun getLocationIndex(): com.graphhopper.storage.index.LocationIndex = stubIndex
+
             override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
                 val response = com.graphhopper.GHResponse()
                 response.addError(RuntimeException("No connection between coordinates"))
@@ -394,6 +429,38 @@ class RouteCalculatorTest {
                 )
             }
 
+        assertEquals(RouteFailureKind.SNAP_TOO_FAR, exception.kind)
+    }
+
+    @Test
+    fun `calculateRouteWithLegs throws RouteCalculationException with SNAP_TOO_FAR when snapping throws exception`() {
+        class FailingSnapGraphHopper : GraphHopper() {
+            override fun getLocationIndex(): com.graphhopper.storage.index.LocationIndex {
+                throw RuntimeException("LocationIndex query failed")
+            }
+
+            override fun route(request: com.graphhopper.GHRequest): com.graphhopper.GHResponse {
+                val response = com.graphhopper.GHResponse()
+                response.addError(RuntimeException("No connection between coordinates"))
+                return response
+            }
+        }
+
+        val calculator =
+            RouteCalculator(graphHopper = FailingSnapGraphHopper(), pbfFilePath = "dummy.pbf")
+
+        val exception =
+            kotlin.test.assertFailsWith<RouteCalculationException> {
+                calculator.calculateRouteWithLegs(
+                    startLat = 37.7749,
+                    startLng = -122.4194,
+                    endLat = 34.0522,
+                    endLng = -118.2437,
+                    days = 1,
+                )
+            }
+
+        kotlin.test.assertNotEquals(RouteFailureKind.NO_ROUTE_FOUND, exception.kind)
         assertEquals(RouteFailureKind.SNAP_TOO_FAR, exception.kind)
     }
 }

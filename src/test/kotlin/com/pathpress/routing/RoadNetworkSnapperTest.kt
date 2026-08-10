@@ -62,6 +62,7 @@ class RoadNetworkSnapperTest {
         assertEquals(-122.4195, result.coords.lng)
         assertTrue(result.snapDistanceMeters > 0.0)
         assertNull(result.snappedToTown)
+        assertTrue(result.isSnapped)
     }
 
     @Test
@@ -99,6 +100,7 @@ class RoadNetworkSnapperTest {
         assertEquals(-122.0300, result.coords.lng)
         assertEquals("Santa Cruz", result.snappedToTown)
         assertTrue(result.snapDistanceMeters > 0.0)
+        assertTrue(result.isSnapped)
     }
 
     @Test
@@ -117,6 +119,7 @@ class RoadNetworkSnapperTest {
         assertEquals(-122.4194, result.coords.lng)
         assertEquals(0.0, result.snapDistanceMeters)
         assertNull(result.snappedToTown)
+        assertEquals(false, result.isSnapped)
     }
 
     @Test

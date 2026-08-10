@@ -15,11 +15,14 @@ import org.slf4j.LoggerFactory
  * @property coords The snapped coordinates on the road network.
  * @property snapDistanceMeters Distance the point was moved during snapping.
  * @property snappedToTown Name of the town used for fallback snapping, or null if direct snap.
+ * @property isSnapped Whether the coordinate was successfully snapped to a road edge or fallback
+ *   town.
  */
 data class SnapResult(
     val coords: LocationCoords,
     val snapDistanceMeters: Double = 0.0,
     val snappedToTown: String? = null,
+    val isSnapped: Boolean = true,
 )
 
 /**
@@ -122,9 +125,10 @@ class RoadNetworkSnapper(
                         SnapResult(
                             coords = LocationCoords(snappedPoint.lat, snappedPoint.lon),
                             snapDistanceMeters = snapDist,
+                            isSnapped = true,
                         )
                     } else {
-                        SnapResult(coords = LocationCoords(lat, lng))
+                        SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)
                     }
                 } else {
                     val nearbyTown =
@@ -165,16 +169,17 @@ class RoadNetworkSnapper(
                             coords = snapCoords,
                             snapDistanceMeters = snapDist,
                             snappedToTown = nearbyTown.name,
+                            isSnapped = true,
                         )
                     } else {
-                        SnapResult(coords = LocationCoords(lat, lng))
+                        SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)
                     }
                 }
             } catch (_: Exception) {
-                SnapResult(coords = LocationCoords(lat, lng))
+                SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)
             }
 
-        if (result.snapDistanceMeters > MAX_SNAP_WARNING_METERS) {
+        if (result.isSnapped && result.snapDistanceMeters > MAX_SNAP_WARNING_METERS) {
             val snapKm =
                 String.format(java.util.Locale.US, "%.1f", result.snapDistanceMeters / 1000.0)
             val thresholdKm =
