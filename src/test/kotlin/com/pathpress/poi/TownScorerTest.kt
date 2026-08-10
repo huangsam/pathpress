@@ -201,4 +201,79 @@ class TownScorerTest {
             "Coastal village score (${scoredCoastal.score}) should exceed inland hamlet score (${scoredInland.score})",
         )
     }
+
+    @Test
+    fun `scoreTownForOvernight does not boost weights on substring false positives`() {
+        val town = TownInfo(name = "Research Center", lat = 37.0, lng = -122.0, type = "village")
+        val beach =
+            POI(
+                id = "b1",
+                name = "Ocean Bluff",
+                lat = 37.001,
+                lng = -122.001,
+                type = "beach",
+                tags = mapOf("natural" to "beach"),
+            )
+        val park =
+            POI(
+                id = "f1",
+                name = "Playground Area",
+                lat = 37.002,
+                lng = -122.002,
+                type = "park",
+                tags = mapOf("leisure" to "park"),
+            )
+        val hotel =
+            POI(
+                id = "h1",
+                name = "City Hotel",
+                lat = 37.003,
+                lng = -122.003,
+                type = "hotel",
+                tags = emptyMap(),
+            )
+        val cafe =
+            POI(
+                id = "c1",
+                name = "Local Cafe",
+                lat = 37.004,
+                lng = -122.004,
+                type = "cafe",
+                tags = emptyMap(),
+                isFoodOrCoffee = true,
+            )
+        val monument =
+            POI(
+                id = "m1",
+                name = "Historic Marker",
+                lat = 37.005,
+                lng = -122.005,
+                type = "monument",
+                tags = mapOf("historic" to "monument"),
+            )
+        val store =
+            PoiCacheStore(pois = listOf(beach, park, hotel, cafe, monument), towns = listOf(town))
+
+        // "research" contains "sea"
+        // "display" contains "play"
+        // "orchid" contains "kid"
+        // "yesterday" contains "stay"
+        // "bayonet" contains "bay"
+        // "cafeteria" contains "cafe"
+        // "prehistoric" contains "historic"
+        // "acquaintance" contains "quaint"
+        // "rollercoaster" contains "coast"
+        val promptWithFalsePositives =
+            "Attended a research conference yesterday displaying orchid bayonets in a prehistoric cafeteria acquaintance with great weather and theater"
+
+        val defaultScored = TownScorer.scoreTownForOvernight(town, store, userPrompt = null)
+        val scoredWithPrompt =
+            TownScorer.scoreTownForOvernight(town, store, userPrompt = promptWithFalsePositives)
+
+        assertEquals(
+            defaultScored.score,
+            scoredWithPrompt.score,
+            "False positive substring matches should not trigger persona weight boosts",
+        )
+    }
 }

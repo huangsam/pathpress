@@ -63,17 +63,27 @@ object TownScorer {
             "battlefield",
         )
 
-    private val FAMILY_PROMPT_KEYWORDS =
-        listOf("family", "kid", "toddler", "children", "play", "child")
-    private val DINING_PROMPT_KEYWORDS =
-        listOf("food", "dining", "culinary", "bakery", "coffee", "restaurant", "cafe")
-    private val LODGING_PROMPT_KEYWORDS =
-        listOf("lodging", "hotel", "motel", "resort", "stay", "overnight")
-    private val COASTAL_PROMPT_KEYWORDS =
-        listOf("coastal", "coast", "beach", "ocean", "sea", "waterfront", "marina", "bay")
-    private val HISTORIC_SCENIC_PROMPT_KEYWORDS =
-        listOf("historic", "scenic", "picturesque", "charming", "heritage", "monument")
-    private val VILLAGE_PROMPT_KEYWORDS = listOf("village", "small town", "quaint")
+    private val FAMILY_PROMPT_REGEX =
+        Regex("""\b(?:family|kid|toddler|children|play|child)\b""", RegexOption.IGNORE_CASE)
+    private val DINING_PROMPT_REGEX =
+        Regex(
+            """\b(?:food|dining|culinary|bakery|coffee|restaurant|cafe)\b""",
+            RegexOption.IGNORE_CASE,
+        )
+    private val LODGING_PROMPT_REGEX =
+        Regex("""\b(?:lodging|hotel|motel|resort|stay|overnight)\b""", RegexOption.IGNORE_CASE)
+    private val COASTAL_PROMPT_REGEX =
+        Regex(
+            """\b(?:coastal|coast|beach|ocean|sea|waterfront|marina|bay)\b""",
+            RegexOption.IGNORE_CASE,
+        )
+    private val HISTORIC_SCENIC_PROMPT_REGEX =
+        Regex(
+            """\b(?:historic|scenic|picturesque|charming|heritage|monument)\b""",
+            RegexOption.IGNORE_CASE,
+        )
+    private val VILLAGE_PROMPT_REGEX =
+        Regex("""\b(?:village|small town|quaint)\b""", RegexOption.IGNORE_CASE)
 
     /**
      * Scores a candidate [town] based on local lodging, family, dining, coastal, and historic
@@ -180,23 +190,22 @@ object TownScorer {
         var placeTypeBonus = 0
 
         if (!userPrompt.isNullOrBlank()) {
-            val lowerPrompt = userPrompt.lowercase()
-            if (FAMILY_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+            if (FAMILY_PROMPT_REGEX.containsMatchIn(userPrompt)) {
                 fWeight = maxOf(fWeight, 5)
             }
-            if (DINING_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+            if (DINING_PROMPT_REGEX.containsMatchIn(userPrompt)) {
                 dWeight = maxOf(dWeight, 3)
             }
-            if (LODGING_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+            if (LODGING_PROMPT_REGEX.containsMatchIn(userPrompt)) {
                 hWeight = maxOf(hWeight, 7)
             }
-            if (COASTAL_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+            if (COASTAL_PROMPT_REGEX.containsMatchIn(userPrompt)) {
                 cWeight = maxOf(cWeight, 6)
             }
-            if (HISTORIC_SCENIC_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+            if (HISTORIC_SCENIC_PROMPT_REGEX.containsMatchIn(userPrompt)) {
                 histWeight = maxOf(histWeight, 5)
             }
-            if (VILLAGE_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+            if (VILLAGE_PROMPT_REGEX.containsMatchIn(userPrompt)) {
                 placeTypeBonus =
                     when (town.type.lowercase()) {
                         "village" -> 15
