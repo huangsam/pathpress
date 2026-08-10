@@ -61,11 +61,32 @@ kotlin { jvmToolchain(21) }
 tasks.register<JavaExec>("run") {
     mainClass.set("com.pathpress.MainKt")
     classpath = sourceSets["main"].runtimeClasspath
+
+    jvmArgs(
+        "-XX:MaxRAMPercentage=75.0",
+        "-XX:InitialRAMPercentage=25.0",
+        "-Djava.awt.headless=true",
+        "-Dfile.encoding=UTF-8",
+        "-XX:+UseG1GC",
+        "-XX:+UseStringDeduplication",
+        "-XX:+ExitOnOutOfMemoryError",
+    )
+
+    providers
+        .gradleProperty("maxHeap")
+        .orElse(providers.environmentVariable("PATHPRESS_MAX_HEAP"))
+        .orNull
+        ?.let { customMax -> maxHeapSize = customMax }
+
+    standardInput = System.`in`
 }
 
 ktfmt { kotlinLangStyle() }
 
 tasks.test {
+    maxHeapSize = "2g"
+    jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
+
     useJUnitPlatform {
         if (providers.environmentVariable("CI").isPresent) {
             excludeTags("network")
