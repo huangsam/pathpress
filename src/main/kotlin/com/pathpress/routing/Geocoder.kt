@@ -242,12 +242,11 @@ object Geocoder {
                     val lonStr = selected["lon"]?.toString()
                     val displayNameStr = selected["display_name"]?.toString()
 
-                    if (latStr != null && lonStr != null) {
-                        val coords =
-                            LocationCoords(
-                                latStr.toDoubleOrNull() ?: 0.0,
-                                lonStr.toDoubleOrNull() ?: 0.0,
-                            )
+                    val lat = latStr?.toDoubleOrNull()
+                    val lon = lonStr?.toDoubleOrNull()
+
+                    if (lat != null && lon != null) {
+                        val coords = LocationCoords(lat, lon)
                         val shortName =
                             displayNameStr?.split(',')?.take(2)?.joinToString(",") ?: queryString
                         return GeocodedLocation(coords, shortName.trim())

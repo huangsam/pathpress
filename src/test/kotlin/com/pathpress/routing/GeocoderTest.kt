@@ -138,6 +138,41 @@ class GeocoderTest {
     }
 
     @Test
+    fun `test Nominatim returns null when coordinates are non-numeric instead of defaulting to 0 0`() {
+        val photonEmptyJson = """{"features": []}"""
+        val nominatimInvalidCoordsJson =
+            """
+            [
+              {
+                "lat": "not_a_number",
+                "lon": "invalid_lon",
+                "display_name": "Bogus Town, CA, USA",
+                "class": "place",
+                "type": "city"
+              }
+            ]
+            """
+                .trimIndent()
+
+        Geocoder.httpClient = MockHttpClient { req ->
+            val uri = req.uri().toString()
+            if (uri.contains("photon.komoot.io")) {
+                MockHttpResponse(photonEmptyJson, 200)
+            } else if (uri.contains("nominatim.openstreetmap.org")) {
+                MockHttpResponse(nominatimInvalidCoordsJson, 200)
+            } else {
+                MockHttpResponse("", 404)
+            }
+        }
+
+        val result = Geocoder.geocode("Bogus Town")
+        assertNull(
+            result,
+            "Geocoder should return null when Nominatim coordinates cannot be parsed as Double, instead of defaulting to (0.0, 0.0)",
+        )
+    }
+
+    @Test
     fun `test Photon prioritizes US settlement over secondary US feature`() {
         val photonJson =
             """
