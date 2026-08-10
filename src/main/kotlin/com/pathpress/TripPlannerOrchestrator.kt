@@ -111,7 +111,7 @@ class TripPlannerOrchestrator(
                 request.llmModel,
                 config,
             )
-        var tripPlan =
+        val initialTripPlan =
             llm.planTrip(
                 startName = startGeo.displayName,
                 endName = endGeo.displayName,
@@ -123,7 +123,7 @@ class TripPlannerOrchestrator(
 
         val resolution =
             resolveAndValidateWaypoints(
-                initialTripPlan = tripPlan,
+                initialTripPlan = initialTripPlan,
                 startGeo = startGeo,
                 endGeo = endGeo,
                 days = request.days,
@@ -131,8 +131,8 @@ class TripPlannerOrchestrator(
                 llm = llm,
                 geocoder = geocoder,
             )
-        var resolvedWaypoints = resolution.waypoints.toMutableList()
-        tripPlan = resolution.tripPlan
+        val resolvedWaypoints = resolution.waypoints
+        val tripPlan = resolution.tripPlan
 
         if (resolvedWaypoints.isNotEmpty()) {
             logger.info(
@@ -188,30 +188,28 @@ internal fun resolveAndValidateWaypoints(
 ): WaypointResolution {
     val logger = LoggerFactory.getLogger("com.pathpress.Main")
 
-    fun geocodeWaypoints(rawWaypoints: List<LocationCoords>): MutableList<LocationCoords> {
-        return rawWaypoints
-            .mapNotNull { wp ->
-                if (wp.lat != 0.0 || wp.lng != 0.0) {
-                    wp
-                } else if (!wp.name.isNullOrBlank()) {
-                    try {
-                        logger.info("Geocoding intermediate waypoint '${wp.name}'...")
-                        val geo = geocoder(wp.name)
-                        if (geo != null) {
-                            LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
-                        } else {
-                            logger.warn("Could not geocode LLM waypoint '${wp.name}'")
-                            null
-                        }
-                    } catch (e: Exception) {
-                        logger.warn("Could not geocode LLM waypoint '${wp.name}': ${e.message}")
+    fun geocodeWaypoints(rawWaypoints: List<LocationCoords>): List<LocationCoords> {
+        return rawWaypoints.mapNotNull { wp ->
+            if (wp.lat != 0.0 || wp.lng != 0.0) {
+                wp
+            } else if (!wp.name.isNullOrBlank()) {
+                try {
+                    logger.info("Geocoding intermediate waypoint '${wp.name}'...")
+                    val geo = geocoder(wp.name)
+                    if (geo != null) {
+                        LocationCoords(geo.coords.lat, geo.coords.lng, geo.displayName)
+                    } else {
+                        logger.warn("Could not geocode LLM waypoint '${wp.name}'")
                         null
                     }
-                } else {
+                } catch (e: Exception) {
+                    logger.warn("Could not geocode LLM waypoint '${wp.name}': ${e.message}")
                     null
                 }
+            } else {
+                null
             }
-            .toMutableList()
+        }
     }
 
     var currentTripPlan = initialTripPlan
@@ -227,7 +225,7 @@ internal fun resolveAndValidateWaypoints(
                     "LLM waypoint validation failed: ${valResult.reason}. " +
                         "Accepting the ${valResult.validWaypoints.size} valid waypoint(s) and dropping the rest."
                 )
-                resolvedWaypoints = valResult.validWaypoints.toMutableList()
+                resolvedWaypoints = valResult.validWaypoints
             } else {
                 logger.warn(
                     "LLM waypoint validation failed: ${valResult.reason}. " +
@@ -254,14 +252,14 @@ internal fun resolveAndValidateWaypoints(
                     logger.info(
                         "Retry attempt produced ${retryValResult.validWaypoints.size} valid waypoint(s)."
                     )
-                    resolvedWaypoints = retryValResult.validWaypoints.toMutableList()
+                    resolvedWaypoints = retryValResult.validWaypoints
                     currentTripPlan = retryTripPlan
                 } else {
                     logger.warn(
                         "LLM waypoint validation failed on retry attempt. " +
                             "Clearing invalid waypoints and using deterministic route fallback."
                     )
-                    resolvedWaypoints.clear()
+                    resolvedWaypoints = emptyList()
                 }
             }
         }
