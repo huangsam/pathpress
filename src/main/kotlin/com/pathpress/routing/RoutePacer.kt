@@ -59,13 +59,10 @@ class RoutePacer(
 
         for (k in 1 until days) {
             val targetDist = (k.toDouble() / days) * totalPolyDist
-            var idx = segIndices[k - 1]
-            for (i in idx until allCoords.size - 1) {
-                if (dCum[i + 1] >= targetDist) {
-                    idx = i
-                    break
-                }
-            }
+            val prevIdx = segIndices[k - 1]
+            val idx =
+                (prevIdx until allCoords.size - 1).firstOrNull { dCum[it + 1] >= targetDist }
+                    ?: prevIdx
             segIndices[k] = idx
         }
         return segIndices

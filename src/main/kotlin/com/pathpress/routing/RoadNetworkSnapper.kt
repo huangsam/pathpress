@@ -99,10 +99,13 @@ class RoadNetworkSnapper(
         val snapFilter = snapFilterFor(profile)
         val result =
             try {
-                var qr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
-                if (!qr.isValid && snapFilter != EdgeFilter.ALL_EDGES) {
-                    qr = graphHopper.locationIndex.findClosest(lat, lng, EdgeFilter.ALL_EDGES)
-                }
+                val initialQr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
+                val qr =
+                    if (!initialQr.isValid && snapFilter != EdgeFilter.ALL_EDGES) {
+                        graphHopper.locationIndex.findClosest(lat, lng, EdgeFilter.ALL_EDGES)
+                    } else {
+                        initialQr
+                    }
                 if (qr.isValid) {
                     try {
                         qr.calcSnappedPoint(com.graphhopper.util.DistanceCalcEarth.DIST_EARTH)
