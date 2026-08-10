@@ -21,6 +21,8 @@ import java.time.Duration
  * @property hotelWeight Relative scoring weight multiplier for hotel/lodging amenities.
  * @property familyWeight Relative scoring weight multiplier for family-friendly attractions.
  * @property diningWeight Relative scoring weight multiplier for dining options.
+ * @property coastalWeight Relative scoring weight multiplier for coastal/beach features.
+ * @property historicWeight Relative scoring weight multiplier for historic/heritage landmarks.
  */
 data class Config(
     val defaultPoisPerLeg: Int = DEFAULT_POIS_PER_LEG,
@@ -36,6 +38,8 @@ data class Config(
     val hotelWeight: Int = DEFAULT_HOTEL_WEIGHT,
     val familyWeight: Int = DEFAULT_FAMILY_WEIGHT,
     val diningWeight: Int = DEFAULT_DINING_WEIGHT,
+    val coastalWeight: Int = DEFAULT_COASTAL_WEIGHT,
+    val historicWeight: Int = DEFAULT_HISTORIC_WEIGHT,
 ) {
     val httpLlmConnectTimeout: Duration
         get() = Duration.ofSeconds(httpLlmConnectTimeoutSeconds)
@@ -91,6 +95,12 @@ data class Config(
         /** Scoring multiplier for dining options when evaluating overnight towns. */
         const val DEFAULT_DINING_WEIGHT: Int = 1
 
+        /** Scoring multiplier for coastal features when evaluating overnight towns. */
+        const val DEFAULT_COASTAL_WEIGHT: Int = 3
+
+        /** Scoring multiplier for historic landmarks when evaluating overnight towns. */
+        const val DEFAULT_HISTORIC_WEIGHT: Int = 3
+
         /** Loads configuration populated with optional environment variable overrides. */
         fun fromEnv(env: Map<String, String> = System.getenv()): Config {
             return Config(
@@ -123,6 +133,9 @@ data class Config(
                 hotelWeight = env["TOWN_HOTEL_WEIGHT"]?.toIntOrNull() ?: DEFAULT_HOTEL_WEIGHT,
                 familyWeight = env["TOWN_FAMILY_WEIGHT"]?.toIntOrNull() ?: DEFAULT_FAMILY_WEIGHT,
                 diningWeight = env["TOWN_DINING_WEIGHT"]?.toIntOrNull() ?: DEFAULT_DINING_WEIGHT,
+                coastalWeight = env["TOWN_COASTAL_WEIGHT"]?.toIntOrNull() ?: DEFAULT_COASTAL_WEIGHT,
+                historicWeight =
+                    env["TOWN_HISTORIC_WEIGHT"]?.toIntOrNull() ?: DEFAULT_HISTORIC_WEIGHT,
             )
         }
     }

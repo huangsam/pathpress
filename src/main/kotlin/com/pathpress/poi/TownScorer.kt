@@ -9,10 +9,13 @@ import kotlin.math.cos
  * proximity.
  *
  * @property town The underlying [TownInfo] location metadata.
- * @property score Aggregated quality score based on local hotel, family, and dining amenity counts.
+ * @property score Aggregated quality score based on local hotel, family, dining, coastal, and
+ *   historic amenity counts.
  * @property hotelCount Number of verified lodging/hotel POIs within the scoring radius.
  * @property familyCount Number of verified family attraction POIs within the scoring radius.
  * @property diningCount Number of verified food and coffee POIs within the scoring radius.
+ * @property coastalCount Number of verified coastal/beach POIs within the scoring radius.
+ * @property historicCount Number of verified historic/heritage POIs within the scoring radius.
  * @property distanceFromTargetMeters Distance in meters from the ideal leg completion target
  *   milestone.
  */
@@ -22,6 +25,8 @@ data class ScoredTown(
     val hotelCount: Int,
     val familyCount: Int,
     val diningCount: Int,
+    val coastalCount: Int = 0,
+    val historicCount: Int = 0,
     val distanceFromTargetMeters: Double = 0.0,
 )
 
@@ -45,24 +50,44 @@ object TownScorer {
         )
     private val DINING_TYPES =
         setOf("restaurant", "cafe", "bakery", "fast_food", "ice_cream", "pub", "food_court", "bar")
+    private val COASTAL_TYPES =
+        setOf("beach", "marina", "bay", "cliff", "cape", "coastline", "beach_resort", "lighthouse")
+    private val HISTORIC_TYPES =
+        setOf(
+            "historic",
+            "monument",
+            "memorial",
+            "castle",
+            "ruins",
+            "archaeological_site",
+            "heritage",
+            "fort",
+            "battlefield",
+        )
+
     private val FAMILY_PROMPT_KEYWORDS =
         listOf("family", "kid", "toddler", "children", "play", "child")
     private val DINING_PROMPT_KEYWORDS =
         listOf("food", "dining", "culinary", "bakery", "coffee", "restaurant", "cafe")
     private val LODGING_PROMPT_KEYWORDS =
         listOf("lodging", "hotel", "motel", "resort", "stay", "overnight")
+    private val COASTAL_PROMPT_KEYWORDS =
+        listOf("coastal", "coast", "beach", "ocean", "sea", "waterfront", "marina", "bay")
+    private val HISTORIC_SCENIC_PROMPT_KEYWORDS =
+        listOf("historic", "scenic", "picturesque", "charming", "heritage", "monument")
+    private val VILLAGE_PROMPT_KEYWORDS = listOf("village", "small town", "quaint")
 
     /**
-     * Scores a candidate [town] based on local lodging, family, and dining amenity density within
-     * [radiusMiles].
+     * Scores a candidate [town] based on local lodging, family, dining, coastal, and historic
+     * amenity density within [radiusMiles].
      *
      * Evaluation steps:
      * 1. Compute lat/lng bounding box for [radiusMiles] and map to [GridCell] spatial indices.
      * 2. Query POIs from spatial index within the bounding box and count matching amenity types.
      * 3. Dynamically adjust weights if [userPrompt] requests specific trip personas (e.g.
-     *    family/kids -> higher family weight).
-     * 4. Compute composite weighted score: `(hotelCount * hWeight) + (familyCount * fWeight) +
-     *    (diningCount * dWeight)`.
+     *    family/kids -> higher family weight, coastal -> coastal bonus, village -> place type
+     *    boost).
+     * 4. Compute composite weighted score.
      */
     fun scoreTownForOvernight(
         town: TownInfo,
@@ -91,6 +116,8 @@ object TownScorer {
         var hotelCount = 0
         var familyCount = 0
         var diningCount = 0
+        var coastalCount = 0
+        var historicCount = 0
 
         // Filter candidates by exact radial Haversine distance and categorize amenities
         for (poi in candidatePois) {
@@ -102,6 +129,8 @@ object TownScorer {
                     val amenityTag = poi.tags["amenity"]?.lowercase()
                     val leisureTag = poi.tags["leisure"]?.lowercase()
                     val naturalTag = poi.tags["natural"]?.lowercase()
+                    val waterwayTag = poi.tags["waterway"]?.lowercase()
+                    val manMadeTag = poi.tags["man_made"]?.lowercase()
 
                     val isHotel =
                         pType in HOTEL_TYPES ||
@@ -114,10 +143,32 @@ object TownScorer {
                             naturalTag in FAMILY_TYPES
                     val isDining =
                         pType in DINING_TYPES || amenityTag in DINING_TYPES || poi.isFoodOrCoffee
+                    val isCoastal =
+                        pType in COASTAL_TYPES ||
+                            naturalTag in setOf("beach", "bay", "cape", "cliff", "coastline") ||
+                            tourismTag in setOf("beach_resort") ||
+                            leisureTag in setOf("marina", "beach_resort", "bathing_place") ||
+                            waterwayTag in setOf("dock", "marina") ||
+                            manMadeTag in setOf("lighthouse")
+                    val isHistoric =
+                        pType in HISTORIC_TYPES ||
+                            poi.tags["historic"] != null ||
+                            poi.tags["heritage"] != null ||
+                            tourismTag in
+                                setOf(
+                                    "historic",
+                                    "monument",
+                                    "memorial",
+                                    "castle",
+                                    "ruins",
+                                    "archaeological_site",
+                                )
 
                     if (isHotel) hotelCount++
                     if (isFamily) familyCount++
                     if (isDining) diningCount++
+                    if (isCoastal) coastalCount++
+                    if (isHistoric) historicCount++
                 }
             }
         }
@@ -126,6 +177,9 @@ object TownScorer {
         var hWeight = config.hotelWeight
         var fWeight = config.familyWeight
         var dWeight = config.diningWeight
+        var cWeight = config.coastalWeight
+        var histWeight = config.historicWeight
+        var placeTypeBonus = 0
 
         if (!userPrompt.isNullOrBlank()) {
             val lowerPrompt = userPrompt.lowercase()
@@ -138,9 +192,29 @@ object TownScorer {
             if (LODGING_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
                 hWeight = maxOf(hWeight, 7)
             }
+            if (COASTAL_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+                cWeight = maxOf(cWeight, 6)
+            }
+            if (HISTORIC_SCENIC_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+                histWeight = maxOf(histWeight, 5)
+            }
+            if (VILLAGE_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
+                when (town.type.lowercase()) {
+                    "village" -> placeTypeBonus = 15
+                    "town" -> placeTypeBonus = 10
+                    "hamlet" -> placeTypeBonus = 5
+                    else -> placeTypeBonus = 0
+                }
+            }
         }
 
-        val totalScore = (hotelCount * hWeight) + (familyCount * fWeight) + (diningCount * dWeight)
+        val totalScore =
+            (hotelCount * hWeight) +
+                (familyCount * fWeight) +
+                (diningCount * dWeight) +
+                (coastalCount * cWeight) +
+                (historicCount * histWeight) +
+                placeTypeBonus
 
         return ScoredTown(
             town = town,
@@ -148,6 +222,8 @@ object TownScorer {
             hotelCount = hotelCount,
             familyCount = familyCount,
             diningCount = diningCount,
+            coastalCount = coastalCount,
+            historicCount = historicCount,
             distanceFromTargetMeters = distanceFromTargetMeters,
         )
     }

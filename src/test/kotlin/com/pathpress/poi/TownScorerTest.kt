@@ -125,4 +125,80 @@ class TownScorerTest {
         assertEquals("High Score Town", ranked[1].town.name) // Score 50, distance 10000m
         assertEquals("Low Score Town", ranked[2].town.name) // Score 10
     }
+
+    @Test
+    fun `scoreTownForOvernight dynamically boosts coastal and historic village score for coastal village prompt`() {
+        val inlandHamlet =
+            TownInfo(name = "Inland Hamlet", lat = 35.0, lng = -119.0, type = "hamlet")
+        val coastalVillage =
+            TownInfo(name = "Coastal Village", lat = 35.5, lng = -121.0, type = "village")
+
+        val hotelInland =
+            POI(
+                id = "h1",
+                name = "Inland Motel",
+                lat = 35.001,
+                lng = -119.001,
+                type = "hotel",
+                tags = emptyMap(),
+            )
+        val cafeInland =
+            POI(
+                id = "c1",
+                name = "Inland Diner",
+                lat = 35.002,
+                lng = -119.002,
+                type = "cafe",
+                tags = emptyMap(),
+                isFoodOrCoffee = true,
+            )
+
+        val hotelCoastal =
+            POI(
+                id = "h2",
+                name = "Coastal Inn",
+                lat = 35.501,
+                lng = -121.001,
+                type = "hotel",
+                tags = emptyMap(),
+            )
+        val beachCoastal =
+            POI(
+                id = "b1",
+                name = "Scenic Beach",
+                lat = 35.502,
+                lng = -121.002,
+                type = "beach",
+                tags = mapOf("natural" to "beach"),
+            )
+        val historicSite =
+            POI(
+                id = "m1",
+                name = "Historic Lighthouse",
+                lat = 35.503,
+                lng = -121.003,
+                type = "monument",
+                tags = mapOf("historic" to "monument"),
+            )
+
+        val store =
+            PoiCacheStore(
+                pois = listOf(hotelInland, cafeInland, hotelCoastal, beachCoastal, historicSite),
+                towns = listOf(inlandHamlet, coastalVillage),
+            )
+
+        val prompt =
+            "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay"
+        val scoredInland =
+            TownScorer.scoreTownForOvernight(inlandHamlet, store, userPrompt = prompt)
+        val scoredCoastal =
+            TownScorer.scoreTownForOvernight(coastalVillage, store, userPrompt = prompt)
+
+        assertEquals(1, scoredCoastal.coastalCount)
+        assertEquals(1, scoredCoastal.historicCount)
+        assertTrue(
+            scoredCoastal.score > scoredInland.score,
+            "Coastal village score (${scoredCoastal.score}) should exceed inland hamlet score (${scoredInland.score})",
+        )
+    }
 }
