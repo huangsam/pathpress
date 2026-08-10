@@ -16,8 +16,7 @@ object QrCodeGenerator {
      * @param url Destination URL to encode into the QR code
      * @param width Width in pixels (default 160)
      * @param height Height in pixels (default 160)
-     * @return Data URI string suitable for direct HTML `src` attribute (e.g.
-     *   `data:image/png;base64,...`)
+     * @return Data URI string suitable for direct HTML `src` attribute
      */
     fun generateQrCodeDataUri(url: String, width: Int = 160, height: Int = 160): String {
         if (url.isBlank()) return ""
@@ -29,7 +28,7 @@ object QrCodeGenerator {
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", os)
             val base64 = Base64.getEncoder().encodeToString(os.toByteArray())
             "data:image/png;base64,$base64"
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }
