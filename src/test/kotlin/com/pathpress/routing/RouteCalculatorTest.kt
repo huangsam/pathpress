@@ -187,7 +187,7 @@ class RouteCalculatorTest {
 
     @Test
     fun `SnapResult data class holds coordinate and snap metadata correctly`() {
-        val directSnap = SnapResult(coords = LocationCoords(37.7749, -122.4194))
+        val directSnap = SnapResult(coords = LocationCoords(37.7749, -122.4194), isSnapped = true)
         assertEquals(37.7749, directSnap.coords.lat)
         assertEquals(-122.4194, directSnap.coords.lng)
         assertEquals(0.0, directSnap.snapDistanceMeters)
@@ -199,10 +199,14 @@ class RouteCalculatorTest {
                 coords = LocationCoords(37.8000, -122.4000),
                 snapDistanceMeters = 1500.5,
                 snappedToTown = "San Francisco",
+                isSnapped = true,
             )
         assertEquals(1500.5, townSnap.snapDistanceMeters)
         assertEquals("San Francisco", townSnap.snappedToTown)
         kotlin.test.assertTrue(townSnap.isSnapped)
+
+        val defaultSnap = SnapResult(coords = LocationCoords(37.7749, -122.4194))
+        kotlin.test.assertFalse(defaultSnap.isSnapped)
 
         val unsnapped =
             SnapResult(

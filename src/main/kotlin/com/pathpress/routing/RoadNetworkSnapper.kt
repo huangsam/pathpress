@@ -15,14 +15,13 @@ import org.slf4j.LoggerFactory
  * @property coords The snapped coordinates on the road network.
  * @property snapDistanceMeters Distance the point was moved during snapping.
  * @property snappedToTown Name of the town used for fallback snapping, or null if direct snap.
- * @property isSnapped Whether the coordinate was successfully snapped to a road edge or fallback
- *   town.
+ * @property isSnapped Whether the coordinate was snapped to a road edge or fallback town.
  */
 data class SnapResult(
     val coords: LocationCoords,
     val snapDistanceMeters: Double = 0.0,
     val snappedToTown: String? = null,
-    val isSnapped: Boolean = true,
+    val isSnapped: Boolean = false,
 )
 
 /**
