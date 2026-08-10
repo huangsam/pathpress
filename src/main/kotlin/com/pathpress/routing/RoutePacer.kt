@@ -137,7 +137,6 @@ class RoutePacer(
         days: Int,
         userPrompt: String? = null,
         startName: String? = null,
-        endName: String? = null,
     ): List<LegGeometryInfo> {
         require(days > 1) { "Multi-day pacing requires days > 1" }
 

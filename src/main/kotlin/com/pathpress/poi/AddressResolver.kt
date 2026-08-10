@@ -29,11 +29,6 @@ object AddressResolver {
     private val cache = ConcurrentHashMap<String, String>()
     private val lastRequestTimeMs = AtomicLong(0)
 
-    /** Clear in-memory address resolution cache (useful for testing). */
-    fun clearCache() {
-        cache.clear()
-    }
-
     /**
      * Resolve physical street address for a given POI using OSM tags or Nominatim reverse geocoding
      * fallback.
@@ -175,7 +170,7 @@ object AddressResolver {
                     return displayNameStr.split(',').take(3).joinToString(",").trim()
                 }
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Silently return null on timeout or network errors
         }
         return null

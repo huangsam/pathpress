@@ -141,15 +141,6 @@ data class Route(
             ?: "A custom road trip experience from $startLocation to $endLocation."
 }
 
-/** Convert a single leg to a complete route with one leg. */
-fun RouteLeg.toRoute(): Route {
-    return Route(
-        legs = listOf(this),
-        totalDistanceMeters = this.distanceMeters ?: 0.0,
-        totalDurationSeconds = this.durationSeconds ?: 0.0,
-    )
-}
-
 /** Distance formatting unit system. */
 enum class DistanceUnit {
     METRIC, // km, m

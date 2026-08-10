@@ -7,7 +7,6 @@ import com.graphhopper.util.GHUtility
 import com.graphhopper.util.shapes.GHPoint
 import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
-import com.pathpress.model.Route
 import com.pathpress.model.RouteLeg
 import com.pathpress.poi.PoiExtractor
 import org.slf4j.LoggerFactory
@@ -131,7 +130,7 @@ class RouteCalculator(
 
             if (successfulResponse == null && survivors.size > 1) {
                 // Phase 2: Sequential trim from the tail (<= N-1 calls).
-                var trimmed = survivors.toMutableList()
+                val trimmed = survivors.toMutableList()
                 while (trimmed.size > 1 && successfulResponse == null) {
                     val dropped = trimmed.removeLast()
                     logger.warn(
@@ -175,7 +174,6 @@ class RouteCalculator(
             successfulResponse.best,
             days,
             dayTitles,
-            profile,
             limitPerLeg,
             userPrompt,
             startName = startName,
@@ -187,7 +185,6 @@ class RouteCalculator(
         path: com.graphhopper.ResponsePath,
         days: Int,
         dayTitles: List<String>,
-        profile: String,
         limitPerLeg: Int,
         userPrompt: String? = null,
         startName: String? = null,
@@ -248,7 +245,6 @@ class RouteCalculator(
                 days = days,
                 userPrompt = userPrompt,
                 startName = startName,
-                endName = endName,
             )
 
         val legs = mutableListOf<RouteLeg>()
@@ -311,15 +307,6 @@ class RouteCalculator(
         }
 
         return legs
-    }
-
-    fun calculateRoute(startLat: Double, startLng: Double, endLat: Double, endLng: Double): Route {
-        val legs = calculateRouteWithLegs(startLat, startLng, endLat, endLng, days = 1)
-        return Route(
-            legs,
-            legs.sumOf { it.distanceMeters ?: 0.0 },
-            legs.sumOf { it.durationSeconds ?: 0.0 },
-        )
     }
 
     companion object {

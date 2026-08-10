@@ -166,13 +166,7 @@ class RoutePacerTest {
         path.distance = 600000.0
         path.time = 21600000L
 
-        val legInfos =
-            pacer.calculateMultiDayPacing(
-                path,
-                days = 2,
-                startName = "San Francisco",
-                endName = "Los Angeles",
-            )
+        val legInfos = pacer.calculateMultiDayPacing(path, days = 2, startName = "San Francisco")
 
         assertEquals(2, legInfos.size)
         assertEquals(0, legInfos[0].dayIndex)
@@ -212,12 +206,7 @@ class RoutePacerTest {
         path.time = 21600000L
 
         val legInfos =
-            customPacer.calculateMultiDayPacing(
-                path = path,
-                days = 2,
-                startName = "San Francisco",
-                endName = "Los Angeles",
-            )
+            customPacer.calculateMultiDayPacing(path = path, days = 2, startName = "San Francisco")
 
         assertEquals(2, legInfos.size)
         // Day 1 starts in San Francisco, ends in Monterey (overnight)

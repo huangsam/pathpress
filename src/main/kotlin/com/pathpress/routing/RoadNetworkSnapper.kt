@@ -50,7 +50,7 @@ class RoadNetworkSnapper(
                 val ghProfile =
                     try {
                         graphHopper.getProfile(profile)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         graphHopper.getProfile("car")
                     }
                 val weighting = graphHopper.createWeighting(ghProfile, PMap())
@@ -167,7 +167,7 @@ class RoadNetworkSnapper(
                         SnapResult(coords = LocationCoords(lat, lng))
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 SnapResult(coords = LocationCoords(lat, lng))
             }
 

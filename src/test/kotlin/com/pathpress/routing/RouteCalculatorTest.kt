@@ -26,7 +26,6 @@ class RouteCalculatorTest {
                 path = path,
                 days = 1,
                 dayTitles = listOf("Coastal Highway Adventure"),
-                profile = "car",
                 limitPerLeg = 2,
             )
 
@@ -64,7 +63,6 @@ class RouteCalculatorTest {
                 path = path,
                 days = 2,
                 dayTitles = emptyList(),
-                profile = "car",
                 limitPerLeg = 3,
             )
 
@@ -98,7 +96,6 @@ class RouteCalculatorTest {
                 path = path,
                 days = 3,
                 dayTitles = customTitles,
-                profile = "car",
                 limitPerLeg = 2,
             )
 
@@ -126,7 +123,6 @@ class RouteCalculatorTest {
                 path = path,
                 days = 3,
                 dayTitles = emptyList(),
-                profile = "car",
                 limitPerLeg = 2,
             )
 
@@ -174,7 +170,6 @@ class RouteCalculatorTest {
                 path = path,
                 days = 2,
                 dayTitles = emptyList(),
-                profile = "car",
                 limitPerLeg = 2,
             )
 

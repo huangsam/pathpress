@@ -28,10 +28,6 @@ open class PoiExtractor(
     val config: Config = Config.fromEnv(),
     val baseTilesDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
 ) {
-    /** Retrieve or build the full [PoiCacheStore]. */
-    fun getOrBuildCache(pbfPath: String): PoiCacheStore =
-        PoiCacheManager.getOrBuildCache(pbfPath, baseTilesDir)
-
     /** Retrieve a [PoiCacheStore] scoped to the bounding box [minLat..maxLat, minLng..maxLng]. */
     fun getCacheForBoundingBox(
         pbfPath: String,
@@ -188,7 +184,7 @@ open class PoiExtractor(
         val targetDistMeters = totalDist * targetProgressFraction
 
         var cumDist = 0.0
-        var targetPointCoords = mutableListOf<LocationCoords>()
+        val targetPointCoords = mutableListOf<LocationCoords>()
         var targetMilestoneCoords: LocationCoords? = null
 
         for (i in 0 until routePoints.size - 1) {

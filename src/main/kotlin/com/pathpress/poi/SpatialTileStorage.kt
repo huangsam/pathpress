@@ -10,8 +10,7 @@ import org.slf4j.LoggerFactory
 /**
  * 2-level hierarchical 1.0° × 1.0° geographic tile sharding system for POIs and towns.
  *
- * File hierarchy: `.pois_cache/tiles/{floor(lat)}/{floor(lng)}.json` (e.g.
- * `.pois_cache/tiles/37/-122.json` for San Francisco / Bay Area).
+ * File hierarchy: `.pois_cache/tiles/{floor(lat)}/{floor(lng)}.json`.
  *
  * Provides $O(1)$ spatial tile lookup, bounding-box multi-tile discovery, and idempotent writes
  * with OSM ID deduplication.

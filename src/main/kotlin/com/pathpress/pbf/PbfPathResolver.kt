@@ -81,8 +81,7 @@ object PbfPathResolver {
      *
      * When [requestedGraphPath] is null, blank, or the default `".graphhopper"`, the path is
      * automatically derived as `.graphhopper/<slug>` under [baseDir] based on [pbfPath]. If an
-     * explicit custom path is passed (e.g. `"/custom/path"` or `"my_graph"`), it is preserved
-     * as-is.
+     * explicit custom path is passed, it is preserved as-is.
      *
      * @param requestedGraphPath Explicit graph directory passed via CLI/config, or null/default.
      * @param pbfPath The PBF file path to derive the slug from if using automatic resolution.
