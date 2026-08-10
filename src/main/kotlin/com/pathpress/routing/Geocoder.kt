@@ -145,35 +145,10 @@ object Geocoder {
                 val root: PhotonResponse = mapper.readValue(response.body())
                 val features = root.features
                 if (features.isNotEmpty()) {
-                    val usSettlement = features.firstOrNull { feat ->
-                        val props = feat.properties
-                        val countryCode = props["countrycode"]?.toString()?.uppercase()
-                        val type = props["type"]?.toString()?.lowercase()
-                        val osmKey = props["osm_key"]?.toString()?.lowercase()
-                        val osmValue = props["osm_value"]?.toString()?.lowercase()
-
-                        countryCode == "US" &&
-                            (type in SETTLEMENT_TYPES ||
-                                (osmKey == "place" && osmValue in SETTLEMENT_TYPES) ||
-                                (osmKey == "place" && osmValue != "park" && osmValue != "tourism"))
-                    }
-
+                    val usSettlement = features.firstOrNull { isUsSettlement(it.properties) }
                     val selected =
                         usSettlement
-                            ?: features.firstOrNull { feat ->
-                                val props = feat.properties
-                                val countryCode = props["countrycode"]?.toString()?.uppercase()
-                                val type = props["type"]?.toString()?.lowercase()
-                                val osmKey = props["osm_key"]?.toString()?.lowercase()
-                                val osmValue = props["osm_value"]?.toString()?.lowercase()
-
-                                countryCode == "US" &&
-                                    (type in SECONDARY_PLACE_TYPES ||
-                                        osmKey == "place" ||
-                                        osmKey == "tourism" ||
-                                        osmKey == "historic" ||
-                                        osmValue in SECONDARY_PLACE_TYPES)
-                            }
+                            ?: features.firstOrNull { isUsSecondaryPlace(it.properties) }
                             ?: features.firstOrNull { feat ->
                                 feat.properties["countrycode"]?.toString()?.uppercase() == "US"
                             }
@@ -283,5 +258,34 @@ object Geocoder {
             logger.warn("Nominatim geocoding failed for query '$queryString': ${e.message}", e)
         }
         return null
+    }
+
+    private fun isUsSettlement(props: Map<String, Any?>): Boolean {
+        val countryCode = props["countrycode"]?.toString()?.uppercase()
+        if (countryCode != "US") return false
+
+        val type = props["type"]?.toString()?.lowercase()
+        val osmKey = props["osm_key"]?.toString()?.lowercase()
+        val osmValue = props["osm_value"]?.toString()?.lowercase()
+
+        return !(type == "county" || osmValue == "county") &&
+            (type in SETTLEMENT_TYPES ||
+                (osmKey == "place" && osmValue in SETTLEMENT_TYPES) ||
+                (osmKey == "place" && osmValue != "park" && osmValue != "tourism"))
+    }
+
+    private fun isUsSecondaryPlace(props: Map<String, Any?>): Boolean {
+        val countryCode = props["countrycode"]?.toString()?.uppercase()
+        if (countryCode != "US") return false
+
+        val type = props["type"]?.toString()?.lowercase()
+        val osmKey = props["osm_key"]?.toString()?.lowercase()
+        val osmValue = props["osm_value"]?.toString()?.lowercase()
+
+        return type in SECONDARY_PLACE_TYPES ||
+            osmKey == "place" ||
+            osmKey == "tourism" ||
+            osmKey == "historic" ||
+            osmValue in SECONDARY_PLACE_TYPES
     }
 }
