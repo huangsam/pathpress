@@ -11,19 +11,7 @@ import kotlin.math.floor
  *
  * Cell dimensions are determined by [GRID_CELL_SIZE_DEG] (~0.05° ≈ 5.5 km or 3.4 miles).
  */
-@JvmInline
-value class GridCell(val packed: Long) {
-    val latIndex: Int
-        get() = (packed ushr 32).toInt()
-
-    val lngIndex: Int
-        get() = packed.toInt()
-
-    constructor(
-        latIndex: Int,
-        lngIndex: Int,
-    ) : this((latIndex.toLong() shl 32) or (lngIndex.toLong() and 0xFFFFFFFFL))
-
+data class GridCell(val latIndex: Int, val lngIndex: Int) {
     companion object {
         /**
          * Spatial grid cell size in degrees.
