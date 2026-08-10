@@ -34,7 +34,7 @@ data class PoiCacheStore(
 object PoiCacheManager {
     private val logger = LoggerFactory.getLogger(PoiCacheManager::class.java)
 
-    const val DEFAULT_TILE_FLUSH_THRESHOLD = 500
+    const val DEFAULT_BUFFERED_POI_BUDGET = 50_000
 
     private data class IngestedMarkerMeta(val pbfSize: Long, val pbfLastModified: Long)
 
@@ -152,23 +152,23 @@ object PoiCacheManager {
 
     /**
      * Ingests an OSM PBF file by streaming its nodes and ways directly into 1.0° × 1.0° tile shards
-     * in [baseDir], buffering per tile and flushing incrementally as shards fill to
-     * [tileFlushThreshold]. Deduplicates POIs idempotently by OSM ID and writes a completion
-     * marker.
+     * in [baseDir], buffering globally across tiles and flushing the largest shard whenever the
+     * global buffered-POI budget [bufferedPoiBudget] is exceeded. Deduplicates POIs idempotently by
+     * OSM ID and writes a completion marker.
      */
     @Synchronized
     fun ingestPbf(
         pbfFile: File,
         baseDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
-        tileFlushThreshold: Int = DEFAULT_TILE_FLUSH_THRESHOLD,
+        bufferedPoiBudget: Int = DEFAULT_BUFFERED_POI_BUDGET,
     ): Boolean {
         if (!pbfFile.exists()) return false
 
         logger.info(
-            "Ingesting PBF file {} into geographic tile shards under {} (flush threshold = {})...",
+            "Ingesting PBF file {} into geographic tile shards under {} (buffered POI budget = {})...",
             pbfFile.path,
             baseDir.path,
-            tileFlushThreshold,
+            bufferedPoiBudget,
         )
         val startTime = System.currentTimeMillis()
 
@@ -178,10 +178,12 @@ object PoiCacheManager {
         val writtenFiles = mutableSetOf<File>()
         var totalPoisCount = 0
         var totalTownsCount = 0
+        var currentBufferedCount = 0
 
         fun flushTile(key: TileKey) {
             val pois = tilePois.remove(key) ?: emptyList()
             val towns = tileTowns.remove(key) ?: emptyList()
+            currentBufferedCount -= (pois.size + towns.size)
             if (pois.isNotEmpty() || towns.isNotEmpty()) {
                 val file =
                     SpatialTileStorage.writeTile(
@@ -195,6 +197,16 @@ object PoiCacheManager {
             }
         }
 
+        fun checkBudget() {
+            while (currentBufferedCount > bufferedPoiBudget) {
+                val allKeys = tilePois.keys + tileTowns.keys
+                val largestKey =
+                    allKeys.maxByOrNull { (tilePois[it]?.size ?: 0) + (tileTowns[it]?.size ?: 0) }
+                        ?: break
+                flushTile(largestKey)
+            }
+        }
+
         val onPoi: (POI) -> Unit = { poi ->
             totalPoisCount++
             val latBucket = kotlin.math.floor(poi.lat).toInt()
@@ -202,9 +214,9 @@ object PoiCacheManager {
             val key = TileKey(latBucket, lngBucket)
             val list = tilePois.getOrPut(key) { mutableListOf() }
             list.add(poi)
-            val townCount = tileTowns[key]?.size ?: 0
-            if (list.size + townCount >= tileFlushThreshold) {
-                flushTile(key)
+            currentBufferedCount++
+            if (currentBufferedCount > bufferedPoiBudget) {
+                checkBudget()
             }
         }
 
@@ -215,9 +227,9 @@ object PoiCacheManager {
             val key = TileKey(latBucket, lngBucket)
             val list = tileTowns.getOrPut(key) { mutableListOf() }
             list.add(town)
-            val poiCount = tilePois[key]?.size ?: 0
-            if (list.size + poiCount >= tileFlushThreshold) {
-                flushTile(key)
+            currentBufferedCount++
+            if (currentBufferedCount > bufferedPoiBudget) {
+                checkBudget()
             }
         }
 
