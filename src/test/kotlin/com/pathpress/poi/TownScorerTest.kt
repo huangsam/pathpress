@@ -276,4 +276,68 @@ class TownScorerTest {
             "False positive substring matches should not trigger persona weight boosts",
         )
     }
+
+    @Test
+    fun `scoreTownForOvernight dynamically boosts weights on plural prompt keywords`() {
+        val town = TownInfo(name = "Coastal Village", lat = 37.0, lng = -122.0, type = "village")
+        val beach =
+            POI(
+                id = "b1",
+                name = "Ocean Bluff",
+                lat = 37.001,
+                lng = -122.001,
+                type = "beach",
+                tags = mapOf("natural" to "beach"),
+            )
+        val park =
+            POI(
+                id = "f1",
+                name = "Playground Area",
+                lat = 37.002,
+                lng = -122.002,
+                type = "park",
+                tags = mapOf("leisure" to "park"),
+            )
+        val hotel =
+            POI(
+                id = "h1",
+                name = "City Hotel",
+                lat = 37.003,
+                lng = -122.003,
+                type = "hotel",
+                tags = emptyMap(),
+            )
+        val cafe =
+            POI(
+                id = "c1",
+                name = "Local Bakery",
+                lat = 37.004,
+                lng = -122.004,
+                type = "bakery",
+                tags = emptyMap(),
+                isFoodOrCoffee = true,
+            )
+        val monument =
+            POI(
+                id = "m1",
+                name = "Historic Monument",
+                lat = 37.005,
+                lng = -122.005,
+                type = "monument",
+                tags = mapOf("historic" to "monument"),
+            )
+        val store =
+            PoiCacheStore(pois = listOf(beach, park, hotel, cafe, monument), towns = listOf(town))
+
+        // Test plural versions: kids, toddlers, bakeries, hotels, beaches, monuments, villages
+        val promptWithPlurals =
+            "Trip with kids and toddlers exploring bakeries and monuments near beaches with luxury hotels in picturesque villages"
+
+        val defaultScored = TownScorer.scoreTownForOvernight(town, store, userPrompt = null)
+        val pluralScored =
+            TownScorer.scoreTownForOvernight(town, store, userPrompt = promptWithPlurals)
+
+        assertEquals(18, defaultScored.score)
+        assertEquals(46, pluralScored.score)
+    }
 }

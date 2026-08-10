@@ -64,26 +64,32 @@ object TownScorer {
         )
 
     private val FAMILY_PROMPT_REGEX =
-        Regex("""\b(?:family|kid|toddler|children|play|child)\b""", RegexOption.IGNORE_CASE)
+        Regex(
+            """\b(?:family|families|kid|kids|toddler|toddlers|children|child|play|plays)\b""",
+            RegexOption.IGNORE_CASE,
+        )
     private val DINING_PROMPT_REGEX =
         Regex(
-            """\b(?:food|dining|culinary|bakery|coffee|restaurant|cafe)\b""",
+            """\b(?:food|foods|dining|culinary|bakery|bakeries|coffee|coffees|restaurant|restaurants|cafe|cafes)\b""",
             RegexOption.IGNORE_CASE,
         )
     private val LODGING_PROMPT_REGEX =
-        Regex("""\b(?:lodging|hotel|motel|resort|stay|overnight)\b""", RegexOption.IGNORE_CASE)
+        Regex(
+            """\b(?:lodging|lodgings|hotel|hotels|motel|motels|resort|resorts|stay|stays|overnight|overnights)\b""",
+            RegexOption.IGNORE_CASE,
+        )
     private val COASTAL_PROMPT_REGEX =
         Regex(
-            """\b(?:coastal|coast|beach|ocean|sea|waterfront|marina|bay)\b""",
+            """\b(?:coastal|coast|coasts|beach|beaches|ocean|oceans|sea|seas|waterfront|waterfronts|marina|marinas|bay|bays)\b""",
             RegexOption.IGNORE_CASE,
         )
     private val HISTORIC_SCENIC_PROMPT_REGEX =
         Regex(
-            """\b(?:historic|scenic|picturesque|charming|heritage|monument)\b""",
+            """\b(?:historic|scenic|picturesque|charming|heritage|heritages|monument|monuments)\b""",
             RegexOption.IGNORE_CASE,
         )
     private val VILLAGE_PROMPT_REGEX =
-        Regex("""\b(?:village|small town|quaint)\b""", RegexOption.IGNORE_CASE)
+        Regex("""\b(?:village|villages|small town|small towns|quaint)\b""", RegexOption.IGNORE_CASE)
 
     /**
      * Scores a candidate [town] based on local lodging, family, dining, coastal, and historic
