@@ -13,7 +13,8 @@ import java.time.Duration
  * @property defaultClaudeModel Default model identifier for Anthropic Claude API calls.
  * @property defaultOpenAiModel Default model identifier for OpenAI API calls.
  * @property defaultOllamaModel Default model identifier for local Ollama API calls.
- * @property httpLlmTimeoutSeconds Network timeout in seconds for HTTP LLM requests.
+ * @property httpLlmConnectTimeoutSeconds Network timeout in seconds for HTTP LLM connections.
+ * @property httpLlmRequestTimeoutSeconds Network timeout in seconds for HTTP LLM requests.
  * @property geocoderTimeoutSeconds Network timeout in seconds for geocoding services.
  * @property townScoringRadiusMiles Search radius in miles around towns for scoring.
  * @property townProgressWindowFraction Route fraction for overnight search window.
