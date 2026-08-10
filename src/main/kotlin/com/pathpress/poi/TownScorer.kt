@@ -199,12 +199,13 @@ object TownScorer {
                 histWeight = maxOf(histWeight, 5)
             }
             if (VILLAGE_PROMPT_KEYWORDS.any { lowerPrompt.contains(it) }) {
-                when (town.type.lowercase()) {
-                    "village" -> placeTypeBonus = 15
-                    "town" -> placeTypeBonus = 10
-                    "hamlet" -> placeTypeBonus = 5
-                    else -> placeTypeBonus = 0
-                }
+                placeTypeBonus =
+                    when (town.type.lowercase()) {
+                        "village" -> 15
+                        "town" -> 10
+                        "hamlet" -> 5
+                        else -> 0
+                    }
             }
         }
 
