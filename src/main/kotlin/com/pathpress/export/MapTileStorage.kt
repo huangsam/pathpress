@@ -22,7 +22,8 @@ object MapTileStorage {
 
     val DEFAULT_BASE_DIR = File(".map_cache")
     private const val DEFAULT_MAX_MEMORY_TILES = 128
-    private const val USER_AGENT = "PathPress/0.5.0 (https://github.com/huangsam/pathpress)"
+    private val USER_AGENT =
+        "PathPress/${com.pathpress.BuildConfig.VERSION} (https://github.com/huangsam/pathpress)"
     private const val TILE_URL_FORMAT =
         "https://cartodb-basemaps-a.global.ssl.fastly.net/rastertiles/voyager/%d/%d/%d.png"
 
