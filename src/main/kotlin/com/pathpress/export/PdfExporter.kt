@@ -2,6 +2,7 @@ package com.pathpress.export
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder
 import com.openhtmltopdf.svgsupport.BatikSVGDrawer
+import com.pathpress.config.Config
 import com.pathpress.model.DistanceUnit
 import com.pathpress.model.Route
 import kotlinx.html.*
@@ -41,6 +42,7 @@ object PdfExporter {
         startLocation: String,
         endLocation: String,
         unit: DistanceUnit = DistanceUnit.METRIC,
+        config: Config = Config(),
     ): String {
         val safeStart = sanitizeText(startLocation)
         val safeEnd = sanitizeText(endLocation)
@@ -56,7 +58,7 @@ object PdfExporter {
                 }
                 body {
                     coverPage(route, safeStart, safeEnd, unit)
-                    dailySchedule(route, unit)
+                    dailySchedule(route, unit, config)
                     navigationAppendix(route)
                 }
             }

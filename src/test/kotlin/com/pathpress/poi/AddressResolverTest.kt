@@ -9,25 +9,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.parallel.ResourceLock
 
-@ResourceLock("com.pathpress.poi.AddressResolver")
 class AddressResolverTest {
-
-    private val originalHttpClient = AddressResolver.httpClient
-
-    @BeforeEach
-    fun setUp() {
-        AddressResolver.clearCache()
-    }
-
-    @AfterEach
-    fun tearDown() {
-        AddressResolver.httpClient = originalHttpClient
-    }
 
     @Test
     fun `resolveFromOsmTags builds physical street address when tags exist`() {
@@ -68,7 +52,8 @@ class AddressResolverTest {
                     ),
                 type = "cafe",
             )
-        val resolved = AddressResolver.resolveAddress(poi)
+        val resolver = AddressResolver()
+        val resolved = resolver.resolveAddress(poi)
         assertEquals("2855 Stevens Creek Boulevard, Santa Clara CA 95050", resolved)
     }
 
@@ -91,11 +76,17 @@ class AddressResolverTest {
         var capturedUri: String? = null
         var capturedTimeout: Duration? = null
 
-        AddressResolver.httpClient = MockHttpClient { req ->
-            capturedUri = req.uri().toString()
-            capturedTimeout = req.timeout().orElse(null)
-            MockHttpResponse(nominatimJson, 200)
-        }
+        val customConfig = Config(geocoderTimeoutSeconds = 25L)
+        val resolver =
+            AddressResolver(
+                config = customConfig,
+                httpClient =
+                    MockHttpClient { req ->
+                        capturedUri = req.uri().toString()
+                        capturedTimeout = req.timeout().orElse(null)
+                        MockHttpResponse(nominatimJson, 200)
+                    },
+            )
 
         val poi =
             POI(
@@ -107,8 +98,7 @@ class AddressResolverTest {
                 type = "office",
             )
 
-        val customConfig = Config(geocoderTimeoutSeconds = 25L)
-        val resolved = AddressResolver.resolveAddress(poi, config = customConfig)
+        val resolved = resolver.resolveAddress(poi)
 
         val uri = capturedUri
         assertNotNull(uri)
@@ -128,7 +118,10 @@ class AddressResolverTest {
             """
                 .trimIndent()
 
-        AddressResolver.httpClient = MockHttpClient { req -> MockHttpResponse(nominatimJson, 200) }
+        val resolver =
+            AddressResolver(
+                httpClient = MockHttpClient { req -> MockHttpResponse(nominatimJson, 200) }
+            )
 
         val poi =
             POI(
@@ -140,15 +133,17 @@ class AddressResolverTest {
                 type = "viewpoint",
             )
 
-        val resolved = AddressResolver.resolveAddress(poi)
+        val resolved = resolver.resolveAddress(poi)
         assertEquals("Yosemite National Park, Tioga Pass Road, Tuolumne County", resolved)
     }
 
     @Test
     fun `resolveAddress falls back to formatted coordinates on HTTP error`() {
-        AddressResolver.httpClient = MockHttpClient { req ->
-            MockHttpResponse("Internal Server Error", 500)
-        }
+        val resolver =
+            AddressResolver(
+                httpClient =
+                    MockHttpClient { req -> MockHttpResponse("Internal Server Error", 500) }
+            )
 
         val poi =
             POI(
@@ -160,7 +155,7 @@ class AddressResolverTest {
                 type = "viewpoint",
             )
 
-        val resolved = AddressResolver.resolveAddress(poi)
+        val resolved = resolver.resolveAddress(poi)
         assertEquals("36.5552, -121.9233", resolved)
     }
 
@@ -183,7 +178,8 @@ class AddressResolverTest {
                 tags = emptyMap(),
                 type = "viewpoint",
             )
-        val resolved = AddressResolver.resolveAddress(poi)
+        val resolver = AddressResolver()
+        val resolved = resolver.resolveAddress(poi)
         assertNotNull(resolved)
     }
 }

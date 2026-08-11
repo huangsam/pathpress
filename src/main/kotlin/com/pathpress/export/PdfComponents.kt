@@ -8,6 +8,7 @@
  */
 package com.pathpress.export
 
+import com.pathpress.config.Config
 import com.pathpress.export.PdfExporter.DAY_TITLE_PREFIX_REGEX
 import com.pathpress.export.PdfExporter.formatDistance
 import com.pathpress.export.PdfExporter.formatDuration
@@ -142,11 +143,15 @@ internal fun FlowContent.metadataCard(route: Route, unit: DistanceUnit = Distanc
     }
 }
 
-internal fun FlowContent.dailySchedule(route: Route, unit: DistanceUnit = DistanceUnit.METRIC) {
+internal fun FlowContent.dailySchedule(
+    route: Route,
+    unit: DistanceUnit = DistanceUnit.METRIC,
+    config: Config = Config(),
+) {
     div("daily-schedule-section") {
         div("section-title editorial-heading") { +"Daily Schedule & Itinerary" }
         for (leg in route.legs) {
-            legCard(leg, route, unit)
+            legCard(leg, route, unit, config)
         }
     }
 }
@@ -155,6 +160,7 @@ internal fun FlowContent.legCard(
     leg: RouteLeg,
     route: Route,
     unit: DistanceUnit = DistanceUnit.METRIC,
+    config: Config = Config(),
 ) {
     val rawTitle = leg.dayTitle ?: "Scenic Drive"
     val cleanTitle = rawTitle.replace(DAY_TITLE_PREFIX_REGEX, "").ifBlank { "Scenic Drive" }
@@ -220,22 +226,33 @@ internal fun FlowContent.legCard(
                 .take(9)
 
         if (filteredPois.isNotEmpty()) {
-            poiSection(filteredPois, unit)
+            poiSection(filteredPois, unit, config)
         }
     }
 }
 
-internal fun FlowContent.poiSection(pois: List<POI>, unit: DistanceUnit = DistanceUnit.METRIC) {
+internal fun FlowContent.poiSection(
+    pois: List<POI>,
+    unit: DistanceUnit = DistanceUnit.METRIC,
+    config: Config = Config(),
+) {
     div("poi-section") {
         div("poi-title") {
             unsafe { raw(LucideIcon.map("#0284c7", 16)) }
             span { +" Along the Route" }
         }
-        pois.forEachIndexed { idx, poi -> poiCard(poi, index = idx + 1, unit = unit) }
+        pois.forEachIndexed { idx, poi ->
+            poiCard(poi, index = idx + 1, unit = unit, config = config)
+        }
     }
 }
 
-internal fun FlowContent.poiCard(poi: POI, index: Int, unit: DistanceUnit = DistanceUnit.METRIC) {
+internal fun FlowContent.poiCard(
+    poi: POI,
+    index: Int,
+    unit: DistanceUnit = DistanceUnit.METRIC,
+    config: Config = Config(),
+) {
     val poiSearchUrl = MapUrlFormatter.formatPoiUrl(poi)
     val poiNavUrl = MapUrlFormatter.formatSingleStopNavUrl(poi.lat, poi.lng)
     val poiName = poi.name ?: "Point of Interest"
@@ -243,7 +260,7 @@ internal fun FlowContent.poiCard(poi: POI, index: Int, unit: DistanceUnit = Dist
     val poiType =
         rawType.split("_").joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
     val distOffRoute = formatOffRouteDistance(poi.distanceFromRouteMeters, unit)
-    val resolvedAddress = AddressResolver.resolveAddress(poi)
+    val resolvedAddress = AddressResolver(config).resolveAddress(poi)
 
     div("poi-card") {
         // Line 1: Header table with title link, category tag, off-route distance badge, and

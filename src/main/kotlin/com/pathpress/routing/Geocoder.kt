@@ -34,26 +34,12 @@ private data class PhotonGeometry(val coordinates: List<Double> = emptyList())
  * fallback to resolve location names into coordinates and clean display names, backed by an
  * in-memory query cache and rate limiting.
  */
-object Geocoder {
+class Geocoder(
+    val config: Config = Config(),
+    private val httpClient: HttpClient = createHttpClient(config),
+) {
 
     private val logger = LoggerFactory.getLogger(Geocoder::class.java)
-
-    private val SETTLEMENT_TYPES =
-        setOf("city", "town", "village", "hamlet", "municipality", "locality", "suburb")
-
-    private val SECONDARY_PLACE_TYPES =
-        setOf("neighbourhood", "borough", "park", "attraction", "tourism", "place")
-
-    private val NOMINATIM_PLACE_TYPES =
-        setOf("city", "town", "village", "hamlet", "municipality", "locality")
-
-    fun createHttpClient(config: Config = Config()): HttpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(config.geocoderConnectTimeout)
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build()
-
-    @Volatile internal var httpClient: HttpClient = createHttpClient()
 
     private val mapper = jacksonObjectMapper()
     private val cache = ConcurrentHashMap<String, GeocodedLocation>()
@@ -69,10 +55,9 @@ object Geocoder {
      * Resolves a location string (which may be "lat,lng" coordinates or a city/landmark name).
      *
      * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or "Seattle, WA").
-     * @param config Centralized configuration containing geocoder timeouts.
      * @return Resolved [GeocodedLocation], or null if unresolvable.
      */
-    fun geocode(location: String, config: Config = Config()): GeocodedLocation? {
+    fun geocode(location: String): GeocodedLocation? {
         val trimmed = location.trim()
 
         // 1. Direct lat,lng coordinates
@@ -94,7 +79,7 @@ object Geocoder {
 
         // 2. Query Photon (OSM) first for all query variants
         for (query in queriesToTry) {
-            val result = queryPhoton(query, config)
+            val result = queryPhoton(query)
             if (result != null) {
                 cache[cacheKey] = result
                 return result
@@ -103,7 +88,7 @@ object Geocoder {
 
         // 3. Fallback to Nominatim API with query caching and rate limiting
         for (query in queriesToTry) {
-            val result = queryNominatim(query, config)
+            val result = queryNominatim(query)
             if (result != null) {
                 cache[cacheKey] = result
                 return result
@@ -126,7 +111,7 @@ object Geocoder {
         }
     }
 
-    private fun queryPhoton(queryString: String, config: Config = Config()): GeocodedLocation? {
+    private fun queryPhoton(queryString: String): GeocodedLocation? {
         try {
             throttlePhoton()
 
@@ -202,7 +187,7 @@ object Geocoder {
         }
     }
 
-    private fun queryNominatim(queryString: String, config: Config = Config()): GeocodedLocation? {
+    private fun queryNominatim(queryString: String): GeocodedLocation? {
         try {
             // Enforce Nominatim 1 request / second policy
             throttleNominatim()
@@ -287,5 +272,22 @@ object Geocoder {
             osmKey == "tourism" ||
             osmKey == "historic" ||
             osmValue in SECONDARY_PLACE_TYPES
+    }
+
+    companion object {
+        private val SETTLEMENT_TYPES =
+            setOf("city", "town", "village", "hamlet", "municipality", "locality", "suburb")
+
+        private val SECONDARY_PLACE_TYPES =
+            setOf("neighbourhood", "borough", "park", "attraction", "tourism", "place")
+
+        private val NOMINATIM_PLACE_TYPES =
+            setOf("city", "town", "village", "hamlet", "municipality", "locality")
+
+        fun createHttpClient(config: Config = Config()): HttpClient =
+            HttpClient.newBuilder()
+                .connectTimeout(config.geocoderConnectTimeout)
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build()
     }
 }

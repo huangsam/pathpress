@@ -147,6 +147,7 @@ open class PathPressCommand(
                     result.startGeo.displayName,
                     result.endGeo.displayName,
                     unit = request.distanceUnit,
+                    config = config,
                 )
             PdfExporter.exportToPdf(htmlContent, outputFile)
             logger.info("✓ PDF exported successfully to: $outputFile")

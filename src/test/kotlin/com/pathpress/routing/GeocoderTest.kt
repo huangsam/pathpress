@@ -19,30 +19,15 @@ import javax.net.ssl.SSLSession
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.parallel.ResourceLock
 
-@ResourceLock("com.pathpress.routing.Geocoder")
 class GeocoderTest {
-
-    private val originalHttpClient = Geocoder.httpClient
-
-    @BeforeEach
-    fun setUp() {
-        Geocoder.clearCache()
-    }
-
-    @AfterEach
-    fun tearDown() {
-        Geocoder.httpClient = originalHttpClient
-    }
 
     @Test
     fun `test direct coordinate geocoding`() {
-        val result = Geocoder.geocode("37.7749, -122.4194")
+        val geocoder = Geocoder()
+        val result = geocoder.geocode("37.7749, -122.4194")
         assertNotNull(result)
         assertEquals(37.7749, result.coords.lat)
         assertEquals(-122.4194, result.coords.lng)
@@ -69,16 +54,20 @@ class GeocoderTest {
             """
                 .trimIndent()
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                MockHttpResponse(photonUsJson, 200)
-            } else {
-                MockHttpResponse("", 500)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            MockHttpResponse(photonUsJson, 200)
+                        } else {
+                            MockHttpResponse("", 500)
+                        }
+                    }
+            )
 
-        val result = Geocoder.geocode("San Francisco")
+        val result = geocoder.geocode("San Francisco")
         assertNotNull(result)
         assertEquals(37.7749, result.coords.lat)
         assertEquals(-122.4194, result.coords.lng)
@@ -119,18 +108,22 @@ class GeocoderTest {
             """
                 .trimIndent()
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                MockHttpResponse(photonFrenchJson, 200)
-            } else if (uri.contains("nominatim.openstreetmap.org")) {
-                MockHttpResponse(nominatimUsJson, 200)
-            } else {
-                MockHttpResponse("", 404)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            MockHttpResponse(photonFrenchJson, 200)
+                        } else if (uri.contains("nominatim.openstreetmap.org")) {
+                            MockHttpResponse(nominatimUsJson, 200)
+                        } else {
+                            MockHttpResponse("", 404)
+                        }
+                    }
+            )
 
-        val result = Geocoder.geocode("Paris")
+        val result = geocoder.geocode("Paris")
         assertNotNull(result)
         // Should have rejected French result (lat 48.8566) and used Nominatim US result (lat
         // 33.6609)
@@ -155,18 +148,22 @@ class GeocoderTest {
             """
                 .trimIndent()
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                MockHttpResponse(photonEmptyJson, 200)
-            } else if (uri.contains("nominatim.openstreetmap.org")) {
-                MockHttpResponse(nominatimInvalidCoordsJson, 200)
-            } else {
-                MockHttpResponse("", 404)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            MockHttpResponse(photonEmptyJson, 200)
+                        } else if (uri.contains("nominatim.openstreetmap.org")) {
+                            MockHttpResponse(nominatimInvalidCoordsJson, 200)
+                        } else {
+                            MockHttpResponse("", 404)
+                        }
+                    }
+            )
 
-        val result = Geocoder.geocode("Bogus Town")
+        val result = geocoder.geocode("Bogus Town")
         assertNull(
             result,
             "Geocoder should return null when Nominatim coordinates cannot be parsed as Double, instead of defaulting to (0.0, 0.0)",
@@ -205,16 +202,20 @@ class GeocoderTest {
             """
                 .trimIndent()
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                MockHttpResponse(photonJson, 200)
-            } else {
-                MockHttpResponse("", 500)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            MockHttpResponse(photonJson, 200)
+                        } else {
+                            MockHttpResponse("", 500)
+                        }
+                    }
+            )
 
-        val result = Geocoder.geocode("Springfield")
+        val result = geocoder.geocode("Springfield")
         assertNotNull(result)
         assertEquals("Springfield, Illinois", result.displayName)
         assertEquals(39.7817, result.coords.lat)
@@ -244,24 +245,31 @@ class GeocoderTest {
 
         var nominatimCalled = false
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                if (uri.contains("Chicago%2C+USA") || uri.contains("Chicago%2C+USA".lowercase())) {
-                    MockHttpResponse(photonChicagoUsJson, 200)
-                } else {
-                    // First query "Chicago" returns empty features in Photon
-                    MockHttpResponse("""{"features": []}""", 200)
-                }
-            } else if (uri.contains("nominatim.openstreetmap.org")) {
-                nominatimCalled = true
-                MockHttpResponse("", 500)
-            } else {
-                MockHttpResponse("", 404)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            if (
+                                uri.contains("Chicago%2C+USA") ||
+                                    uri.contains("Chicago%2C+USA".lowercase())
+                            ) {
+                                MockHttpResponse(photonChicagoUsJson, 200)
+                            } else {
+                                // First query "Chicago" returns empty features in Photon
+                                MockHttpResponse("""{"features": []}""", 200)
+                            }
+                        } else if (uri.contains("nominatim.openstreetmap.org")) {
+                            nominatimCalled = true
+                            MockHttpResponse("", 500)
+                        } else {
+                            MockHttpResponse("", 404)
+                        }
+                    }
+            )
 
-        val result = Geocoder.geocode("Chicago")
+        val result = geocoder.geocode("Chicago")
         assertNotNull(result)
         assertEquals("Chicago, Illinois", result.displayName)
         assertEquals(
@@ -292,16 +300,20 @@ class GeocoderTest {
             """
                 .trimIndent()
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                MockHttpResponse(photonNoNameJson, 200)
-            } else {
-                MockHttpResponse("", 500)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            MockHttpResponse(photonNoNameJson, 200)
+                        } else {
+                            MockHttpResponse("", 500)
+                        }
+                    }
+            )
 
-        val result = Geocoder.geocode("78701")
+        val result = geocoder.geocode("78701")
         assertNotNull(result)
         assertEquals("Austin, Texas", result.displayName)
         assertEquals(30.2672, result.coords.lat)
@@ -331,18 +343,22 @@ class GeocoderTest {
 
         val requestTimes = mutableListOf<Long>()
 
-        Geocoder.httpClient = MockHttpClient { req ->
-            val uri = req.uri().toString()
-            if (uri.contains("photon.komoot.io")) {
-                requestTimes.add(System.currentTimeMillis())
-                MockHttpResponse(photonUsJson, 200)
-            } else {
-                MockHttpResponse("", 500)
-            }
-        }
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            requestTimes.add(System.currentTimeMillis())
+                            MockHttpResponse(photonUsJson, 200)
+                        } else {
+                            MockHttpResponse("", 500)
+                        }
+                    }
+            )
 
-        Geocoder.geocode("City 1")
-        Geocoder.geocode("City 2")
+        geocoder.geocode("City 1")
+        geocoder.geocode("City 2")
 
         assertEquals(2, requestTimes.size)
         val elapsed = requestTimes[1] - requestTimes[0]
@@ -354,12 +370,13 @@ class GeocoderTest {
     @Test
     @Tag("network")
     fun `test city geocoding and caching`() {
-        val first = Geocoder.geocode("San Jose, CA")
+        val geocoder = Geocoder()
+        val first = geocoder.geocode("San Jose, CA")
         assertNotNull(first)
         assertNotNull(first.displayName)
 
         // Second call should return instantly from cache
-        val second = Geocoder.geocode("San Jose, CA")
+        val second = geocoder.geocode("San Jose, CA")
         assertNotNull(second)
         assertEquals(first.coords.lat, second.coords.lat)
         assertEquals(first.coords.lng, second.coords.lng)
@@ -368,14 +385,16 @@ class GeocoderTest {
     @Test
     @Tag("network")
     fun `test geocoding unresolvable location returns null`() {
-        val result = Geocoder.geocode("Unknown Test Village 12345")
+        val geocoder = Geocoder()
+        val result = geocoder.geocode("Unknown Test Village 12345")
         assertNull(result)
     }
 
     @Test
     @Tag("network")
     fun `test non-California locations resolve without fastResult collision`() {
-        val result = Geocoder.geocode("Port Angeles, WA")
+        val geocoder = Geocoder()
+        val result = geocoder.geocode("Port Angeles, WA")
         assertNotNull(result)
         // Ensure Port Angeles does NOT incorrectly resolve to Los Angeles, CA
         assert(!result.displayName.lowercase().contains("los angeles")) {
@@ -390,12 +409,17 @@ class GeocoderTest {
         assertEquals(Duration.ofSeconds(42L), client.connectTimeout().orElse(null))
 
         var capturedTimeout: Duration? = null
-        Geocoder.httpClient = MockHttpClient { req ->
-            capturedTimeout = req.timeout().orElse(null)
-            MockHttpResponse("""{"features": []}""", 200)
-        }
+        val geocoder =
+            Geocoder(
+                config = customConfig,
+                httpClient =
+                    MockHttpClient { req ->
+                        capturedTimeout = req.timeout().orElse(null)
+                        MockHttpResponse("""{"features": []}""", 200)
+                    },
+            )
 
-        Geocoder.geocode("TestCity", config = customConfig)
+        geocoder.geocode("TestCity")
         assertEquals(Duration.ofSeconds(42L), capturedTimeout)
     }
 }

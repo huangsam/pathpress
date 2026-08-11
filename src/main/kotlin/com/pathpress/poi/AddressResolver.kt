@@ -17,15 +17,10 @@ import java.util.concurrent.atomic.AtomicLong
  * first (`addr:housenumber`, `addr:street`, `addr:city`, etc.) and falls back to Nominatim reverse
  * geocoding backed by an in-memory query cache.
  */
-object AddressResolver {
-
-    fun createHttpClient(config: Config = Config()): HttpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(config.geocoderConnectTimeout)
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build()
-
-    @Volatile internal var httpClient: HttpClient = createHttpClient()
+class AddressResolver(
+    val config: Config = Config(),
+    private val httpClient: HttpClient = createHttpClient(config),
+) {
 
     private val mapper = jacksonObjectMapper()
     private val cache = ConcurrentHashMap<String, String>()
@@ -40,7 +35,7 @@ object AddressResolver {
      * Resolve physical street address for a given POI using OSM tags or Nominatim reverse geocoding
      * fallback.
      */
-    fun resolveAddress(poi: POI, config: Config = Config()): String {
+    fun resolveAddress(poi: POI): String {
         // 1. First, inspect OSM tags on the POI
         val osmAddress = resolveFromOsmTags(poi.tags)
         if (!osmAddress.isNullOrBlank()) {
@@ -53,7 +48,7 @@ object AddressResolver {
             return it
         }
 
-        val reverseAddress = reverseGeocode(poi.lat, poi.lng, config)
+        val reverseAddress = reverseGeocode(poi.lat, poi.lng)
         val finalAddress =
             if (!reverseAddress.isNullOrBlank()) {
                 reverseAddress
@@ -66,38 +61,7 @@ object AddressResolver {
         return finalAddress
     }
 
-    /** Extract structured address string from OSM tags if street/city information exists. */
-    internal fun resolveFromOsmTags(tags: Map<String, String>): String? {
-        val houseNumber = tags["addr:housenumber"]?.trim()
-        val street = tags["addr:street"]?.trim()
-        val city =
-            tags["addr:city"]?.trim() ?: tags["addr:town"]?.trim() ?: tags["addr:village"]?.trim()
-        val state = tags["addr:state"]?.trim()
-        val postcode = tags["addr:postcode"]?.trim()
-
-        if (!street.isNullOrBlank()) {
-            val streetPart = if (!houseNumber.isNullOrBlank()) "$houseNumber $street" else street
-            val cityStatePart =
-                listOfNotNull(
-                        city.takeIf { !it.isNullOrBlank() },
-                        state.takeIf { !it.isNullOrBlank() },
-                    )
-                    .joinToString(" ")
-            val fullCityPart =
-                when {
-                    cityStatePart.isNotBlank() && !postcode.isNullOrBlank() ->
-                        "$cityStatePart $postcode"
-                    cityStatePart.isNotBlank() -> cityStatePart
-                    !postcode.isNullOrBlank() -> postcode
-                    else -> ""
-                }
-
-            return listOf(streetPart, fullCityPart).filter { it.isNotBlank() }.joinToString(", ")
-        }
-        return null
-    }
-
-    private fun reverseGeocode(lat: Double, lng: Double, config: Config = Config()): String? {
+    private fun reverseGeocode(lat: Double, lng: Double): String? {
         try {
             // Enforce Nominatim 1 request / second rate limit policy
             val now = System.currentTimeMillis()
@@ -182,5 +146,49 @@ object AddressResolver {
             // Silently return null on timeout or network errors
         }
         return null
+    }
+
+    companion object {
+        fun createHttpClient(config: Config = Config()): HttpClient =
+            HttpClient.newBuilder()
+                .connectTimeout(config.geocoderConnectTimeout)
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build()
+
+        /** Extract structured address string from OSM tags if street/city information exists. */
+        internal fun resolveFromOsmTags(tags: Map<String, String>): String? {
+            val houseNumber = tags["addr:housenumber"]?.trim()
+            val street = tags["addr:street"]?.trim()
+            val city =
+                tags["addr:city"]?.trim()
+                    ?: tags["addr:town"]?.trim()
+                    ?: tags["addr:village"]?.trim()
+            val state = tags["addr:state"]?.trim()
+            val postcode = tags["addr:postcode"]?.trim()
+
+            if (!street.isNullOrBlank()) {
+                val streetPart =
+                    if (!houseNumber.isNullOrBlank()) "$houseNumber $street" else street
+                val cityStatePart =
+                    listOfNotNull(
+                            city.takeIf { !it.isNullOrBlank() },
+                            state.takeIf { !it.isNullOrBlank() },
+                        )
+                        .joinToString(" ")
+                val fullCityPart =
+                    when {
+                        cityStatePart.isNotBlank() && !postcode.isNullOrBlank() ->
+                            "$cityStatePart $postcode"
+                        cityStatePart.isNotBlank() -> cityStatePart
+                        !postcode.isNullOrBlank() -> postcode
+                        else -> ""
+                    }
+
+                return listOf(streetPart, fullCityPart)
+                    .filter { it.isNotBlank() }
+                    .joinToString(", ")
+            }
+            return null
+        }
     }
 }

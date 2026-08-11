@@ -1,5 +1,6 @@
 package com.pathpress.export
 
+import com.pathpress.config.Config
 import com.pathpress.model.DistanceUnit
 import com.pathpress.model.POI
 import com.pathpress.model.Route
@@ -368,5 +369,38 @@ class PdfExporterTest {
                 ".qr-card must use display: table-cell to equalize card heights",
             )
         }
+    }
+
+    @Test
+    fun `generateHtml passes custom Config to AddressResolver without error`() {
+        val poi =
+            POI(
+                id = "p1",
+                name = "Test Point",
+                lat = 37.77,
+                lng = -122.41,
+                tags = mapOf("addr:street" to "Market St", "addr:city" to "SF"),
+                type = "viewpoint",
+            )
+        val leg =
+            RouteLeg(
+                startLat = 37.77,
+                startLng = -122.41,
+                endLat = 37.78,
+                endLng = -122.42,
+                dayNumber = 1,
+                totalDays = 1,
+                pois = listOf(poi),
+            )
+        val route =
+            Route(
+                legs = listOf(leg),
+                totalDistanceMeters = 1000.0,
+                totalDurationSeconds = 120.0,
+                narrative = "Short hop",
+            )
+        val customConfig = Config(geocoderTimeoutSeconds = 99L)
+        val html = PdfExporter.generateHtml(route, "Start", "End", config = customConfig)
+        assertTrue(html.contains("Market St, SF"))
     }
 }

@@ -23,9 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
-import org.junit.jupiter.api.parallel.ResourceLock
 
-@ResourceLock("com.pathpress.routing.Geocoder")
 class TripPlannerOrchestratorTest {
 
     private class TestLlmProvider : LlmProvider {
@@ -219,63 +217,60 @@ class TripPlannerOrchestratorTest {
     @Test
     fun `TripPlannerOrchestrator default geocoder seam passes injected Config to Geocoder`() {
         val customConfig = Config(geocoderTimeoutSeconds = 77L)
-        val originalClient = Geocoder.httpClient
         var capturedTimeout: Duration? = null
 
-        try {
-            Geocoder.httpClient = MockHttpClient { req ->
-                capturedTimeout = req.timeout().orElse(null)
-                val photonJson =
-                    """
+        val mockClient = MockHttpClient { req ->
+            capturedTimeout = req.timeout().orElse(null)
+            val photonJson =
+                """
+                {
+                  "features": [
                     {
-                      "features": [
-                        {
-                          "geometry": { "coordinates": [-122.4194, 37.7749] },
-                          "properties": {
-                            "name": "San Francisco",
-                            "state": "California",
-                            "countrycode": "US",
-                            "type": "city",
-                            "osm_key": "place"
-                          }
-                        }
-                      ]
+                      "geometry": { "coordinates": [-122.4194, 37.7749] },
+                      "properties": {
+                        "name": "San Francisco",
+                        "state": "California",
+                        "countrycode": "US",
+                        "type": "city",
+                        "osm_key": "place"
+                      }
                     }
-                    """
-                        .trimIndent()
-                MockHttpResponse(photonJson, 200)
-            }
-
-            val orchestrator =
-                TripPlannerOrchestrator(
-                    config = customConfig,
-                    routeCalculatorFactory = { _, _, _ ->
-                        RouteCalculator(
-                            graphHopper = TestGraphHopper(),
-                            pbfFilePath = "dummy.pbf",
-                            config = customConfig,
-                        )
-                    },
-                    llmProviderFactory = { _, _, _, _, _ ->
-                        LlmProvider.create("none", null, null, null, customConfig)
-                    },
-                )
-
-            try {
-                orchestrator.planTrip(
-                    TripPlannerRequest(
-                        startLocation = "San Francisco",
-                        endLocation = "San Francisco",
-                        pbfPath = "dummy.pbf",
-                    )
-                )
-            } catch (_: Exception) {
-                // Expected downstream exception from TestGraphHopper
-            }
-
-            assertEquals(Duration.ofSeconds(77L), capturedTimeout)
-        } finally {
-            Geocoder.httpClient = originalClient
+                  ]
+                }
+                """
+                    .trimIndent()
+            MockHttpResponse(photonJson, 200)
         }
+
+        val geocoder = Geocoder(config = customConfig, httpClient = mockClient)
+        val orchestrator =
+            TripPlannerOrchestrator(
+                config = customConfig,
+                geocoder = { geocoder.geocode(it) },
+                routeCalculatorFactory = { _, _, _ ->
+                    RouteCalculator(
+                        graphHopper = TestGraphHopper(),
+                        pbfFilePath = "dummy.pbf",
+                        config = customConfig,
+                    )
+                },
+                llmProviderFactory = { _, _, _, _, _ ->
+                    LlmProvider.create("none", null, null, null, customConfig)
+                },
+            )
+
+        try {
+            orchestrator.planTrip(
+                TripPlannerRequest(
+                    startLocation = "San Francisco",
+                    endLocation = "San Francisco",
+                    pbfPath = "dummy.pbf",
+                )
+            )
+        } catch (_: Exception) {
+            // Expected downstream exception from TestGraphHopper
+        }
+
+        assertEquals(Duration.ofSeconds(77L), capturedTimeout)
     }
 }
