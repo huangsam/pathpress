@@ -214,6 +214,37 @@ class ConfigInjectionTest {
     }
 
     @Test
+    fun `AddressResolver honors custom Config timeout and createHttpClient honors connectTimeout`() {
+        val customConfig = Config(geocoderTimeoutSeconds = 42L)
+        val client = com.pathpress.poi.AddressResolver.createHttpClient(customConfig)
+        assertEquals(java.time.Duration.ofSeconds(42L), client.connectTimeout().orElse(null))
+
+        val originalClient = com.pathpress.poi.AddressResolver.httpClient
+        try {
+            var capturedTimeout: java.time.Duration? = null
+            com.pathpress.poi.AddressResolver.httpClient =
+                com.pathpress.routing.MockHttpClient { req ->
+                    capturedTimeout = req.timeout().orElse(null)
+                    com.pathpress.routing.MockHttpResponse("""{}""", 200)
+                }
+
+            val poi =
+                com.pathpress.model.POI(
+                    id = "node/999",
+                    name = "Test Spot",
+                    lat = 37.0,
+                    lng = -122.0,
+                    tags = emptyMap(),
+                    type = "viewpoint",
+                )
+            com.pathpress.poi.AddressResolver.resolveAddress(poi, config = customConfig)
+            assertEquals(java.time.Duration.ofSeconds(42L), capturedTimeout)
+        } finally {
+            com.pathpress.poi.AddressResolver.httpClient = originalClient
+        }
+    }
+
+    @Test
     fun `TripPlannerOrchestrator default geocoder seam passes injected Config to Geocoder`() {
         val customConfig = Config(geocoderTimeoutSeconds = 77L)
         val originalClient = Geocoder.httpClient

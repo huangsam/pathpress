@@ -2,6 +2,7 @@ package com.pathpress.poi
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.pathpress.config.Config
 import com.pathpress.model.POI
 import java.net.URI
 import java.net.http.HttpClient
@@ -18,22 +19,28 @@ import java.util.concurrent.atomic.AtomicLong
  */
 object AddressResolver {
 
-    private val httpClient: HttpClient by lazy {
+    fun createHttpClient(config: Config = Config.fromEnv()): HttpClient =
         HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(config.geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build()
-    }
+
+    @Volatile internal var httpClient: HttpClient = createHttpClient()
 
     private val mapper = jacksonObjectMapper()
     private val cache = ConcurrentHashMap<String, String>()
     private val lastRequestTimeMs = AtomicLong(0)
 
+    /** Clear in-memory reverse geocoding cache (useful for testing). */
+    fun clearCache() {
+        cache.clear()
+    }
+
     /**
      * Resolve physical street address for a given POI using OSM tags or Nominatim reverse geocoding
      * fallback.
      */
-    fun resolveAddress(poi: POI): String {
+    fun resolveAddress(poi: POI, config: Config = Config.fromEnv()): String {
         // 1. First, inspect OSM tags on the POI
         val osmAddress = resolveFromOsmTags(poi.tags)
         if (!osmAddress.isNullOrBlank()) {
@@ -46,7 +53,7 @@ object AddressResolver {
             return it
         }
 
-        val reverseAddress = reverseGeocode(poi.lat, poi.lng)
+        val reverseAddress = reverseGeocode(poi.lat, poi.lng, config)
         val finalAddress =
             if (!reverseAddress.isNullOrBlank()) {
                 reverseAddress
@@ -90,7 +97,11 @@ object AddressResolver {
         return null
     }
 
-    private fun reverseGeocode(lat: Double, lng: Double): String? {
+    private fun reverseGeocode(
+        lat: Double,
+        lng: Double,
+        config: Config = Config.fromEnv(),
+    ): String? {
         try {
             // Enforce Nominatim 1 request / second rate limit policy
             val now = System.currentTimeMillis()
@@ -109,12 +120,13 @@ object AddressResolver {
                     lng,
                 )
             val uri = URI.create(uriStr)
+            val timeout = Duration.ofSeconds(config.geocoderTimeoutSeconds)
 
             val request =
                 HttpRequest.newBuilder()
                     .uri(uri)
                     .header("User-Agent", "PathPressRoadTripPlanner/1.0 (contact@pathpress.org)")
-                    .timeout(Duration.ofSeconds(5))
+                    .timeout(timeout)
                     .GET()
                     .build()
 
