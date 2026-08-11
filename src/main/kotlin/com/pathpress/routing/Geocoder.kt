@@ -47,12 +47,13 @@ object Geocoder {
     private val NOMINATIM_PLACE_TYPES =
         setOf("city", "town", "village", "hamlet", "municipality", "locality")
 
-    @Volatile
-    internal var httpClient: HttpClient =
+    fun createHttpClient(config: Config = Config.fromEnv()): HttpClient =
         HttpClient.newBuilder()
-            .connectTimeout(Config.fromEnv().geocoderConnectTimeout)
+            .connectTimeout(config.geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build()
+
+    @Volatile internal var httpClient: HttpClient = createHttpClient()
 
     private val mapper = jacksonObjectMapper()
     private val cache = ConcurrentHashMap<String, GeocodedLocation>()
@@ -68,9 +69,10 @@ object Geocoder {
      * Resolves a location string (which may be "lat,lng" coordinates or a city/landmark name).
      *
      * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or "Seattle, WA").
+     * @param config Centralized configuration containing geocoder timeouts.
      * @return Resolved [GeocodedLocation], or null if unresolvable.
      */
-    fun geocode(location: String): GeocodedLocation? {
+    fun geocode(location: String, config: Config = Config.fromEnv()): GeocodedLocation? {
         val trimmed = location.trim()
 
         // 1. Direct lat,lng coordinates
@@ -92,7 +94,7 @@ object Geocoder {
 
         // 2. Query Photon (OSM) first for all query variants
         for (query in queriesToTry) {
-            val result = queryPhoton(query)
+            val result = queryPhoton(query, config)
             if (result != null) {
                 cache[cacheKey] = result
                 return result
@@ -101,7 +103,7 @@ object Geocoder {
 
         // 3. Fallback to Nominatim API with query caching and rate limiting
         for (query in queriesToTry) {
-            val result = queryNominatim(query)
+            val result = queryNominatim(query, config)
             if (result != null) {
                 cache[cacheKey] = result
                 return result
@@ -124,13 +126,16 @@ object Geocoder {
         }
     }
 
-    private fun queryPhoton(queryString: String): GeocodedLocation? {
+    private fun queryPhoton(
+        queryString: String,
+        config: Config = Config.fromEnv(),
+    ): GeocodedLocation? {
         try {
             throttlePhoton()
 
             val encodedQuery = URLEncoder.encode(queryString, "UTF-8")
             val uri = URI.create("https://photon.komoot.io/api/?q=$encodedQuery&limit=5")
-            val timeout = Duration.ofSeconds(Config.fromEnv().geocoderTimeoutSeconds)
+            val timeout = Duration.ofSeconds(config.geocoderTimeoutSeconds)
             val request =
                 HttpRequest.newBuilder()
                     .uri(uri)
@@ -200,7 +205,10 @@ object Geocoder {
         }
     }
 
-    private fun queryNominatim(queryString: String): GeocodedLocation? {
+    private fun queryNominatim(
+        queryString: String,
+        config: Config = Config.fromEnv(),
+    ): GeocodedLocation? {
         try {
             // Enforce Nominatim 1 request / second policy
             throttleNominatim()
@@ -210,7 +218,7 @@ object Geocoder {
                 URI.create(
                     "https://nominatim.openstreetmap.org/search?q=$encodedQuery&format=json&limit=5"
                 )
-            val timeout = Duration.ofSeconds(Config.fromEnv().geocoderTimeoutSeconds)
+            val timeout = Duration.ofSeconds(config.geocoderTimeoutSeconds)
             val request =
                 HttpRequest.newBuilder()
                     .uri(uri)

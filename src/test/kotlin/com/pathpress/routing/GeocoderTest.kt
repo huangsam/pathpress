@@ -383,7 +383,7 @@ class GeocoderTest {
     }
 }
 
-private class MockHttpResponse(private val bodyText: String, private val status: Int = 200) :
+internal class MockHttpResponse(private val bodyText: String, private val status: Int = 200) :
     HttpResponse<String> {
     override fun statusCode(): Int = status
 
@@ -403,7 +403,7 @@ private class MockHttpResponse(private val bodyText: String, private val status:
     override fun headers(): HttpHeaders = HttpHeaders.of(emptyMap()) { _, _ -> true }
 }
 
-private class MockHttpClient(private val handler: (HttpRequest) -> HttpResponse<String>) :
+internal class MockHttpClient(private val handler: (HttpRequest) -> HttpResponse<String>) :
     HttpClient() {
     @Suppress("UNCHECKED_CAST")
     override fun <T : Any?> send(

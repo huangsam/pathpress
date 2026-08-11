@@ -11,11 +11,14 @@ import com.pathpress.poi.PoiCacheStore
 import com.pathpress.poi.TownInfo
 import com.pathpress.poi.TownScorer
 import com.pathpress.routing.GeocodedLocation
+import com.pathpress.routing.Geocoder
 import com.pathpress.routing.RouteCalculator
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
+import org.junit.jupiter.api.parallel.ResourceLock
 
+@ResourceLock("com.pathpress.routing.Geocoder")
 class ConfigInjectionTest {
 
     private class TestGraphHopper : GraphHopper() {
@@ -186,5 +189,91 @@ class ConfigInjectionTest {
 
         assertSame(customConfig, capturedRouteCalcConfig)
         assertSame(customConfig, capturedLlmConfig)
+    }
+
+    @Test
+    fun `Geocoder honors custom Config timeout and createHttpClient honors connectTimeout`() {
+        val customConfig = Config(geocoderTimeoutSeconds = 42L)
+        val client = Geocoder.createHttpClient(customConfig)
+        assertEquals(java.time.Duration.ofSeconds(42L), client.connectTimeout().orElse(null))
+
+        val originalClient = Geocoder.httpClient
+        try {
+            var capturedTimeout: java.time.Duration? = null
+            Geocoder.httpClient =
+                com.pathpress.routing.MockHttpClient { req ->
+                    capturedTimeout = req.timeout().orElse(null)
+                    com.pathpress.routing.MockHttpResponse("""{"features": []}""", 200)
+                }
+
+            Geocoder.geocode("TestCity", config = customConfig)
+            assertEquals(java.time.Duration.ofSeconds(42L), capturedTimeout)
+        } finally {
+            Geocoder.httpClient = originalClient
+        }
+    }
+
+    @Test
+    fun `TripPlannerOrchestrator default geocoder seam passes injected Config to Geocoder`() {
+        val customConfig = Config(geocoderTimeoutSeconds = 77L)
+        val originalClient = Geocoder.httpClient
+        var capturedTimeout: java.time.Duration? = null
+
+        try {
+            Geocoder.httpClient =
+                com.pathpress.routing.MockHttpClient { req ->
+                    capturedTimeout = req.timeout().orElse(null)
+                    val photonJson =
+                        """
+                        {
+                          "features": [
+                            {
+                              "geometry": { "coordinates": [-122.4194, 37.7749] },
+                              "properties": {
+                                "name": "San Francisco",
+                                "state": "California",
+                                "countrycode": "US",
+                                "type": "city",
+                                "osm_key": "place"
+                              }
+                            }
+                          ]
+                        }
+                        """
+                            .trimIndent()
+                    com.pathpress.routing.MockHttpResponse(photonJson, 200)
+                }
+
+            val orchestrator =
+                TripPlannerOrchestrator(
+                    config = customConfig,
+                    routeCalculatorFactory = { _, _, _ ->
+                        RouteCalculator(
+                            graphHopper = TestGraphHopper(),
+                            pbfFilePath = "dummy.pbf",
+                            config = customConfig,
+                        )
+                    },
+                    llmProviderFactory = { _, _, _, _, _ ->
+                        LlmProvider.create("none", null, null, null, customConfig)
+                    },
+                )
+
+            try {
+                orchestrator.planTrip(
+                    TripPlannerRequest(
+                        startLocation = "San Francisco",
+                        endLocation = "San Francisco",
+                        pbfPath = "dummy.pbf",
+                    )
+                )
+            } catch (_: Exception) {
+                // Expected downstream exception from TestGraphHopper
+            }
+
+            assertEquals(java.time.Duration.ofSeconds(77L), capturedTimeout)
+        } finally {
+            Geocoder.httpClient = originalClient
+        }
     }
 }
