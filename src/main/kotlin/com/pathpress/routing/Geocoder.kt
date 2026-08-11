@@ -47,7 +47,7 @@ object Geocoder {
     private val NOMINATIM_PLACE_TYPES =
         setOf("city", "town", "village", "hamlet", "municipality", "locality")
 
-    fun createHttpClient(config: Config = Config.fromEnv()): HttpClient =
+    fun createHttpClient(config: Config = Config()): HttpClient =
         HttpClient.newBuilder()
             .connectTimeout(config.geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -72,7 +72,7 @@ object Geocoder {
      * @param config Centralized configuration containing geocoder timeouts.
      * @return Resolved [GeocodedLocation], or null if unresolvable.
      */
-    fun geocode(location: String, config: Config = Config.fromEnv()): GeocodedLocation? {
+    fun geocode(location: String, config: Config = Config()): GeocodedLocation? {
         val trimmed = location.trim()
 
         // 1. Direct lat,lng coordinates
@@ -126,10 +126,7 @@ object Geocoder {
         }
     }
 
-    private fun queryPhoton(
-        queryString: String,
-        config: Config = Config.fromEnv(),
-    ): GeocodedLocation? {
+    private fun queryPhoton(queryString: String, config: Config = Config()): GeocodedLocation? {
         try {
             throttlePhoton()
 
@@ -205,10 +202,7 @@ object Geocoder {
         }
     }
 
-    private fun queryNominatim(
-        queryString: String,
-        config: Config = Config.fromEnv(),
-    ): GeocodedLocation? {
+    private fun queryNominatim(queryString: String, config: Config = Config()): GeocodedLocation? {
         try {
             // Enforce Nominatim 1 request / second policy
             throttleNominatim()

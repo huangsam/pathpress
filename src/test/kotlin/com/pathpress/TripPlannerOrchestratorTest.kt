@@ -14,11 +14,18 @@ import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.model.RouteLeg
 import com.pathpress.routing.GeocodedLocation
+import com.pathpress.routing.Geocoder
+import com.pathpress.routing.MockHttpClient
+import com.pathpress.routing.MockHttpResponse
 import com.pathpress.routing.RouteCalculator
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
+import org.junit.jupiter.api.parallel.ResourceLock
 
+@ResourceLock("com.pathpress.routing.Geocoder")
 class TripPlannerOrchestratorTest {
 
     private class TestLlmProvider : LlmProvider {
@@ -170,6 +177,105 @@ class TripPlannerOrchestratorTest {
 
         assertFailsWith<com.pathpress.routing.TripPlanningException> {
             orchestrator.planTrip(request)
+        }
+    }
+
+    @Test
+    fun `TripPlannerOrchestrator propagates custom Config to factory instances`() {
+        val customConfig = Config(defaultPoisPerLeg = 99)
+        var capturedRouteCalcConfig: Config? = null
+        var capturedLlmConfig: Config? = null
+
+        val orchestrator =
+            TripPlannerOrchestrator(
+                config = customConfig,
+                geocoder = stubGeocoder,
+                routeCalculatorFactory = { _, _, cfg ->
+                    capturedRouteCalcConfig = cfg
+                    RouteCalculator(
+                        graphHopper = TestGraphHopper(),
+                        pbfFilePath = "dummy.pbf",
+                        config = cfg,
+                    )
+                },
+                llmProviderFactory = { _, _, _, _, cfg ->
+                    capturedLlmConfig = cfg
+                    LlmProvider.create("none", null, null, null, cfg)
+                },
+            )
+
+        try {
+            orchestrator.planTrip(
+                TripPlannerRequest(startLocation = "SF", endLocation = "LA", pbfPath = "dummy.pbf")
+            )
+        } catch (_: Exception) {
+            // Expected exception during mock route calculation
+        }
+
+        assertSame(customConfig, capturedRouteCalcConfig)
+        assertSame(customConfig, capturedLlmConfig)
+    }
+
+    @Test
+    fun `TripPlannerOrchestrator default geocoder seam passes injected Config to Geocoder`() {
+        val customConfig = Config(geocoderTimeoutSeconds = 77L)
+        val originalClient = Geocoder.httpClient
+        var capturedTimeout: Duration? = null
+
+        try {
+            Geocoder.httpClient = MockHttpClient { req ->
+                capturedTimeout = req.timeout().orElse(null)
+                val photonJson =
+                    """
+                    {
+                      "features": [
+                        {
+                          "geometry": { "coordinates": [-122.4194, 37.7749] },
+                          "properties": {
+                            "name": "San Francisco",
+                            "state": "California",
+                            "countrycode": "US",
+                            "type": "city",
+                            "osm_key": "place"
+                          }
+                        }
+                      ]
+                    }
+                    """
+                        .trimIndent()
+                MockHttpResponse(photonJson, 200)
+            }
+
+            val orchestrator =
+                TripPlannerOrchestrator(
+                    config = customConfig,
+                    routeCalculatorFactory = { _, _, _ ->
+                        RouteCalculator(
+                            graphHopper = TestGraphHopper(),
+                            pbfFilePath = "dummy.pbf",
+                            config = customConfig,
+                        )
+                    },
+                    llmProviderFactory = { _, _, _, _, _ ->
+                        LlmProvider.create("none", null, null, null, customConfig)
+                    },
+                )
+
+            try {
+                orchestrator.planTrip(
+                    TripPlannerRequest(
+                        startLocation = "San Francisco",
+                        endLocation = "San Francisco",
+                        pbfPath = "dummy.pbf",
+                    )
+                )
+            } catch (_: Exception) {
+                // Expected downstream exception from TestGraphHopper
+            }
+
+            assertEquals(Duration.ofSeconds(77L), capturedTimeout)
+        } finally {
+            Geocoder.httpClient = originalClient
         }
     }
 }

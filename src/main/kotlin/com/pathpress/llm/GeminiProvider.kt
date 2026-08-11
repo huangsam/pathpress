@@ -15,7 +15,7 @@ import java.net.http.HttpResponse
  */
 class GeminiProvider(
     apiKey: String,
-    config: Config = Config.fromEnv(),
+    config: Config = Config(),
     val modelName: String = config.defaultGeminiModel,
 ) : HttpLlmProvider(config) {
     private val apiKey: String = apiKey.validateApiKey(LlmProviderType.GEMINI)

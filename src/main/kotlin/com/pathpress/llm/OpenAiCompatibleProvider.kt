@@ -15,7 +15,7 @@ import java.net.http.HttpResponse
 class OpenAiCompatibleProvider(
     apiKey: String,
     private val endpoint: String,
-    config: Config = Config.fromEnv(),
+    config: Config = Config(),
     val modelName: String = config.defaultOpenAiModel,
 ) : HttpLlmProvider(config) {
     private val apiKey: String =

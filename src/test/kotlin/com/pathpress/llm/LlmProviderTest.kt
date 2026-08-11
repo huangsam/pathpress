@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class LlmProviderTest {
@@ -519,5 +520,90 @@ class LlmProviderTest {
             desc.startsWith("Historic landmark showcasing"),
             "Description should start with 'Historic landmark showcasing': $desc",
         )
+    }
+
+    @Test
+    fun `LlmProvider factory propagates custom Config models and settings to providers`() {
+        val customConfig =
+            Config(
+                defaultGeminiModel = "custom-gemini",
+                defaultClaudeModel = "custom-claude",
+                defaultOpenAiModel = "custom-openai",
+                defaultOllamaModel = "custom-ollama",
+                httpLlmConnectTimeoutSeconds = 99L,
+            )
+
+        val gemini =
+            LlmProvider.create("gemini", apiKey = "test-key", apiUrl = null, config = customConfig)
+        assertIs<GeminiProvider>(gemini)
+        assertEquals("custom-gemini", gemini.modelName)
+        assertSame(customConfig, gemini.config)
+
+        val claude =
+            LlmProvider.create("claude", apiKey = "test-key", apiUrl = null, config = customConfig)
+        assertIs<ClaudeProvider>(claude)
+        assertEquals("custom-claude", claude.modelName)
+        assertSame(customConfig, claude.config)
+
+        val openai =
+            LlmProvider.create("openai", apiKey = "test-key", apiUrl = null, config = customConfig)
+        assertIs<OpenAiCompatibleProvider>(openai)
+        assertEquals("custom-openai", openai.modelName)
+        assertSame(customConfig, openai.config)
+
+        val ollama =
+            LlmProvider.create("ollama", apiKey = null, apiUrl = null, config = customConfig)
+        assertIs<OllamaProvider>(ollama)
+        assertEquals("custom-ollama", ollama.modelName)
+        assertSame(customConfig, ollama.config)
+    }
+
+    @Test
+    fun `Direct LLM provider constructors honor custom Config and default to Config()`() {
+        val customConfig =
+            Config(
+                defaultGeminiModel = "cfg-gemini",
+                defaultClaudeModel = "cfg-claude",
+                defaultOpenAiModel = "cfg-openai",
+                defaultOllamaModel = "cfg-ollama",
+            )
+
+        val geminiCustom = GeminiProvider("key", config = customConfig)
+        assertEquals("cfg-gemini", geminiCustom.modelName)
+        assertSame(customConfig, geminiCustom.config)
+
+        val geminiDefault = GeminiProvider("key")
+        assertEquals(Config().defaultGeminiModel, geminiDefault.modelName)
+        assertEquals(Config(), geminiDefault.config)
+
+        val claudeCustom = ClaudeProvider("key", config = customConfig)
+        assertEquals("cfg-claude", claudeCustom.modelName)
+        assertSame(customConfig, claudeCustom.config)
+
+        val claudeDefault = ClaudeProvider("key")
+        assertEquals(Config().defaultClaudeModel, claudeDefault.modelName)
+        assertEquals(Config(), claudeDefault.config)
+
+        val openaiCustom =
+            OpenAiCompatibleProvider(
+                "key",
+                endpoint = "http://localhost:8080",
+                config = customConfig,
+            )
+        assertEquals("cfg-openai", openaiCustom.modelName)
+        assertSame(customConfig, openaiCustom.config)
+
+        val openaiDefault = OpenAiCompatibleProvider("key", endpoint = "http://localhost:8080")
+        assertEquals(Config().defaultOpenAiModel, openaiDefault.modelName)
+        assertEquals(Config(), openaiDefault.config)
+
+        val ollamaCustom =
+            OllamaProvider(endpoint = "http://localhost:11434", config = customConfig)
+        assertEquals("cfg-ollama", ollamaCustom.modelName)
+        assertSame(customConfig, ollamaCustom.config)
+
+        val ollamaDefault = OllamaProvider(endpoint = "http://localhost:11434")
+        assertEquals(Config().defaultOllamaModel, ollamaDefault.modelName)
+        assertEquals(Config(), ollamaDefault.config)
     }
 }

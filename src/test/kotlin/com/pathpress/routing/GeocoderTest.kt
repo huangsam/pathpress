@@ -1,5 +1,6 @@
 package com.pathpress.routing
 
+import com.pathpress.config.Config
 import java.net.Authenticator
 import java.net.CookieHandler
 import java.net.ProxySelector
@@ -380,6 +381,22 @@ class GeocoderTest {
         assert(!result.displayName.lowercase().contains("los angeles")) {
             "Port Angeles, WA should not resolve to Los Angeles!"
         }
+    }
+
+    @Test
+    fun `Geocoder honors custom Config timeout and createHttpClient honors connectTimeout`() {
+        val customConfig = Config(geocoderTimeoutSeconds = 42L)
+        val client = Geocoder.createHttpClient(customConfig)
+        assertEquals(Duration.ofSeconds(42L), client.connectTimeout().orElse(null))
+
+        var capturedTimeout: Duration? = null
+        Geocoder.httpClient = MockHttpClient { req ->
+            capturedTimeout = req.timeout().orElse(null)
+            MockHttpResponse("""{"features": []}""", 200)
+        }
+
+        Geocoder.geocode("TestCity", config = customConfig)
+        assertEquals(Duration.ofSeconds(42L), capturedTimeout)
     }
 }
 

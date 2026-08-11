@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong
  */
 object AddressResolver {
 
-    fun createHttpClient(config: Config = Config.fromEnv()): HttpClient =
+    fun createHttpClient(config: Config = Config()): HttpClient =
         HttpClient.newBuilder()
             .connectTimeout(config.geocoderConnectTimeout)
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -40,7 +40,7 @@ object AddressResolver {
      * Resolve physical street address for a given POI using OSM tags or Nominatim reverse geocoding
      * fallback.
      */
-    fun resolveAddress(poi: POI, config: Config = Config.fromEnv()): String {
+    fun resolveAddress(poi: POI, config: Config = Config()): String {
         // 1. First, inspect OSM tags on the POI
         val osmAddress = resolveFromOsmTags(poi.tags)
         if (!osmAddress.isNullOrBlank()) {
@@ -97,11 +97,7 @@ object AddressResolver {
         return null
     }
 
-    private fun reverseGeocode(
-        lat: Double,
-        lng: Double,
-        config: Config = Config.fromEnv(),
-    ): String? {
+    private fun reverseGeocode(lat: Double, lng: Double, config: Config = Config()): String? {
         try {
             // Enforce Nominatim 1 request / second rate limit policy
             val now = System.currentTimeMillis()

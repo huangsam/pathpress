@@ -77,7 +77,7 @@ interface LlmProvider {
             apiKey: String?,
             apiUrl: String?,
             modelName: String? = null,
-            config: Config = Config.fromEnv(),
+            config: Config = Config(),
         ): LlmProvider {
             return when (val type = LlmProviderType.fromId(providerName)) {
                 LlmProviderType.GEMINI ->

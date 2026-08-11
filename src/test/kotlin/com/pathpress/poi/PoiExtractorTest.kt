@@ -1,5 +1,6 @@
 package com.pathpress.poi
 
+import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
 import com.pathpress.model.POI
 import com.pathpress.poi.rules.PersonaExclusionFilterRule
@@ -9,6 +10,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class PoiExtractorTest {
@@ -639,5 +641,23 @@ class PoiExtractorTest {
             selected.any { it.id == "2" },
             "P2 should be rejected despite being in Bucket 1 because it is too close to P1",
         )
+    }
+
+    @Test
+    fun `PoiExtractor holds injected Config and respects default values`() {
+        val customConfig =
+            Config(
+                defaultPoisPerLeg = 17,
+                townScoringRadiusMiles = 12.0,
+                townProgressWindowFraction = 0.25,
+            )
+        val customExtractor = PoiExtractor(config = customConfig)
+        assertSame(customConfig, customExtractor.config)
+        assertEquals(17, customExtractor.config.defaultPoisPerLeg)
+        assertEquals(12.0, customExtractor.config.townScoringRadiusMiles)
+        assertEquals(0.25, customExtractor.config.townProgressWindowFraction)
+
+        val defaultExtractor = PoiExtractor()
+        assertEquals(Config(), defaultExtractor.config)
     }
 }

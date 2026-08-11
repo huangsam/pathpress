@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory
 class RouteCalculator(
     private val graphHopper: GraphHopper,
     val pbfFilePath: String,
-    val config: Config = Config.fromEnv(),
+    val config: Config = Config(),
     private val poiExtractor: PoiExtractor = PoiExtractor(config),
     private val snapper: RoadNetworkSnapper =
         RoadNetworkSnapper(graphHopper, pbfFilePath, poiExtractor),
@@ -315,7 +315,7 @@ class RouteCalculator(
         fun create(
             graphPath: String,
             pbfFilePath: String,
-            config: Config = Config.fromEnv(),
+            config: Config = Config(),
         ): RouteCalculator {
             val hopper = GraphHopper()
             hopper.setOSMFile(pbfFilePath)

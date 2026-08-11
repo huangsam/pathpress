@@ -25,7 +25,7 @@ data class TownInfo(val name: String, val lat: Double, val lng: Double, val type
  * - [ThemeParkClustering]: Theme park domain matching and geographic deduplication.
  */
 open class PoiExtractor(
-    val config: Config = Config.fromEnv(),
+    val config: Config = Config(),
     val baseTilesDir: File = SpatialTileStorage.DEFAULT_BASE_DIR,
 ) {
     /** Retrieve a [PoiCacheStore] scoped to the bounding box [minLat..maxLat, minLng..maxLng]. */

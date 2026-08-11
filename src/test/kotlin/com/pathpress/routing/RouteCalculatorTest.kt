@@ -3,10 +3,12 @@ package com.pathpress.routing
 import com.graphhopper.GraphHopper
 import com.graphhopper.ResponsePath
 import com.graphhopper.util.PointList
+import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 class RouteCalculatorTest {
 
@@ -466,5 +468,25 @@ class RouteCalculatorTest {
 
         kotlin.test.assertNotEquals(RouteFailureKind.NO_ROUTE_FOUND, exception.kind)
         assertEquals(RouteFailureKind.SNAP_TOO_FAR, exception.kind)
+    }
+
+    @Test
+    fun `RouteCalculator threads custom Config to PoiExtractor`() {
+        val customConfig = Config(defaultPoisPerLeg = 42)
+        val routeCalculator =
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = customConfig,
+            )
+
+        assertSame(customConfig, routeCalculator.config)
+    }
+
+    @Test
+    fun `RouteCalculator zero-arg config uses default Config instance`() {
+        val routeCalculator =
+            RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        assertEquals(Config(), routeCalculator.config)
     }
 }
