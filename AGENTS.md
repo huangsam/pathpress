@@ -10,3 +10,4 @@
 8. Two values that must agree are never supplied separately.
 9. User-text matching uses word boundaries instead of bare `contains`.
 10. A failure must never return a value indistinguishable from success.
+11. Changelog entries describe user-visible behavior in one line.
