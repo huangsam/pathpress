@@ -16,10 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - Aspirational project `ROADMAP.md`.
 
 ### Changed
+- Increased default HTTP LLM request timeout from 60s to 120s.
+- Adjusted overnight town scoring to favor coastal towns and villages (`TownScorer.kt`).
+- Added boundary buffer support to spatial POI tile caching (`PoiCacheManager.kt`).
 - Reduced memory allocation and GC pressure during POI indexing and PDF generation.
 - Streamlined PBF path resolution and graph isolation in `PbfPathResolver.kt`.
 
 ### Fixed
+- Excluded county-level results and fixed fallback logic in geocoding (`Geocoder.kt`).
+- Fixed regex word boundaries and plural matching for town scoring keywords (`TownScorer.kt`).
+- Hardened road network snapping for off-road waypoint coordinates (`RoadNetworkSnapper.kt`).
 - Fixed POI description formatting for mountain peaks.
 - Hardened multi-state boundary resolution and waypoint validation.
 
