@@ -3,9 +3,9 @@ package com.pathpress.poi.rules
 /**
  * Contextual preferences and parameters used by [PoiRulesEngine] to evaluate candidate POIs.
  *
- * @property userPrompt Natural language prompt from the user (e.g., "family road trip with kids").
+ * @property userPrompt Natural language user prompt (e.g., "family road trip with kids").
  * @property excludePeaks Whether high-altitude peaks/mountain passes should be excluded.
- * @property excludeIndustrial Whether industrial areas or non-scenic nodes should be filtered out.
+ * @property excludeIndustrial Whether industrial or non-scenic nodes should be filtered out.
  */
 data class PoiEvaluationContext(
     val userPrompt: String? = null,

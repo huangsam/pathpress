@@ -6,8 +6,7 @@ import java.io.File
  * Result of resolving a PBF file, including any candidate adjacent regions for micro-extracts.
  *
  * @property primaryPath Path to the resolved primary PBF file.
- * @property supplementaryHints Ordered candidate region slugs that provide better graph
- *   connectivity.
+ * @property supplementaryHints Ordered candidate region slugs for fallback graph connectivity.
  */
 data class ResolvedPbfResult(
     val primaryPath: String,

@@ -67,9 +67,8 @@ object Geocoder {
     /**
      * Resolves a location string (which may be "lat,lng" coordinates or a city/landmark name).
      *
-     * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or "Seattle, WA")
-     * @return GeocodedLocation representing the resolved latitude, longitude, and display name, or
-     *   null if unresolvable
+     * @param location Query location string (e.g. "San Jose", "37.33,-121.88", or "Seattle, WA").
+     * @return Resolved [GeocodedLocation], or null if unresolvable.
      */
     fun geocode(location: String): GeocodedLocation? {
         val trimmed = location.trim()

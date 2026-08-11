@@ -27,8 +27,7 @@ object WaypointValidator {
      * @param waypoints Intermediate geocoded waypoints.
      * @param startCoords Trip origin coordinates.
      * @param endCoords Trip destination coordinates.
-     * @param bufferFraction Fraction of straight-line distance to use as corridor buffer (default
-     *   18%).
+     * @param bufferFraction Straight-line distance corridor fraction (default 18%).
      */
     fun validateWaypoints(
         waypoints: List<LocationCoords>,
