@@ -101,13 +101,7 @@ class RoadNetworkSnapper(
         val snapFilter = snapFilterFor(profile)
         val result =
             try {
-                val initialQr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
-                val qr =
-                    if (!initialQr.isValid && snapFilter != EdgeFilter.ALL_EDGES) {
-                        graphHopper.locationIndex.findClosest(lat, lng, EdgeFilter.ALL_EDGES)
-                    } else {
-                        initialQr
-                    }
+                val qr = graphHopper.locationIndex.findClosest(lat, lng, snapFilter)
                 if (qr.isValid) {
                     try {
                         qr.calcSnappedPoint(com.graphhopper.util.DistanceCalcEarth.DIST_EARTH)
@@ -130,49 +124,61 @@ class RoadNetworkSnapper(
                         SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)
                     }
                 } else {
-                    val nearbyTown =
-                        poiExtractor
-                            .findNearbyTowns(pbfFilePath, lat, lng, maxDistanceMeters = 30000.0)
-                            .firstOrNull()
-                    if (nearbyTown != null) {
-                        val townQr =
-                            graphHopper.locationIndex.findClosest(
-                                nearbyTown.lat,
-                                nearbyTown.lng,
-                                snapFilter,
-                            )
-                        val snapCoords =
-                            if (townQr.isValid) {
-                                try {
-                                    townQr.calcSnappedPoint(
-                                        com.graphhopper.util.DistanceCalcEarth.DIST_EARTH
-                                    )
-                                } catch (_: Exception) {}
-                                val townPoint =
-                                    try {
-                                        townQr.snappedPoint
-                                    } catch (_: Exception) {
-                                        null
-                                    }
-                                if (townPoint != null) {
-                                    LocationCoords(townPoint.lat, townPoint.lon)
-                                } else {
-                                    LocationCoords(nearbyTown.lat, nearbyTown.lng)
-                                }
-                            } else {
-                                LocationCoords(nearbyTown.lat, nearbyTown.lng)
-                            }
-                        val snapDist =
-                            GeoUtils.haversineMeters(lat, lng, snapCoords.lat, snapCoords.lng)
-                        SnapResult(
-                            coords = snapCoords,
-                            snapDistanceMeters = snapDist,
-                            snappedToTown = nearbyTown.name,
-                            isSnapped = true,
+                    val nearbyTowns =
+                        poiExtractor.findNearbyTowns(
+                            pbfFilePath,
+                            lat,
+                            lng,
+                            maxDistanceMeters = 30000.0,
                         )
-                    } else {
-                        SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)
-                    }
+                    val townResult =
+                        nearbyTowns
+                            .asSequence()
+                            .mapNotNull { nearbyTown ->
+                                val townQr =
+                                    graphHopper.locationIndex.findClosest(
+                                        nearbyTown.lat,
+                                        nearbyTown.lng,
+                                        snapFilter,
+                                    )
+                                if (townQr.isValid) {
+                                    try {
+                                        townQr.calcSnappedPoint(
+                                            com.graphhopper.util.DistanceCalcEarth.DIST_EARTH
+                                        )
+                                    } catch (_: Exception) {}
+                                    val townPoint =
+                                        try {
+                                            townQr.snappedPoint
+                                        } catch (_: Exception) {
+                                            null
+                                        }
+                                    val snapCoords =
+                                        if (townPoint != null) {
+                                            LocationCoords(townPoint.lat, townPoint.lon)
+                                        } else {
+                                            LocationCoords(nearbyTown.lat, nearbyTown.lng)
+                                        }
+                                    val snapDist =
+                                        GeoUtils.haversineMeters(
+                                            lat,
+                                            lng,
+                                            snapCoords.lat,
+                                            snapCoords.lng,
+                                        )
+                                    SnapResult(
+                                        coords = snapCoords,
+                                        snapDistanceMeters = snapDist,
+                                        snappedToTown = nearbyTown.name,
+                                        isSnapped = true,
+                                    )
+                                } else {
+                                    null
+                                }
+                            }
+                            .firstOrNull()
+
+                    townResult ?: SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)
                 }
             } catch (_: Exception) {
                 SnapResult(coords = LocationCoords(lat, lng), isSnapped = false)

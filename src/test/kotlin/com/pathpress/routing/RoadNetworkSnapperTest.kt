@@ -154,4 +154,48 @@ class RoadNetworkSnapperTest {
         assertEquals(37.8500, result.coords.lat)
         assertEquals(-122.4194, result.coords.lng)
     }
+
+    @Test
+    fun `snapToRoadNetwork ignores non-drivable all_edges match and falls back to drivable town`() {
+        val invalidCarSnap = Snap(36.1437, -121.5645) // isValid is false for car
+        val trailSnap = ValidSnap(36.1519, -121.5613) // valid only on ALL_EDGES
+        trailSnap.snappedPoint = GHPoint3D(36.1519, -121.5613, 0.0)
+
+        val townCarSnap = ValidSnap(36.2704, -121.8081)
+        townCarSnap.snappedPoint = GHPoint3D(36.2704, -121.8081, 0.0)
+
+        val stubIndex =
+            object : LocationIndex {
+                override fun findClosest(lat: Double, lon: Double, edgeFilter: EdgeFilter): Snap {
+                    return when (lat) {
+                        36.1437 -> invalidCarSnap
+                        36.2704 -> townCarSnap
+                        else -> invalidCarSnap
+                    }
+                }
+
+                override fun query(
+                    filter: LocationIndex.TileFilter?,
+                    visitor: LocationIndex.Visitor?,
+                ) {}
+
+                override fun close() {}
+            }
+
+        val bigSurVillage = TownInfo("Big Sur Village", 36.2704, -121.8081, "village")
+        val poiExtractor = TestPoiExtractor(listOf(bigSurVillage))
+        val snapper =
+            RoadNetworkSnapper(
+                graphHopper = TestGraphHopper(stubIndex),
+                pbfFilePath = "dummy.pbf",
+                poiExtractor = poiExtractor,
+            )
+
+        val result = snapper.snapToRoadNetwork(36.1437, -121.5645, profile = "car")
+
+        assertEquals("Big Sur Village", result.snappedToTown)
+        assertEquals(36.2704, result.coords.lat)
+        assertEquals(-121.8081, result.coords.lng)
+        assertTrue(result.isSnapped)
+    }
 }

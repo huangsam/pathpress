@@ -223,6 +223,59 @@ class GeocoderTest {
     }
 
     @Test
+    fun `test Photon prioritizes settlement over place region`() {
+        val photonJson =
+            """
+            {
+              "features": [
+                {
+                  "geometry": { "coordinates": [-121.5645, 36.1437] },
+                  "properties": {
+                    "name": "Big Sur",
+                    "state": "California",
+                    "countrycode": "US",
+                    "osm_key": "place",
+                    "osm_value": "region",
+                    "type": "other"
+                  }
+                },
+                {
+                  "geometry": { "coordinates": [-121.8074, 36.2702] },
+                  "properties": {
+                    "name": "Big Sur Village",
+                    "state": "California",
+                    "countrycode": "US",
+                    "osm_key": "place",
+                    "osm_value": "village",
+                    "type": "city"
+                  }
+                }
+              ]
+            }
+            """
+                .trimIndent()
+
+        val geocoder =
+            Geocoder(
+                httpClient =
+                    MockHttpClient { req ->
+                        val uri = req.uri().toString()
+                        if (uri.contains("photon.komoot.io")) {
+                            MockHttpResponse(photonJson, 200)
+                        } else {
+                            MockHttpResponse("", 500)
+                        }
+                    }
+            )
+
+        val result = geocoder.geocode("Big Sur")
+        assertNotNull(result)
+        assertEquals("Big Sur Village, California", result.displayName)
+        assertEquals(36.2702, result.coords.lat)
+        assertEquals(-121.8074, result.coords.lng)
+    }
+
+    @Test
     fun `test Photon second query variant does not invoke Nominatim`() {
         val photonChicagoUsJson =
             """

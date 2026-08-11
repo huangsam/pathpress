@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - Hardened road network snapping for off-road waypoint coordinates.
 - Fixed POI description formatting for mountain peaks.
 - Hardened multi-state boundary resolution and waypoint validation.
+- Hardened settlement geocoding and drivable road network snapping.
 
 ## [0.5.0] - 2026-08-08
 
@@ -97,7 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - 2-pass streaming OSM PBF reader.
 - Publication-ready PDF itinerary export with OpenHTMLtoPDF.
 
-[Unreleased]: https://github.com/huangsam/pathpress/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/huangsam/pathpress/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/huangsam/pathpress/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/huangsam/pathpress/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/huangsam/pathpress/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/huangsam/pathpress/compare/v0.2.0...v0.3.0

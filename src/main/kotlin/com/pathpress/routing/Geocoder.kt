@@ -254,9 +254,7 @@ class Geocoder(
         val osmValue = props["osm_value"]?.toString()?.lowercase()
 
         return !(type == "county" || osmValue == "county") &&
-            (type in SETTLEMENT_TYPES ||
-                (osmKey == "place" && osmValue in SETTLEMENT_TYPES) ||
-                (osmKey == "place" && osmValue != "park" && osmValue != "tourism"))
+            (type in SETTLEMENT_TYPES || (osmKey == "place" && osmValue in SETTLEMENT_TYPES))
     }
 
     private fun isUsSecondaryPlace(props: Map<String, Any?>): Boolean {
