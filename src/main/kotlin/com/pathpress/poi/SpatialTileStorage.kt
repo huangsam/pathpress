@@ -37,6 +37,9 @@ object SpatialTileStorage {
         synchronized(tileMemoryCache) { tileMemoryCache.clear() }
     }
 
+    internal fun isTileCached(tileFile: File): Boolean =
+        synchronized(tileMemoryCache) { tileMemoryCache.containsKey(tileFile.absolutePath) }
+
     /** Resolves the 1.0° × 1.0° tile file path for a given lat/lng coordinate. */
     fun getTileFile(lat: Double, lng: Double, baseDir: File = DEFAULT_BASE_DIR): File {
         val latBucket = floor(lat).toInt()
@@ -217,9 +220,8 @@ object SpatialTileStorage {
          * the current on-disk state (including any pre-existing multi-chunk content) to merge into,
          * then rewrites the tile as a single consolidated chunk.
          *
-         * **Subsequent flushes**: appends the batch as a new JSON chunk. If the in-memory cache
-         * entry was evicted between flushes, reads the current on-disk state to reconstruct and
-         * re-prime the cache rather than leaving it absent.
+         * **Subsequent flushes**: appends the batch as a new JSON chunk and updates the in-memory
+         * cache incrementally if present.
          */
         @Synchronized
         fun writeTile(
@@ -296,20 +298,7 @@ object SpatialTileStorage {
                             val updatedTowns = (cached.towns + towns).distinct()
                             tileMemoryCache[targetFile.absolutePath] =
                                 PoiCacheStore(pois = updatedPois, towns = updatedTowns)
-                        } else {
-                            // Cache was evicted between flushes; force a full disk read so
-                            // subsequent readers don't see a stale partial view.
-                            tileMemoryCache.remove(targetFile.absolutePath)
                         }
-                    }
-                    // Re-prime the cache from disk if it was evicted, outside the tileMemoryCache
-                    // lock to avoid holding two locks simultaneously.
-                    val needsReprime =
-                        synchronized(tileMemoryCache) {
-                            !tileMemoryCache.containsKey(targetFile.absolutePath)
-                        }
-                    if (needsReprime) {
-                        readTile(targetFile)
                     }
                 } catch (e: Exception) {
                     logger.warn(
