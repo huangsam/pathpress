@@ -9,6 +9,10 @@ Usage:
     python3 scripts/run_matrix_test.py --state california
     python3 scripts/run_matrix_test.py --state texas
     python3 scripts/run_matrix_test.py --state all
+    python3 scripts/run_matrix_test.py --region us-west
+    python3 scripts/run_matrix_test.py --region us-northeast
+    python3 scripts/run_matrix_test.py --region all
+    python3 scripts/run_matrix_test.py --nationwide
 """
 
 import argparse
