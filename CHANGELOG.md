@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
-- Sharded 1-degree spatial tile disk caching (`SpatialTileStorage.kt`).
-- Hierarchical slippy-map tile storage (`MapTileStorage.kt`).
+- Sharded 1-degree spatial tile disk caching for faster regional POI queries.
+- Hierarchical slippy-map tile storage for rendered map assets.
 - Regional corridor and coast-to-coast test matrix (`scripts/matrix_cases.py`).
 - Technical documentation hub under `docs/`.
 - Standalone unversioned JAR task (`pathpress-standalone.jar`).
@@ -17,15 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ### Changed
 - Increased default HTTP LLM request timeout from 60s to 120s.
-- Adjusted overnight town scoring to favor coastal towns and villages (`TownScorer.kt`).
-- Added boundary buffer support to spatial POI tile caching (`PoiCacheManager.kt`).
+- Adjusted overnight town scoring to favor coastal towns and villages.
+- Added boundary buffer support to spatial POI tile caching.
 - Reduced memory allocation and GC pressure during POI indexing and PDF generation.
-- Streamlined PBF path resolution and graph isolation in `PbfPathResolver.kt`.
+- Streamlined PBF path resolution and graph cache isolation.
 
 ### Fixed
-- Excluded county-level results and fixed fallback logic in geocoding (`Geocoder.kt`).
-- Fixed regex word boundaries and plural matching for town scoring keywords (`TownScorer.kt`).
-- Hardened road network snapping for off-road waypoint coordinates (`RoadNetworkSnapper.kt`).
+- Excluded county-level results and fixed fallback logic in geocoding.
+- Fixed regex word boundaries and plural matching for town scoring keywords.
+- Hardened road network snapping for off-road waypoint coordinates.
 - Fixed POI description formatting for mountain peaks.
 - Hardened multi-state boundary resolution and waypoint validation.
 
@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 ### Changed
 - Bumped project version to `0.5.0` across build configuration and documentation.
 - Standardized generic `SNAPSHOT` fallback in Gradle and Kotlin metadata.
-- Updated `OsmTileStitcher` User-Agent to `PathPress/0.5.0`.
+- Updated map tile stitcher User-Agent to `PathPress/0.5.0`.
 
 ### Fixed
 - Resolved GraphHopper graph cache collisions (`PointOutOfBoundsException`) when switching states.
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 ## [0.4.0] - 2026-08-05
 
 ### Added
-- Native CartoDB Voyager map tile stitcher (`OsmTileStitcher.kt`) with Web Mercator projection.
+- Native CartoDB Voyager map tile stitcher with Web Mercator projection.
 - Antialiased route rendering with start/end pins and CartoDB tile attribution.
 - Automatic turn-by-turn Google Maps QR code appendix in PDF generation.
 - Support for configurable distance units (`--units imperial` and `--units metric`).
@@ -63,14 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 ## [0.3.0] - 2026-08-03
 
 ### Added
-- Overnight town scorer (`TownScorer.kt`) weighted by lodging, attractions, and dining density.
-- Theme park boundary clustering (`ThemeParkClustering.kt`) for Disney, Universal, and SeaWorld.
-- Spatial grid index (`SpatialGridIndex.kt`) partitioned at 0.1-degree resolution for fast POI lookups.
-- Disused/closed tag filtering (`PoiRules.kt`) to exclude abandoned POIs.
+- Overnight town scorer weighted by lodging, attractions, and dining density.
+- Theme park boundary clustering for Disney, Universal, and SeaWorld.
+- Spatial grid index partitioned at 0.1-degree resolution for fast POI lookups.
+- Disused/closed tag filtering to exclude abandoned POIs.
 - Dual-layer Jackson JSON POI disk caching (`.pois_cache/`).
 
 ### Changed
-- Refactored `PoiExtractor` into modular components (ranking, clustering, spatial indexing).
+- Refactored POI extraction into modular components (ranking, clustering, spatial indexing).
 
 ### Fixed
 - Fixed POI duplicates across overlapping leg corridors.
@@ -79,10 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ### Added
 - Pluggable multi-LLM architecture supporting Gemini, Claude, OpenAI, and Ollama.
-- Silent fallback degradation (`NoOpFallbackProvider.kt`) for offline and deterministic trip planning.
-- Linear waypoint pruning in `WaypointValidator.kt` to eliminate hallucinated LLM waypoints.
-- Clikt 5.1.0 CLI entry point (`PathPressCommand`) with structured argument parsing.
-- Rich terminal output reporter (`CliReporter.kt`) with `--verbose` mode.
+- Silent fallback degradation for offline and deterministic trip planning.
+- Linear waypoint pruning to eliminate hallucinated LLM waypoints.
+- Clikt 5.1.0 CLI entry point with structured argument parsing.
+- Rich terminal output reporter with `--verbose` mode.
 
 ### Changed
 - Decoupled routing from AI narrative to prevent hallucinated waypoints.
@@ -94,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ### Added
 - Initial release of PathPress: hybrid AI road trip planner using OpenStreetMap and GraphHopper.
-- 2-pass streaming OSM PBF reader (`OsmPbfReader.kt`).
+- 2-pass streaming OSM PBF reader.
 - Publication-ready PDF itinerary export with OpenHTMLtoPDF.
 
 [Unreleased]: https://github.com/huangsam/pathpress/compare/v0.5.0...HEAD
