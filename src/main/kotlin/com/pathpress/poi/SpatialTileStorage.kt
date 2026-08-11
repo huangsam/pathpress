@@ -147,7 +147,7 @@ object SpatialTileStorage {
 
     /**
      * Reads and deserializes a single tile file into a [PoiCacheStore], using in-memory cache when
-     * available.
+     * available. Supports reading single-document JSON files and multi-chunk appended JSON files.
      */
     fun readTile(tileFile: File): PoiCacheStore {
         val path = tileFile.absolutePath
@@ -156,9 +156,23 @@ object SpatialTileStorage {
                 return it
             }
         }
-        if (!tileFile.exists() || !tileFile.isFile) return PoiCacheStore()
+        if (!tileFile.exists() || !tileFile.isFile || tileFile.length() == 0L)
+            return PoiCacheStore()
         return try {
-            val store = mapper.readValue(tileFile, PoiCacheStore::class.java)
+            val iterator =
+                mapper.readerFor(PoiCacheStore::class.java).readValues<PoiCacheStore>(tileFile)
+            val allPois = LinkedHashMap<String, POI>()
+            val allTowns = mutableListOf<TownInfo>()
+            iterator.use { it ->
+                while (it.hasNextValue()) {
+                    val chunk = it.nextValue()
+                    for (p in chunk.pois) {
+                        allPois[p.id] = p
+                    }
+                    allTowns.addAll(chunk.towns)
+                }
+            }
+            val store = PoiCacheStore(pois = allPois.values.toList(), towns = allTowns.distinct())
             synchronized(tileMemoryCache) { tileMemoryCache[path] = store }
             store
         } catch (e: Exception) {
@@ -168,8 +182,162 @@ object SpatialTileStorage {
     }
 
     /**
+     * Ingest-scoped writer session that merges with existing on-disk tile data on a tile's first
+     * flush and appends new chunks thereafter, eliminating quadratic serialization and disk rewrite
+     * overhead.
+     *
+     * **Caller contract**: each POI [POI.id] must appear in at most one batch per session.
+     * Duplicate IDs across batches are not detected; the last-seen value wins only within a single
+     * chunk. This invariant holds naturally when the upstream reader emits each OSM element exactly
+     * once per run.
+     *
+     * **Thread-safety**: all mutable state is guarded by `this`. Do not share a session across
+     * threads unless external synchronization is provided.
+     *
+     * Tracks [cumulativeBytesWritten] across all flushes in this session.
+     */
+    class IngestSession internal constructor(val baseDir: File = DEFAULT_BASE_DIR) {
+        // @GuardedBy("this")
+        private val seenTiles = mutableSetOf<Pair<Int, Int>>()
+
+        // @GuardedBy("this")
+        private var _cumulativeBytesWritten: Long = 0L
+
+        /**
+         * Cumulative bytes physically written to tile files during this session. Each flush
+         * contributes exactly `|jsonBytes| + 1` (the trailing newline separator).
+         */
+        val cumulativeBytesWritten: Long
+            @Synchronized get() = _cumulativeBytesWritten
+
+        /**
+         * Writes a batch of POIs and towns to the tile at [latBucket], [lngBucket].
+         *
+         * **First flush for a tile**: evicts any stale in-memory cache entry for that tile, reads
+         * the current on-disk state (including any pre-existing multi-chunk content) to merge into,
+         * then rewrites the tile as a single consolidated chunk.
+         *
+         * **Subsequent flushes**: appends the batch as a new JSON chunk. If the in-memory cache
+         * entry was evicted between flushes, reads the current on-disk state to reconstruct and
+         * re-prime the cache rather than leaving it absent.
+         */
+        @Synchronized
+        fun writeTile(
+            latBucket: Int,
+            lngBucket: Int,
+            pois: Collection<POI>,
+            towns: Collection<TownInfo>,
+        ): File {
+            val targetFile = getTileFile(latBucket, lngBucket, baseDir)
+            if (pois.isEmpty() && towns.isEmpty()) {
+                return targetFile
+            }
+            val tileKey = Pair(latBucket, lngBucket)
+            val isFirstFlush = seenTiles.add(tileKey)
+
+            if (isFirstFlush) {
+                // Evict any stale cache entry so readTile unconditionally reads the current
+                // on-disk state, which may itself be a multi-chunk file from a prior ingest.
+                synchronized(tileMemoryCache) { tileMemoryCache.remove(targetFile.absolutePath) }
+                val existing =
+                    if (targetFile.exists() && targetFile.isFile) readTile(targetFile) else null
+                val poiMap = LinkedHashMap<String, POI>()
+                if (existing != null) {
+                    for (p in existing.pois) {
+                        poiMap[p.id] = p
+                    }
+                }
+                for (p in pois) {
+                    poiMap[p.id] = p
+                }
+
+                val mergedTowns =
+                    if (existing != null) {
+                        (existing.towns + towns).distinct()
+                    } else {
+                        towns.distinct()
+                    }
+
+                val store = PoiCacheStore(pois = poiMap.values.toList(), towns = mergedTowns)
+                try {
+                    targetFile.parentFile?.mkdirs()
+                    val jsonBytes = mapper.writeValueAsBytes(store)
+                    java.io.FileOutputStream(targetFile, false).use { out ->
+                        out.write(jsonBytes)
+                        out.write('\n'.code)
+                    }
+                    _cumulativeBytesWritten += (jsonBytes.size + 1)
+                    synchronized(tileMemoryCache) {
+                        tileMemoryCache[targetFile.absolutePath] = store
+                    }
+                } catch (e: Exception) {
+                    logger.warn(
+                        "Failed to write tile file {}: {}",
+                        targetFile.absolutePath,
+                        e.message,
+                        e,
+                    )
+                }
+            } else {
+                val chunkStore = PoiCacheStore(pois = pois.toList(), towns = towns.distinct())
+                try {
+                    targetFile.parentFile?.mkdirs()
+                    val jsonBytes = mapper.writeValueAsBytes(chunkStore)
+                    java.io.FileOutputStream(targetFile, true).use { out ->
+                        out.write(jsonBytes)
+                        out.write('\n'.code)
+                    }
+                    _cumulativeBytesWritten += (jsonBytes.size + 1)
+                    synchronized(tileMemoryCache) {
+                        val cached = tileMemoryCache[targetFile.absolutePath]
+                        if (cached != null) {
+                            // Fast path: cache is live; append incrementally.
+                            val updatedPois = cached.pois + pois
+                            val updatedTowns = (cached.towns + towns).distinct()
+                            tileMemoryCache[targetFile.absolutePath] =
+                                PoiCacheStore(pois = updatedPois, towns = updatedTowns)
+                        } else {
+                            // Cache was evicted between flushes; force a full disk read so
+                            // subsequent readers don't see a stale partial view.
+                            tileMemoryCache.remove(targetFile.absolutePath)
+                        }
+                    }
+                    // Re-prime the cache from disk if it was evicted, outside the tileMemoryCache
+                    // lock to avoid holding two locks simultaneously.
+                    val needsReprime =
+                        synchronized(tileMemoryCache) {
+                            !tileMemoryCache.containsKey(targetFile.absolutePath)
+                        }
+                    if (needsReprime) {
+                        readTile(targetFile)
+                    }
+                } catch (e: Exception) {
+                    logger.warn(
+                        "Failed to append to tile file {}: {}",
+                        targetFile.absolutePath,
+                        e.message,
+                        e,
+                    )
+                }
+            }
+            return targetFile
+        }
+    }
+
+    /**
+     * Opens an [IngestSession] scoped to [baseDir]. The session is single-use per ingestion run; do
+     * not share it across concurrent ingestion calls.
+     */
+    internal fun openIngestSession(baseDir: File = DEFAULT_BASE_DIR): IngestSession =
+        IngestSession(baseDir)
+
+    /**
      * Idempotently writes POIs and towns to a 1.0° × 1.0° tile file. Merges with existing tile data
      * if present, deduplicating POIs by OSM [POI.id].
+     *
+     * **File format**: emits a single JSON document followed by a `\n` newline separator,
+     * consistent with the multi-chunk format produced by [IngestSession]. Files written by this
+     * method are read correctly by [readTile].
      */
     fun writeTile(
         latBucket: Int,
@@ -201,7 +369,11 @@ object SpatialTileStorage {
         val store = PoiCacheStore(pois = poiMap.values.toList(), towns = mergedTowns)
         try {
             targetFile.parentFile?.mkdirs()
-            mapper.writeValue(targetFile, store)
+            val jsonBytes = mapper.writeValueAsBytes(store)
+            java.io.FileOutputStream(targetFile, false).use { out ->
+                out.write(jsonBytes)
+                out.write('\n'.code)
+            }
             synchronized(tileMemoryCache) { tileMemoryCache[targetFile.absolutePath] = store }
         } catch (e: Exception) {
             logger.warn("Failed to write tile file {}: {}", targetFile.absolutePath, e.message, e)

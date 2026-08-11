@@ -477,4 +477,52 @@ class PoiCacheManagerTest {
         PoiCacheManager.clearInMemCache()
         assertTrue(PoiCacheManager.isPbfIngested(dummyPbf, tempDir))
     }
+
+    @Test
+    fun `ingestPbf with multiple flushes of same tile appends chunks and reads back full content`() {
+        val tempDir = Files.createTempDirectory("poi_cache_multi_flush_test").toFile()
+        tempDir.deleteOnExit()
+
+        val dummyPbf = File(tempDir, "multi-flush.osm.pbf")
+        dummyPbf.writeText("dummy content")
+
+        val totalPois = 100
+        val budget = 10
+
+        PoiCacheManager.pbfReader = { _, onPoi, onTown ->
+            for (i in 0 until totalPois) {
+                onPoi(
+                    POI(
+                        id = "p_$i",
+                        name = "Cafe $i",
+                        lat = 37.5 + (i * 0.001),
+                        lng = -122.5 + (i * 0.001),
+                        tags = mapOf("amenity" to "cafe"),
+                        type = "cafe",
+                    )
+                )
+            }
+            onTown(TownInfo(name = "Test City", lat = 37.5, lng = -122.5, type = "city"))
+            true
+        }
+
+        try {
+            PoiCacheManager.clearInMemCache()
+            val success = PoiCacheManager.ingestPbf(dummyPbf, tempDir, bufferedPoiBudget = budget)
+            assertTrue(success)
+
+            val tileFile = SpatialTileStorage.getTileFile(37, -123, tempDir)
+            assertTrue(tileFile.exists())
+
+            // Force reading from disk chunks
+            SpatialTileStorage.clearCache()
+            val store = SpatialTileStorage.readTile(tileFile)
+            assertEquals(totalPois, store.pois.size)
+            assertEquals(1, store.towns.size)
+            assertEquals("Test City", store.towns.first().name)
+        } finally {
+            PoiCacheManager.clearInMemCache()
+            PoiCacheManager.pbfReader = OsmPbfReader::readPbfFile
+        }
+    }
 }

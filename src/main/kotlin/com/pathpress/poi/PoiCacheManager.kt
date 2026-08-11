@@ -171,6 +171,7 @@ object PoiCacheManager {
             bufferedPoiBudget,
         )
         val startTime = System.currentTimeMillis()
+        val ingestSession = SpatialTileStorage.openIngestSession(baseDir)
 
         data class TileKey(val latBucket: Int, val lngBucket: Int)
         val tilePois = mutableMapOf<TileKey, MutableList<POI>>()
@@ -186,12 +187,11 @@ object PoiCacheManager {
             currentBufferedCount -= (pois.size + towns.size)
             if (pois.isNotEmpty() || towns.isNotEmpty()) {
                 val file =
-                    SpatialTileStorage.writeTile(
+                    ingestSession.writeTile(
                         latBucket = key.latBucket,
                         lngBucket = key.lngBucket,
                         pois = pois,
                         towns = towns,
-                        baseDir = baseDir,
                     )
                 writtenFiles.add(file)
             }
@@ -242,11 +242,13 @@ object PoiCacheManager {
             }
 
             val elapsed = System.currentTimeMillis() - startTime
+            val cumulativeBytes = ingestSession.cumulativeBytesWritten
             logger.info(
-                "Ingested {} POIs and {} towns into {} tile file(s) under {} in {} ms",
+                "Ingested {} POIs and {} towns into {} tile file(s) ({} cumulative bytes written) under {} in {} ms",
                 totalPoisCount,
                 totalTownsCount,
                 writtenFiles.size,
+                cumulativeBytes,
                 baseDir.path,
                 elapsed,
             )

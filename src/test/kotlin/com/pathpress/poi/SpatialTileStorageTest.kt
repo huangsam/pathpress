@@ -481,4 +481,67 @@ class SpatialTileStorageTest {
 
         assertTrue(corridorTiles.size <= bboxTiles.size)
     }
+
+    @Test
+    fun `IngestSession merges pre-existing tile on first flush and appends on subsequent flushes with linear cumulative bytes`() {
+        val tempDir = Files.createTempDirectory("tile_ingest_session_test").toFile()
+        tempDir.deleteOnExit()
+
+        val preExistingPoi =
+            POI(
+                id = "pre1",
+                name = "Pre-existing Spot",
+                lat = 37.1,
+                lng = -122.1,
+                tags = mapOf("amenity" to "cafe"),
+                type = "cafe",
+            )
+        // Write pre-existing tile on disk
+        SpatialTileStorage.writeTile(37, -122, listOf(preExistingPoi), emptyList(), tempDir)
+        val tileFile = SpatialTileStorage.getTileFile(37, -122, tempDir)
+        assertTrue(tileFile.exists())
+
+        val session = SpatialTileStorage.openIngestSession(tempDir)
+
+        val batchCount = 10
+        val batchSize = 50
+        for (b in 0 until batchCount) {
+            val pois =
+                (0 until batchSize).map { i ->
+                    POI(
+                        id = "poi_${b}_$i",
+                        name = "Spot ${b}_$i",
+                        lat = 37.1 + (b * 0.001) + (i * 0.00001),
+                        lng = -122.1 + (b * 0.001) + (i * 0.00001),
+                        tags = mapOf("amenity" to "cafe"),
+                        type = "cafe",
+                    )
+                }
+            session.writeTile(37, -122, pois, emptyList())
+        }
+
+        val totalExpectedPois = 1 + (batchCount * batchSize)
+        val finalFileSize = tileFile.length()
+        val cumulativeBytes = session.cumulativeBytesWritten
+
+        // In a quadratic re-write scenario, cumulative bytes would be ~5.5x the final file size.
+        // With append mode, cumulative bytes is approximately equal to the file size (within a
+        // small margin for newlines).
+        assertTrue(
+            cumulativeBytes <= (finalFileSize * 1.5).toLong(),
+            "Cumulative bytes written ($cumulativeBytes) must be linear and close to final file size ($finalFileSize)",
+        )
+
+        // Read back the tile from disk (clearing in-memory cache to force reading disk chunks)
+        SpatialTileStorage.clearCache()
+        val loadedStore = SpatialTileStorage.readTile(tileFile)
+        assertEquals(
+            totalExpectedPois,
+            loadedStore.pois.size,
+            "Must load all pre-existing and appended POIs",
+        )
+        assertTrue(loadedStore.pois.any { it.id == "pre1" }, "Pre-existing POI must be preserved")
+        assertTrue(loadedStore.pois.any { it.id == "poi_0_0" }, "First batch POI must be present")
+        assertTrue(loadedStore.pois.any { it.id == "poi_9_49" }, "Last batch POI must be present")
+    }
 }
