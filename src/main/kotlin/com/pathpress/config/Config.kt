@@ -70,7 +70,7 @@ data class Config(
         const val DEFAULT_HTTP_LLM_CONNECT_TIMEOUT_SECONDS: Long = 10L
 
         /** Default network response request timeout in seconds for HTTP LLM requests. */
-        const val DEFAULT_HTTP_LLM_REQUEST_TIMEOUT_SECONDS: Long = 60L
+        const val DEFAULT_HTTP_LLM_REQUEST_TIMEOUT_SECONDS: Long = 120L
 
         /** Default network timeout in seconds for geocoding requests. */
         const val DEFAULT_GEOCODER_TIMEOUT_SECONDS: Long = 10L

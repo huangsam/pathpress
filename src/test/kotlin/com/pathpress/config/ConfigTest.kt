@@ -15,10 +15,10 @@ class ConfigTest {
         assertEquals("gpt-4o-mini", config.defaultOpenAiModel)
         assertEquals("qwen3.6:35b-mlx", config.defaultOllamaModel)
         assertEquals(10L, config.httpLlmConnectTimeoutSeconds)
-        assertEquals(60L, config.httpLlmRequestTimeoutSeconds)
+        assertEquals(120L, config.httpLlmRequestTimeoutSeconds)
         assertEquals(10L, config.geocoderTimeoutSeconds)
         assertEquals(Duration.ofSeconds(10), config.httpLlmConnectTimeout)
-        assertEquals(Duration.ofSeconds(60), config.httpLlmRequestTimeout)
+        assertEquals(Duration.ofSeconds(120), config.httpLlmRequestTimeout)
         assertEquals(Duration.ofSeconds(10), config.geocoderConnectTimeout)
     }
 
