@@ -11,8 +11,6 @@ import java.net.http.HttpResponse
  * (`http://localhost:11434/api/chat`).
  *
  * Requests structured JSON responses using `"format": "json"` mode without requiring an API key.
- * Automatically falls back to [NoOpFallbackProvider] on network failures, non-200 responses, or
- * parse errors.
  */
 class OllamaProvider(
     private val endpoint: String,

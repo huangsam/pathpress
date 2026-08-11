@@ -9,8 +9,7 @@ import java.net.http.HttpResponse
 /**
  * [HttpLlmProvider] implementation targeting Anthropic's Claude API (`/v1/messages`).
  *
- * Configures `x-api-key` and `anthropic-version: 2023-06-01` HTTP headers. Automatically falls back
- * to [NoOpFallbackProvider] on network failures, non-200 responses, or parse errors.
+ * Configures `x-api-key` and `anthropic-version: 2023-06-01` HTTP headers.
  */
 class ClaudeProvider(
     apiKey: String,

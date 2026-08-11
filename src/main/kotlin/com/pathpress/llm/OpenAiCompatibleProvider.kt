@@ -10,8 +10,7 @@ import java.net.http.HttpResponse
  * [HttpLlmProvider] implementation targeting OpenAI Chat Completions API (`/v1/chat/completions`)
  * or OpenAI-compatible local/remote servers (e.g. vLLM, LM Studio, LocalAI).
  *
- * Configures `Authorization: Bearer <key>` header when key is non-blank. Automatically falls back
- * to [NoOpFallbackProvider] on network failures, non-200 responses, or parse errors.
+ * Configures `Authorization: Bearer <key>` header when key is non-blank.
  */
 class OpenAiCompatibleProvider(
     apiKey: String,

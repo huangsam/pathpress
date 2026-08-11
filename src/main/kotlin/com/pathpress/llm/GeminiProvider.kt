@@ -11,8 +11,7 @@ import java.net.http.HttpResponse
  * (`/v1beta/models/:generateContent`).
  *
  * Uses query parameter API key authentication and standard `contents[].parts[].text` payload
- * formatting. Automatically falls back to [NoOpFallbackProvider] on network failures, non-200
- * responses, or parse errors.
+ * formatting.
  */
 class GeminiProvider(
     apiKey: String,

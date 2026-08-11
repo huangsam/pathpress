@@ -1,3 +1,11 @@
+/**
+ * HTML component builders for PDF generation.
+ *
+ * OpenHtmlToPdf guidelines:
+ * - Use pure inline text flow (or table layout) for headers, badges, and metadata cards.
+ * - Avoid combining `display: inline-block` with `vertical-align: middle` on SVG replacement
+ *   elements adjacent to inline text.
+ */
 package com.pathpress.export
 
 import com.pathpress.export.PdfExporter.DAY_TITLE_PREFIX_REGEX
@@ -217,14 +225,6 @@ internal fun FlowContent.legCard(
     }
 }
 
-/**
- * HTML component builders for PDF generation.
- *
- * STRICT OPENHTMLTOPDF ARCHITECTURE GUIDELINES:
- * - Use pure inline text flow (or table layout) for headers, badges, and metadata cards.
- * - Avoid combining `display: inline-block` with `vertical-align: middle` on SVG replacement
- *   elements adjacent to inline text.
- */
 internal fun FlowContent.poiSection(pois: List<POI>, unit: DistanceUnit = DistanceUnit.METRIC) {
     div("poi-section") {
         div("poi-title") {
