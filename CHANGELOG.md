@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-11
+
 ### Added
 - Sharded 1-degree spatial tile disk caching for faster regional POI queries.
 - Hierarchical slippy-map tile storage for rendered map assets.
