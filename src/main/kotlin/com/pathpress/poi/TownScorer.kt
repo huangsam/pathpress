@@ -106,7 +106,7 @@ object TownScorer {
     fun scoreTownForOvernight(
         town: TownInfo,
         cacheStore: PoiCacheStore,
-        config: Config = Config(),
+        config: Config,
         radiusMiles: Double = config.townScoringRadiusMiles,
         userPrompt: String? = null,
         distanceFromTargetMeters: Double = 0.0,

@@ -146,7 +146,7 @@ internal fun FlowContent.metadataCard(route: Route, unit: DistanceUnit = Distanc
 internal fun FlowContent.dailySchedule(
     route: Route,
     unit: DistanceUnit = DistanceUnit.METRIC,
-    config: Config = Config(),
+    config: Config,
 ) {
     div("daily-schedule-section") {
         div("section-title editorial-heading") { +"Daily Schedule & Itinerary" }
@@ -160,7 +160,7 @@ internal fun FlowContent.legCard(
     leg: RouteLeg,
     route: Route,
     unit: DistanceUnit = DistanceUnit.METRIC,
-    config: Config = Config(),
+    config: Config,
 ) {
     val rawTitle = leg.dayTitle ?: "Scenic Drive"
     val cleanTitle = rawTitle.replace(DAY_TITLE_PREFIX_REGEX, "").ifBlank { "Scenic Drive" }
@@ -234,7 +234,7 @@ internal fun FlowContent.legCard(
 internal fun FlowContent.poiSection(
     pois: List<POI>,
     unit: DistanceUnit = DistanceUnit.METRIC,
-    config: Config = Config(),
+    config: Config,
 ) {
     div("poi-section") {
         div("poi-title") {
@@ -251,7 +251,7 @@ internal fun FlowContent.poiCard(
     poi: POI,
     index: Int,
     unit: DistanceUnit = DistanceUnit.METRIC,
-    config: Config = Config(),
+    config: Config,
 ) {
     val poiSearchUrl = MapUrlFormatter.formatPoiUrl(poi)
     val poiNavUrl = MapUrlFormatter.formatSingleStopNavUrl(poi.lat, poi.lng)

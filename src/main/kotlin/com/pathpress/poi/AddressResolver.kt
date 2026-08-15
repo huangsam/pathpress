@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicLong
  * geocoding backed by an in-memory query cache.
  */
 class AddressResolver(
-    val config: Config = Config(),
+    val config: Config,
     private val httpClient: HttpClient = createHttpClient(config),
 ) {
 
@@ -149,7 +149,7 @@ class AddressResolver(
     }
 
     companion object {
-        fun createHttpClient(config: Config = Config()): HttpClient =
+        fun createHttpClient(config: Config): HttpClient =
             HttpClient.newBuilder()
                 .connectTimeout(config.geocoderConnectTimeout)
                 .followRedirects(HttpClient.Redirect.NORMAL)

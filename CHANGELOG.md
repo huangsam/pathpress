@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Changed
+- Enforced strict configuration injection across core spatial and AI planning services.
+
 ## [0.6.0] - 2026-08-11
 
 ### Added

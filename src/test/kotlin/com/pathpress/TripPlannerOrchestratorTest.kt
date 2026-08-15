@@ -103,7 +103,11 @@ class TripPlannerOrchestratorTest {
     fun `planTrip executes full pipeline successfully with custom factories`() {
         val testLlm = TestLlmProvider()
         val testRouteCalc =
-            RouteCalculator(graphHopper = TestGraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(
+                graphHopper = TestGraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
 
         val orchestrator =
             TripPlannerOrchestrator(
@@ -138,7 +142,7 @@ class TripPlannerOrchestratorTest {
 
     @Test
     fun `planTrip throws GeocodingException when start location cannot be geocoded`() {
-        val orchestrator = TripPlannerOrchestrator(geocoder = stubGeocoder)
+        val orchestrator = TripPlannerOrchestrator(config = Config(), geocoder = stubGeocoder)
         val request =
             TripPlannerRequest(startLocation = "invalid_start_location", endLocation = "LA")
 
@@ -151,7 +155,7 @@ class TripPlannerOrchestratorTest {
 
     @Test
     fun `planTrip throws GeocodingException when end location cannot be geocoded`() {
-        val orchestrator = TripPlannerOrchestrator(geocoder = stubGeocoder)
+        val orchestrator = TripPlannerOrchestrator(config = Config(), geocoder = stubGeocoder)
         val request = TripPlannerRequest(startLocation = "SF", endLocation = "invalid_end_location")
 
         val exception =
@@ -165,6 +169,7 @@ class TripPlannerOrchestratorTest {
     fun `planTrip throws TripPlanningException when route calculator initialization fails`() {
         val orchestrator =
             TripPlannerOrchestrator(
+                config = Config(),
                 geocoder = stubGeocoder,
                 routeCalculatorFactory = { _, _, _ ->
                     throw RuntimeException("PBF graph file missing")

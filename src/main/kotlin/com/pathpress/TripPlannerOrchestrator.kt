@@ -39,7 +39,7 @@ data class TripPlannerResult(
 
 /** Pure application service that orchestrates the trip planning execution pipeline. */
 class TripPlannerOrchestrator(
-    private val config: Config = Config(),
+    private val config: Config,
     private val geocoder: (String) -> GeocodedLocation? = { Geocoder(config).geocode(it) },
     private val routeCalculatorFactory:
         (graphPath: String, pbfPath: String, config: Config) -> RouteCalculator =
@@ -184,7 +184,7 @@ internal fun resolveAndValidateWaypoints(
     days: Int,
     prompt: String?,
     llm: LlmProvider,
-    geocoder: (String) -> GeocodedLocation? = { Geocoder().geocode(it) },
+    geocoder: (String) -> GeocodedLocation?,
 ): WaypointResolution {
     val logger = LoggerFactory.getLogger("com.pathpress.Main")
 

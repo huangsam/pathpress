@@ -52,7 +52,7 @@ class AddressResolverTest {
                     ),
                 type = "cafe",
             )
-        val resolver = AddressResolver()
+        val resolver = AddressResolver(config = Config())
         val resolved = resolver.resolveAddress(poi)
         assertEquals("2855 Stevens Creek Boulevard, Santa Clara CA 95050", resolved)
     }
@@ -120,7 +120,8 @@ class AddressResolverTest {
 
         val resolver =
             AddressResolver(
-                httpClient = MockHttpClient { req -> MockHttpResponse(nominatimJson, 200) }
+                config = Config(),
+                httpClient = MockHttpClient { req -> MockHttpResponse(nominatimJson, 200) },
             )
 
         val poi =
@@ -141,8 +142,9 @@ class AddressResolverTest {
     fun `resolveAddress falls back to formatted coordinates on HTTP error`() {
         val resolver =
             AddressResolver(
+                config = Config(),
                 httpClient =
-                    MockHttpClient { req -> MockHttpResponse("Internal Server Error", 500) }
+                    MockHttpClient { req -> MockHttpResponse("Internal Server Error", 500) },
             )
 
         val poi =
@@ -178,7 +180,7 @@ class AddressResolverTest {
                 tags = emptyMap(),
                 type = "viewpoint",
             )
-        val resolver = AddressResolver()
+        val resolver = AddressResolver(config = Config())
         val resolved = resolver.resolveAddress(poi)
         assertNotNull(resolved)
     }

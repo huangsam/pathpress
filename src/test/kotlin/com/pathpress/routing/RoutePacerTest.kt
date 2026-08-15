@@ -2,6 +2,7 @@ package com.pathpress.routing
 
 import com.graphhopper.ResponsePath
 import com.graphhopper.util.PointList
+import com.pathpress.config.Config
 import com.pathpress.model.LocationCoords
 import com.pathpress.poi.PoiExtractor
 import com.pathpress.poi.ScoredTown
@@ -15,12 +16,13 @@ import kotlin.test.assertTrue
 
 class RoutePacerTest {
 
-    private val pacer = RoutePacer(pbfFilePath = "dummy.pbf")
+    private val pacer =
+        RoutePacer(pbfFilePath = "dummy.pbf", poiExtractor = PoiExtractor(config = Config()))
 
     private class TestPoiExtractor(
         private val towns: List<TownInfo> = emptyList(),
         private val candidateTowns: List<ScoredTown> = emptyList(),
-    ) : PoiExtractor() {
+    ) : PoiExtractor(config = Config()) {
         override fun findNearbyTowns(
             pbfPath: String,
             targetLat: Double,

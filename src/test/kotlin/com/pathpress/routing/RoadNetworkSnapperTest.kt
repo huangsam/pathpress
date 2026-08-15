@@ -5,6 +5,7 @@ import com.graphhopper.routing.util.EdgeFilter
 import com.graphhopper.storage.index.LocationIndex
 import com.graphhopper.storage.index.Snap
 import com.graphhopper.util.shapes.GHPoint3D
+import com.pathpress.config.Config
 import com.pathpress.poi.PoiExtractor
 import com.pathpress.poi.TownInfo
 import kotlin.test.Test
@@ -34,7 +35,7 @@ class RoadNetworkSnapperTest {
     }
 
     private class TestPoiExtractor(private val towns: List<TownInfo> = emptyList()) :
-        PoiExtractor() {
+        PoiExtractor(config = Config()) {
         override fun findNearbyTowns(
             pbfPath: String,
             targetLat: Double,
@@ -125,7 +126,12 @@ class RoadNetworkSnapperTest {
     @Test
     fun `snapFilterFor returns ALL_EDGES when profile initialization throws and car_access is missing`() {
         val gh = GraphHopper() // Uninitialized graph hopper without encoding manager
-        val snapper = RoadNetworkSnapper(graphHopper = gh, pbfFilePath = "dummy.pbf")
+        val snapper =
+            RoadNetworkSnapper(
+                graphHopper = gh,
+                pbfFilePath = "dummy.pbf",
+                poiExtractor = PoiExtractor(config = Config()),
+            )
 
         val filter = snapper.snapFilterFor("unknown_profile")
         assertEquals(EdgeFilter.ALL_EDGES, filter)

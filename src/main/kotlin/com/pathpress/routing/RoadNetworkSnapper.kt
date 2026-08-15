@@ -31,7 +31,7 @@ data class SnapResult(
 class RoadNetworkSnapper(
     private val graphHopper: GraphHopper,
     private val pbfFilePath: String,
-    private val poiExtractor: PoiExtractor = PoiExtractor(),
+    private val poiExtractor: PoiExtractor,
 ) {
     private val logger = LoggerFactory.getLogger(RoadNetworkSnapper::class.java)
     private val snapFilterCache = mutableMapOf<String, EdgeFilter>()

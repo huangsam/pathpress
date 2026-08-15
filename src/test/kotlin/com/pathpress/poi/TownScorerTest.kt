@@ -52,7 +52,7 @@ class TownScorerTest {
 
         val store = PoiCacheStore(pois = listOf(hotel1, hotel2, park, cafe), towns = listOf(town))
 
-        val scored = TownScorer.scoreTownForOvernight(town, store)
+        val scored = TownScorer.scoreTownForOvernight(town, store, config = Config())
         assertEquals(2, scored.hotelCount)
         assertEquals(1, scored.familyCount)
         assertEquals(1, scored.diningCount)
@@ -77,9 +77,19 @@ class TownScorerTest {
         val store = PoiCacheStore(pois = listOf(park), towns = listOf(town))
 
         val defaultScored =
-            TownScorer.scoreTownForOvernight(town, store, userPrompt = "Scenic road trip")
+            TownScorer.scoreTownForOvernight(
+                town,
+                store,
+                config = Config(),
+                userPrompt = "Scenic road trip",
+            )
         val familyScored =
-            TownScorer.scoreTownForOvernight(town, store, userPrompt = "Trip with kids and family")
+            TownScorer.scoreTownForOvernight(
+                town,
+                store,
+                config = Config(),
+                userPrompt = "Trip with kids and family",
+            )
 
         assertEquals(3, defaultScored.score) // 1 park * 3 = 3
         assertEquals(5, familyScored.score) // 1 park * 5 = 5 (boosted)
@@ -191,9 +201,19 @@ class TownScorerTest {
         val prompt =
             "toddler friendly, coastal highway route, prefer scenic beach town or historic village for overnight stay"
         val scoredInland =
-            TownScorer.scoreTownForOvernight(inlandHamlet, store, userPrompt = prompt)
+            TownScorer.scoreTownForOvernight(
+                inlandHamlet,
+                store,
+                config = Config(),
+                userPrompt = prompt,
+            )
         val scoredCoastal =
-            TownScorer.scoreTownForOvernight(coastalVillage, store, userPrompt = prompt)
+            TownScorer.scoreTownForOvernight(
+                coastalVillage,
+                store,
+                config = Config(),
+                userPrompt = prompt,
+            )
 
         assertEquals(1, scoredCoastal.coastalCount)
         assertEquals(1, scoredCoastal.historicCount)
@@ -267,9 +287,15 @@ class TownScorerTest {
         val promptWithFalsePositives =
             "Attended a research conference yesterday displaying orchid bayonets in a prehistoric cafeteria acquaintance with great weather and theater"
 
-        val defaultScored = TownScorer.scoreTownForOvernight(town, store, userPrompt = null)
+        val defaultScored =
+            TownScorer.scoreTownForOvernight(town, store, config = Config(), userPrompt = null)
         val scoredWithPrompt =
-            TownScorer.scoreTownForOvernight(town, store, userPrompt = promptWithFalsePositives)
+            TownScorer.scoreTownForOvernight(
+                town,
+                store,
+                config = Config(),
+                userPrompt = promptWithFalsePositives,
+            )
 
         assertEquals(
             defaultScored.score,
@@ -334,9 +360,15 @@ class TownScorerTest {
         val promptWithPlurals =
             "Trip with kids and toddlers exploring bakeries and monuments near beaches with luxury hotels in picturesque villages"
 
-        val defaultScored = TownScorer.scoreTownForOvernight(town, store, userPrompt = null)
+        val defaultScored =
+            TownScorer.scoreTownForOvernight(town, store, config = Config(), userPrompt = null)
         val pluralScored =
-            TownScorer.scoreTownForOvernight(town, store, userPrompt = promptWithPlurals)
+            TownScorer.scoreTownForOvernight(
+                town,
+                store,
+                config = Config(),
+                userPrompt = promptWithPlurals,
+            )
 
         assertEquals(18, defaultScored.score)
         assertEquals(46, pluralScored.score)

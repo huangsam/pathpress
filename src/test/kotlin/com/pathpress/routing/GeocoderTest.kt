@@ -26,7 +26,7 @@ class GeocoderTest {
 
     @Test
     fun `test direct coordinate geocoding`() {
-        val geocoder = Geocoder()
+        val geocoder = Geocoder(config = Config())
         val result = geocoder.geocode("37.7749, -122.4194")
         assertNotNull(result)
         assertEquals(37.7749, result.coords.lat)
@@ -56,6 +56,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -64,7 +65,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 500)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("San Francisco")
@@ -110,6 +111,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -120,7 +122,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 404)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("Paris")
@@ -150,6 +152,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -160,7 +163,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 404)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("Bogus Town")
@@ -204,6 +207,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -212,7 +216,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 500)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("Springfield")
@@ -257,6 +261,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -265,7 +270,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 500)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("Big Sur")
@@ -300,6 +305,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -319,7 +325,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 404)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("Chicago")
@@ -355,6 +361,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -363,7 +370,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 500)
                         }
-                    }
+                    },
             )
 
         val result = geocoder.geocode("78701")
@@ -398,6 +405,7 @@ class GeocoderTest {
 
         val geocoder =
             Geocoder(
+                config = Config(),
                 httpClient =
                     MockHttpClient { req ->
                         val uri = req.uri().toString()
@@ -407,7 +415,7 @@ class GeocoderTest {
                         } else {
                             MockHttpResponse("", 500)
                         }
-                    }
+                    },
             )
 
         geocoder.geocode("City 1")
@@ -423,7 +431,7 @@ class GeocoderTest {
     @Test
     @Tag("network")
     fun `test city geocoding and caching`() {
-        val geocoder = Geocoder()
+        val geocoder = Geocoder(config = Config())
         val first = geocoder.geocode("San Jose, CA")
         assertNotNull(first)
         assertNotNull(first.displayName)
@@ -438,7 +446,7 @@ class GeocoderTest {
     @Test
     @Tag("network")
     fun `test geocoding unresolvable location returns null`() {
-        val geocoder = Geocoder()
+        val geocoder = Geocoder(config = Config())
         val result = geocoder.geocode("Unknown Test Village 12345")
         assertNull(result)
     }
@@ -446,7 +454,7 @@ class GeocoderTest {
     @Test
     @Tag("network")
     fun `test non-California locations resolve without fastResult collision`() {
-        val geocoder = Geocoder()
+        val geocoder = Geocoder(config = Config())
         val result = geocoder.geocode("Port Angeles, WA")
         assertNotNull(result)
         // Ensure Port Angeles does NOT incorrectly resolve to Los Angeles, CA

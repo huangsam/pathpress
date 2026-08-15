@@ -18,7 +18,7 @@ class LlmProviderTest {
 
     @Test
     fun `LlmProvider factory creates NoOpFallbackProvider for unknown provider`() {
-        val provider = LlmProvider.create("unknown", null, null)
+        val provider = LlmProvider.create("unknown", null, null, config = Config())
         assertIs<NoOpFallbackProvider>(provider)
     }
 
@@ -36,6 +36,7 @@ class LlmProviderTest {
                 apiKey = "test-key",
                 apiUrl = null,
                 modelName = "gemini-2.0-flash",
+                config = Config(),
             )
         assertIs<GeminiProvider>(customGemini)
         assertEquals("gemini-2.0-flash", customGemini.modelName)
@@ -46,12 +47,19 @@ class LlmProviderTest {
                 apiKey = "test-key",
                 apiUrl = null,
                 modelName = "claude-3-5-sonnet",
+                config = Config(),
             )
         assertIs<ClaudeProvider>(customClaude)
         assertEquals("claude-3-5-sonnet", customClaude.modelName)
 
         val customOpenAi =
-            LlmProvider.create("openai", apiKey = "test-key", apiUrl = null, modelName = "gpt-4o")
+            LlmProvider.create(
+                "openai",
+                apiKey = "test-key",
+                apiUrl = null,
+                modelName = "gpt-4o",
+                config = Config(),
+            )
         assertIs<OpenAiCompatibleProvider>(customOpenAi)
         assertEquals("gpt-4o", customOpenAi.modelName)
 
@@ -61,6 +69,7 @@ class LlmProviderTest {
                 apiKey = null,
                 apiUrl = "http://localhost:11434/api/chat",
                 modelName = "llama3:8b",
+                config = Config(),
             )
         assertIs<OllamaProvider>(customOllama)
         assertEquals("llama3:8b", customOllama.modelName)
@@ -204,7 +213,7 @@ class LlmProviderTest {
     fun `HttpLlmProvider curateLegPois never calls the LLM`() {
         var completeCalled = false
         val provider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String? {
                     completeCalled = true
                     error("complete() must never be called during curateLegPois!")
@@ -250,7 +259,7 @@ class LlmProviderTest {
                 .trimIndent()
 
         val provider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String = validLlmJson
             }
 
@@ -282,7 +291,7 @@ class LlmProviderTest {
                 .trimIndent()
 
         val provider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String = taintedLlmJson
             }
 
@@ -321,7 +330,7 @@ class LlmProviderTest {
     fun `HttpLlmProvider planTrip falls back to NoOpFallbackProvider when complete returns null`() {
         var completeCalled = false
         val provider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String? {
                     completeCalled = true
                     return null
@@ -361,12 +370,12 @@ class LlmProviderTest {
 
     @Test
     fun `GeminiProvider constructor throws IllegalArgumentException on blank API key`() {
-        assertFailsWith<IllegalArgumentException> { GeminiProvider(apiKey = "") }
+        assertFailsWith<IllegalArgumentException> { GeminiProvider(apiKey = "", config = Config()) }
     }
 
     @Test
     fun `ClaudeProvider constructor throws IllegalArgumentException on blank API key`() {
-        assertFailsWith<IllegalArgumentException> { ClaudeProvider(apiKey = "") }
+        assertFailsWith<IllegalArgumentException> { ClaudeProvider(apiKey = "", config = Config()) }
     }
 
     @Test
@@ -375,6 +384,7 @@ class LlmProviderTest {
             OpenAiCompatibleProvider(
                 apiKey = "",
                 endpoint = "https://api.openai.com/v1/chat/completions",
+                config = Config(),
             )
         }
     }
@@ -385,6 +395,7 @@ class LlmProviderTest {
             OpenAiCompatibleProvider(
                 apiKey = "",
                 endpoint = "http://localhost:11434/v1/chat/completions",
+                config = Config(),
             )
         assertIs<OpenAiCompatibleProvider>(provider)
     }
@@ -403,7 +414,7 @@ class LlmProviderTest {
     @Test
     fun `HttpLlmProvider parseTripPlan handles string list waypoints and object list waypoints`() {
         val dummyProvider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String? = null
 
                 fun testParse(json: String) = parseTripPlan(json)
@@ -446,7 +457,7 @@ class LlmProviderTest {
     @Test
     fun `HttpLlmProvider parseTripPlan caps oversized waypoint list`() {
         val dummyProvider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String? = null
 
                 fun testParse(json: String) = parseTripPlan(json)
@@ -476,7 +487,7 @@ class LlmProviderTest {
     @Test
     fun `HttpLlmProvider buildPrompt includes critical routing instructions for waypoints`() {
         val dummyProvider =
-            object : HttpLlmProvider() {
+            object : HttpLlmProvider(config = Config()) {
                 override fun complete(prompt: String): String? = null
 
                 fun testPrompt(start: String, end: String, days: Int, prompt: String?) =
@@ -559,7 +570,7 @@ class LlmProviderTest {
     }
 
     @Test
-    fun `Direct LLM provider constructors honor custom Config and default to Config()`() {
+    fun `Direct LLM provider constructors honor explicit Config`() {
         val customConfig =
             Config(
                 defaultGeminiModel = "cfg-gemini",
@@ -572,7 +583,7 @@ class LlmProviderTest {
         assertEquals("cfg-gemini", geminiCustom.modelName)
         assertSame(customConfig, geminiCustom.config)
 
-        val geminiDefault = GeminiProvider("key")
+        val geminiDefault = GeminiProvider("key", config = Config())
         assertEquals(Config().defaultGeminiModel, geminiDefault.modelName)
         assertEquals(Config(), geminiDefault.config)
 
@@ -580,7 +591,7 @@ class LlmProviderTest {
         assertEquals("cfg-claude", claudeCustom.modelName)
         assertSame(customConfig, claudeCustom.config)
 
-        val claudeDefault = ClaudeProvider("key")
+        val claudeDefault = ClaudeProvider("key", config = Config())
         assertEquals(Config().defaultClaudeModel, claudeDefault.modelName)
         assertEquals(Config(), claudeDefault.config)
 
@@ -593,7 +604,8 @@ class LlmProviderTest {
         assertEquals("cfg-openai", openaiCustom.modelName)
         assertSame(customConfig, openaiCustom.config)
 
-        val openaiDefault = OpenAiCompatibleProvider("key", endpoint = "http://localhost:8080")
+        val openaiDefault =
+            OpenAiCompatibleProvider("key", endpoint = "http://localhost:8080", config = Config())
         assertEquals(Config().defaultOpenAiModel, openaiDefault.modelName)
         assertEquals(Config(), openaiDefault.config)
 
@@ -602,7 +614,7 @@ class LlmProviderTest {
         assertEquals("cfg-ollama", ollamaCustom.modelName)
         assertSame(customConfig, ollamaCustom.config)
 
-        val ollamaDefault = OllamaProvider(endpoint = "http://localhost:11434")
+        val ollamaDefault = OllamaProvider(endpoint = "http://localhost:11434", config = Config())
         assertEquals(Config().defaultOllamaModel, ollamaDefault.modelName)
         assertEquals(Config(), ollamaDefault.config)
     }

@@ -1,6 +1,7 @@
 package com.pathpress
 
 import com.github.ajalt.clikt.core.parse
+import com.pathpress.config.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -51,6 +52,7 @@ class MainTest {
                 days = 2,
                 prompt = "coastal highway 1 trip",
                 llm = llm,
+                geocoder = { null },
             )
 
         kotlin.test.assertTrue(
@@ -61,7 +63,7 @@ class MainTest {
 
     @Test
     fun `PathPressCommand exits with GEOCODING_ERROR when geocoding fails`() {
-        val orchestrator = TripPlannerOrchestrator(geocoder = { null })
+        val orchestrator = TripPlannerOrchestrator(config = Config(), geocoder = { null })
         val command = PathPressCommand(orchestrator = orchestrator)
         val ex =
             kotlin.test.assertFailsWith<com.github.ajalt.clikt.core.ProgramResult> {
@@ -74,7 +76,8 @@ class MainTest {
     fun `PathPressCommand exits with INTERNAL_ERROR on unexpected exception`() {
         val orchestrator =
             TripPlannerOrchestrator(
-                geocoder = { throw RuntimeException("Simulated unexpected disk/IO error") }
+                config = Config(),
+                geocoder = { throw RuntimeException("Simulated unexpected disk/IO error") },
             )
         val command = PathPressCommand(orchestrator = orchestrator)
         val ex =

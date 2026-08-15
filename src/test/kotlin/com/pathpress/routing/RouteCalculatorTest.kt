@@ -14,7 +14,12 @@ class RouteCalculatorTest {
 
     @Test
     fun `extractLegsFromResponse single day leg formats distance, duration, and custom day title`() {
-        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val calculator =
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val path = ResponsePath()
         val pointList = PointList()
         pointList.add(37.7749, -122.4194)
@@ -47,7 +52,12 @@ class RouteCalculatorTest {
 
     @Test
     fun `extractLegsFromResponse multi-day route derives per-leg distance and duration from real geometry, not an even split`() {
-        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val calculator =
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val path = ResponsePath()
         val pointList = PointList()
         // Points sit on the same meridian so haversine distance is exactly R * dLat(radians):
@@ -81,7 +91,12 @@ class RouteCalculatorTest {
 
     @Test
     fun `extractLegsFromResponse multi-day route uses custom day titles when provided`() {
-        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val calculator =
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val path = ResponsePath()
         val pointList = PointList()
         pointList.add(37.7749, -122.4194)
@@ -109,7 +124,12 @@ class RouteCalculatorTest {
 
     @Test
     fun `extractLegsFromResponse multi-day route partitions geometry correctly into legs`() {
-        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val calculator =
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val path = ResponsePath()
         val pointList = PointList()
         pointList.add(37.7749, -122.4194)
@@ -154,7 +174,12 @@ class RouteCalculatorTest {
 
     @Test
     fun `extractLegsFromResponse multi-day legs preserve parent route geometry and waypoint corridor`() {
-        val calculator = RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+        val calculator =
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val path = ResponsePath()
         val pointList = PointList()
         // Parent path passes through SF -> Monterey -> Big Sur (waypoint) -> Morro Bay -> LA
@@ -242,7 +267,11 @@ class RouteCalculatorTest {
         }
 
         val calculator =
-            RouteCalculator(graphHopper = Phase1TestGraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(
+                graphHopper = Phase1TestGraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val waypoints =
             listOf(
                 LocationCoords(36.6002, -121.8947), // Monterey
@@ -303,7 +332,11 @@ class RouteCalculatorTest {
         }
 
         val calculator =
-            RouteCalculator(graphHopper = Phase2TestGraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(
+                graphHopper = Phase2TestGraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         val waypoints =
             listOf(
                 LocationCoords(36.6002, -121.8947), // Monterey
@@ -365,7 +398,11 @@ class RouteCalculatorTest {
         }
 
         val calculator =
-            RouteCalculator(graphHopper = AlwaysFailingGraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(
+                graphHopper = AlwaysFailingGraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
 
         val exception =
             kotlin.test.assertFailsWith<RouteCalculationException> {
@@ -422,6 +459,7 @@ class RouteCalculatorTest {
             RouteCalculator(
                 graphHopper = FailingFarSnapGraphHopper(stubIndex),
                 pbfFilePath = "dummy.pbf",
+                config = Config(),
             )
 
         val exception =
@@ -453,7 +491,11 @@ class RouteCalculatorTest {
         }
 
         val calculator =
-            RouteCalculator(graphHopper = FailingSnapGraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(
+                graphHopper = FailingSnapGraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
 
         val exception =
             kotlin.test.assertFailsWith<RouteCalculationException> {
@@ -484,9 +526,13 @@ class RouteCalculatorTest {
     }
 
     @Test
-    fun `RouteCalculator zero-arg config uses default Config instance`() {
+    fun `RouteCalculator holds explicit Config instance`() {
         val routeCalculator =
-            RouteCalculator(graphHopper = GraphHopper(), pbfFilePath = "dummy.pbf")
+            RouteCalculator(
+                graphHopper = GraphHopper(),
+                pbfFilePath = "dummy.pbf",
+                config = Config(),
+            )
         assertEquals(Config(), routeCalculator.config)
     }
 }

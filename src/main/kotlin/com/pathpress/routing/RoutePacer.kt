@@ -23,10 +23,7 @@ data class LegGeometryInfo(
  * Encapsulates multi-day route pacing, milestone calculation, polyline slicing, and candidate town
  * selection.
  */
-class RoutePacer(
-    private val pbfFilePath: String,
-    private val poiExtractor: PoiExtractor = PoiExtractor(),
-) {
+class RoutePacer(private val pbfFilePath: String, private val poiExtractor: PoiExtractor) {
     private val logger = LoggerFactory.getLogger(RoutePacer::class.java)
 
     /** Compute cumulative distance array (`dCum`) along polyline coordinates. */

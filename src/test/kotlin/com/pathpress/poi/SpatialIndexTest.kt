@@ -1,5 +1,6 @@
 package com.pathpress.poi
 
+import com.pathpress.config.Config
 import com.pathpress.model.POI
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -100,7 +101,7 @@ class SpatialIndexTest {
                 type = "hotel",
             )
         val store = PoiCacheStore(pois = listOf(hotel), towns = listOf(town))
-        val scored = TownScorer.scoreTownForOvernight(town, store)
+        val scored = TownScorer.scoreTownForOvernight(town, store, config = Config())
         assertEquals(1, scored.hotelCount, "Hotel must be found when town is scored")
     }
 }

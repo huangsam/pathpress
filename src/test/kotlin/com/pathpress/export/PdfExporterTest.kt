@@ -113,7 +113,7 @@ class PdfExporterTest {
                 narrative = "Pacific Coast Highway drive",
             )
 
-        val html = PdfExporter.generateHtml(route, "San Francisco", "Monterey")
+        val html = PdfExporter.generateHtml(route, "San Francisco", "Monterey", config = Config())
 
         assertTrue(html.contains("hero-banner"))
         assertTrue(html.contains("editorial-heading"))
@@ -154,7 +154,7 @@ class PdfExporterTest {
         val route =
             Route(legs = listOf(leg), totalDistanceMeters = 50000.0, totalDurationSeconds = 3600.0)
 
-        val html = PdfExporter.generateHtml(route, "San Francisco", "Monterey")
+        val html = PdfExporter.generateHtml(route, "San Francisco", "Monterey", config = Config())
 
         assertTrue(
             !html.contains("class=\"qr-card qr-card-left\""),
@@ -206,7 +206,14 @@ class PdfExporterTest {
                 totalDurationSeconds = 29160.0,
                 narrative = "Test Narrative",
             )
-        val html = PdfExporter.generateHtml(route, "San Jose", "Bakersfield", DistanceUnit.IMPERIAL)
+        val html =
+            PdfExporter.generateHtml(
+                route,
+                "San Jose",
+                "Bakersfield",
+                DistanceUnit.IMPERIAL,
+                config = Config(),
+            )
         val snapshotsDir = java.io.File("build/snapshots")
         snapshotsDir.mkdirs()
 
@@ -262,7 +269,7 @@ class PdfExporterTest {
                 totalDistanceMeters = 300000.0,
                 totalDurationSeconds = 10800.0,
             )
-        val html3 = PdfExporter.generateHtml(route3Days, "Start", "End")
+        val html3 = PdfExporter.generateHtml(route3Days, "Start", "End", config = Config())
         assertTrue(
             !html3.contains("class=\"toc-list toc-grid-2col\""),
             "3-day route should use 1-column TOC",
@@ -274,7 +281,7 @@ class PdfExporterTest {
                 totalDistanceMeters = 400000.0,
                 totalDurationSeconds = 14400.0,
             )
-        val html4 = PdfExporter.generateHtml(route4Days, "Start", "End")
+        val html4 = PdfExporter.generateHtml(route4Days, "Start", "End", config = Config())
         assertTrue(
             html4.contains("class=\"toc-list toc-grid-2col\""),
             "4-day route should apply 2-column TOC grid",
@@ -310,7 +317,13 @@ class PdfExporterTest {
             )
 
         val html =
-            PdfExporter.generateHtml(route, "San Francisco", "Los Angeles", DistanceUnit.IMPERIAL)
+            PdfExporter.generateHtml(
+                route,
+                "San Francisco",
+                "Los Angeles",
+                DistanceUnit.IMPERIAL,
+                config = Config(),
+            )
         assertTrue(html.contains("class=\"toc-list toc-grid-2col\""))
 
         val snapshotsDir = java.io.File("build/snapshots")

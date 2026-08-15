@@ -42,7 +42,7 @@ object PdfExporter {
         startLocation: String,
         endLocation: String,
         unit: DistanceUnit = DistanceUnit.METRIC,
-        config: Config = Config(),
+        config: Config,
     ): String {
         val safeStart = sanitizeText(startLocation)
         val safeEnd = sanitizeText(endLocation)

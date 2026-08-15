@@ -313,7 +313,7 @@ class PoiExtractorTest {
     @Test
     fun `findCandidateTownsAlongRoute returns empty list when routePoints is empty`() {
         val result =
-            PoiExtractor()
+            PoiExtractor(config = Config())
                 .findCandidateTownsAlongRoute(
                     pbfPath = "non_existent.pbf",
                     routePoints = emptyList(),
@@ -358,7 +358,7 @@ class PoiExtractorTest {
         val routePoints = listOf(LocationCoords(37.76, -122.40), LocationCoords(37.79, -122.43))
 
         val resultWithExclusion =
-            PoiExtractor(baseTilesDir = tempTilesDir)
+            PoiExtractor(config = Config(), baseTilesDir = tempTilesDir)
                 .extractPoisForLeg(
                     pbfPath = "dummy.pbf",
                     legPoints = routePoints,
@@ -657,7 +657,7 @@ class PoiExtractorTest {
         assertEquals(12.0, customExtractor.config.townScoringRadiusMiles)
         assertEquals(0.25, customExtractor.config.townProgressWindowFraction)
 
-        val defaultExtractor = PoiExtractor()
+        val defaultExtractor = PoiExtractor(config = Config())
         assertEquals(Config(), defaultExtractor.config)
     }
 }

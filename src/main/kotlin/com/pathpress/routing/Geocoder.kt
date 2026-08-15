@@ -34,10 +34,7 @@ private data class PhotonGeometry(val coordinates: List<Double> = emptyList())
  * fallback to resolve location names into coordinates and clean display names, backed by an
  * in-memory query cache and rate limiting.
  */
-class Geocoder(
-    val config: Config = Config(),
-    private val httpClient: HttpClient = createHttpClient(config),
-) {
+class Geocoder(val config: Config, private val httpClient: HttpClient = createHttpClient(config)) {
 
     private val logger = LoggerFactory.getLogger(Geocoder::class.java)
 
@@ -282,7 +279,7 @@ class Geocoder(
         private val NOMINATIM_PLACE_TYPES =
             setOf("city", "town", "village", "hamlet", "municipality", "locality")
 
-        fun createHttpClient(config: Config = Config()): HttpClient =
+        fun createHttpClient(config: Config): HttpClient =
             HttpClient.newBuilder()
                 .connectTimeout(config.geocoderConnectTimeout)
                 .followRedirects(HttpClient.Redirect.NORMAL)
