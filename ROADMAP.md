@@ -23,6 +23,9 @@ PathPress is an offline-first, publication-grade road trip planning and itinerar
 * **Daylight & Solar Ephemeris Pacing (Golden Hour Alignment)**
   Embed astronomical solar position calculations (azimuth/elevation) to align arrival at prime viewpoints with golden hour/sunset, while enforcing daylight safety constraints for unlit mountain routes.
 
+* **Midday Meal Anchoring & Fuel/EV Charging Safety**
+  Automatically identify top-rated local bakeries, diners, and cafes positioned within the 3.5–5 hour driving window to designate an official midday meal stop, alongside a fuel and DC fast-charging safety monitor for remote 100+ mile corridors.
+
 * **Detour Budget Knapsack Optimization (Corridor TSP)**
   Model stopover POI selection as a **Constrained Multi-Choice Knapsack Problem**, maximizing itinerary quality within a user-specified detour time budget (e.g., *"max 45 min total detours"*).
 
@@ -30,14 +33,17 @@ PathPress is an offline-first, publication-grade road trip planning and itinerar
 
 ## Theme 3: Ecosystem, Exports & Distribution
 
+* **Dual Apple Maps + Google Maps & CarPlay Integration**
+  Generate native Apple Maps directions links (`maps://` / `https://maps.apple.com/`) alongside existing Google Maps links, featuring dual-QR or selectable navigation buttons (`--nav-app google|apple`) tailored for iOS and CarPlay drivers.
+
 * **Navigation & GPX / GeoJSON Exports**
-  Export `.gpx` track segments and waypoints for Garmin/Gaia GPS, along with Google My Maps `.kml` and native Apple Maps multi-stop deep links.
+  Export `.gpx` track segments and waypoints for Garmin/Gaia GPS, along with Google My Maps `.kml` and offline navigation apps.
 
 * **Calendar Integration (`.ics` Export)**
   Convert daily driving legs, stopover towns, and meal stops into structured `.ics` calendar events for Google Calendar, Apple Calendar, and Outlook.
 
-* **Standalone Interactive HTML Export (`pathpress export html`)**
-  Generate a single-file, self-contained HTML publication (`pathpress plan -o report.html` or `pathpress export html`) featuring an embedded CDN-powered MapLibre/Leaflet map viewer, elevation cross-sections, and daily itinerary cards ready for offline sharing or GitHub Pages hosting.
+* **Mobile-First Interactive HTML Companion (`pathpress export html`)**
+  Generate a single-file, self-contained interactive web app (`itinerary.html`) featuring large touch targets for in-car passenger use, an embedded MapLibre map viewer, elevation profiles, and one-tap navigation launching.
 
 * **Native Packaging & Distribution**
   Distribution via a Homebrew formula (`brew install huangsam/tap/pathpress`) packaging a self-contained runtime / shadow JAR, eliminating local JVM dependency friction without GraalVM native image build complexity.
