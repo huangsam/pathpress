@@ -464,7 +464,11 @@ class TownScorerTest {
                     cacheStore,
                     config = familyHeavyConfig,
                 ),
-                TownScorer.scoreTownForOvernight(diningTown, cacheStore, config = familyHeavyConfig),
+                TownScorer.scoreTownForOvernight(
+                    diningTown,
+                    cacheStore,
+                    config = familyHeavyConfig,
+                ),
             )
         val rankedFamilyHeavy = TownScorer.rankCandidateTowns(familyHeavyScores)
         assertEquals("FamilyTown", rankedFamilyHeavy.first().town.name)
@@ -478,7 +482,11 @@ class TownScorerTest {
                     cacheStore,
                     config = diningHeavyConfig,
                 ),
-                TownScorer.scoreTownForOvernight(diningTown, cacheStore, config = diningHeavyConfig),
+                TownScorer.scoreTownForOvernight(
+                    diningTown,
+                    cacheStore,
+                    config = diningHeavyConfig,
+                ),
             )
         val rankedDiningHeavy = TownScorer.rankCandidateTowns(diningHeavyScores)
         assertEquals("DiningTown", rankedDiningHeavy.first().town.name)

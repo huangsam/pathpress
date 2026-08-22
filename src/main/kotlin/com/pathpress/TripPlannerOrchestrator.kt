@@ -48,7 +48,11 @@ class TripPlannerOrchestrator(
         },
     private val llmProviderFactory:
         (
-            provider: String, key: String?, url: String?, model: String?, config: Config,
+            provider: String,
+            key: String?,
+            url: String?,
+            model: String?,
+            config: Config,
         ) -> LlmProvider =
         { provider, key, url, model, cfg ->
             LlmProvider.create(provider, key, url, model, config = cfg)
