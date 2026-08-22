@@ -28,7 +28,7 @@ dependencies {
     implementation("com.graphhopper:graphhopper-core:11.0")
 
     // High performance primitive collections
-    implementation("com.carrotsearch:hppc:0.8.1")
+    implementation("com.carrotsearch:hppc:0.9.1")
 
     // PDF rendering (JVM-native)
     implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
@@ -39,11 +39,11 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.12.0")
 
     // QR Code generation
-    implementation("com.google.zxing:core:3.5.3")
-    implementation("com.google.zxing:javase:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
+    implementation("com.google.zxing:javase:3.5.4")
 
     // JSON processing
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.22.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.22.2")
 
     // CLI argument parsing
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
@@ -53,7 +53,7 @@ dependencies {
 
     // Unit testing
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:6.1.1")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.2")
 }
 
 kotlin { jvmToolchain(21) }
