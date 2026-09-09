@@ -29,6 +29,9 @@ PathPress is an offline-first, publication-grade road trip planning and itinerar
 * **Detour Budget Knapsack Optimization (Corridor TSP)**
   Model stopover POI selection as a **Constrained Multi-Choice Knapsack Problem**, maximizing itinerary quality within a user-specified detour time budget (e.g., *"max 45 min total detours"*).
 
+* **Institutional & Restricted-Access POI Filtering (`office=*`, `access=*`)**
+  Distinguish public roadside attractions from private retreat campuses, administrative offices (`office=*`), research institutes, and reservation-only facilities (`access=customers|permit|members`), ensuring curated stops are open and accessible for casual drop-in road trippers.
+
 ---
 
 ## Theme 3: Ecosystem, Exports & Distribution
