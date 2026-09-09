@@ -10,7 +10,8 @@ import java.net.http.HttpResponse
  * [HttpLlmProvider] implementation targeting local Ollama REST instances
  * (`http://localhost:11434/api/chat`).
  *
- * Requests structured JSON responses using `"format": "json"` mode without requiring an API key.
+ * Communicates via Ollama's chat API without requiring an API key, relying on prompt-instructed
+ * JSON output.
  */
 class OllamaProvider(
     private val endpoint: String,
@@ -31,7 +32,6 @@ class OllamaProvider(
                             mapOf("role" to "user", "content" to prompt),
                         ),
                     "stream" to false,
-                    "format" to "json",
                     "options" to mapOf("temperature" to 0.1),
                 )
             )

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 ### Changed
 - Enforced strict configuration injection across core spatial and AI planning services.
 
+### Fixed
+- Fixed Ollama structured output failure with MLX models by removing unneeded format constraint.
+
 ## [0.6.0] - 2026-08-11
 
 ### Added

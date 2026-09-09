@@ -618,4 +618,43 @@ class LlmProviderTest {
         assertEquals(Config().defaultOllamaModel, ollamaDefault.modelName)
         assertEquals(Config(), ollamaDefault.config)
     }
+
+    @Test
+    fun `OllamaProvider complete does not include format in request body`() {
+        var capturedRequestBody: String? = null
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress(0), 0)
+        server.createContext("/api/chat") { exchange ->
+            capturedRequestBody = exchange.requestBody.bufferedReader().readText()
+            val responseJson =
+                """{"message":{"content":"{\"waypoints\":[\"Monterey, CA\"],\"narrative\":\"Test narrative\"}"}}"""
+            val responseBytes = responseJson.toByteArray()
+            exchange.responseHeaders.set("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, responseBytes.size.toLong())
+            exchange.responseBody.use { it.write(responseBytes) }
+        }
+        server.start()
+        try {
+            val port = server.address.port
+            val provider =
+                OllamaProvider(endpoint = "http://127.0.0.1:$port/api/chat", config = Config())
+            val result =
+                provider.planTrip(
+                    startName = "San Jose, CA",
+                    endName = "San Diego, CA",
+                    startCoords = LocationCoords(37.33, -121.88),
+                    endCoords = LocationCoords(32.71, -117.16),
+                    days = 2,
+                    userPrompt = "Test prompt",
+                )
+            assertEquals("Test narrative", result.narrative)
+            assertEquals(1, result.waypoints.size)
+            assertEquals("Monterey, CA", result.waypoints[0].name)
+
+            val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+            val root = mapper.readValue(capturedRequestBody!!, Map::class.java)
+            assertFalse(root.containsKey("format"), "Request body must not contain 'format' key")
+        } finally {
+            server.stop(0)
+        }
+    }
 }
