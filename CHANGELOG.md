@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+- Prioritized toddler-friendly POIs (playgrounds, beaches, zoos, children's museums) over formal museums and castles for young family trips.
+
 ### Changed
 - Enforced strict configuration injection across core spatial and AI planning services.
 

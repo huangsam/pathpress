@@ -2,6 +2,7 @@ package com.pathpress.poi
 
 import com.pathpress.config.Config
 import com.pathpress.geo.GeoUtils
+import com.pathpress.poi.rules.isFormalAdultMuseumOrCastle
 import kotlin.math.cos
 
 /**
@@ -68,6 +69,11 @@ object TownScorer {
             """\b(?:family|families|kid|kids|toddler|toddlers|children|child|play|plays)\b""",
             RegexOption.IGNORE_CASE,
         )
+    private val TODDLER_PROMPT_REGEX =
+        Regex(
+            """\b(?:toddler|toddlers|baby|babies|infant|infants|1-year-old|2-year-old|3-year-old)\b""",
+            RegexOption.IGNORE_CASE,
+        )
     private val DINING_PROMPT_REGEX =
         Regex(
             """\b(?:food|foods|dining|culinary|bakery|bakeries|coffee|coffees|restaurant|restaurants|cafe|cafes)\b""",
@@ -111,6 +117,9 @@ object TownScorer {
         userPrompt: String? = null,
         distanceFromTargetMeters: Double = 0.0,
     ): ScoredTown {
+        val isToddlerPrompt =
+            !userPrompt.isNullOrBlank() && TODDLER_PROMPT_REGEX.containsMatchIn(userPrompt)
+
         // Convert radius in miles to meters and derive lat/lng bounding box degree offset
         // (~111,000m per degree)
         val maxDistMeters = radiusMiles * 1609.34
@@ -151,10 +160,11 @@ object TownScorer {
                             tourismTag in HOTEL_TYPES ||
                             amenityTag in HOTEL_TYPES
                     val isFamily =
-                        pType in FAMILY_TYPES ||
+                        (pType in FAMILY_TYPES ||
                             leisureTag in FAMILY_TYPES ||
                             tourismTag in FAMILY_TYPES ||
-                            naturalTag in FAMILY_TYPES
+                            naturalTag in FAMILY_TYPES) &&
+                            (!isToddlerPrompt || !isFormalAdultMuseumOrCastle(poi))
                     val isDining =
                         pType in DINING_TYPES || amenityTag in DINING_TYPES || poi.isFoodOrCoffee
                     val isCoastal =

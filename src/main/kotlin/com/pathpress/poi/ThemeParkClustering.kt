@@ -73,6 +73,7 @@ object ThemeParkClustering {
             website.contains("seaworld.com") -> "seaworld.com"
             website.contains("knotts.com") -> "knotts.com"
             website.contains("universalstudios.com") -> "universalstudios.com"
+            website.contains("legoland.com") -> "legoland.com"
             else -> null
         }
     }

@@ -60,6 +60,12 @@ object PersonaExclusionFilterRule : PoiFilterRule {
         if (context.shouldExcludePeaks && (tags["natural"] == "peak" || poi.type == "peak")) {
             return true
         }
+        if (context.avoidsMuseumsFromPrompt && isFormalAdultMuseumOrCastle(poi)) {
+            return true
+        }
+        if (context.avoidsCastlesFromPrompt && isCastleOrStatelyMansion(poi)) {
+            return true
+        }
         if (context.excludeIndustrial) {
             if (tags.containsKey("telecom") || tags["telecom"] != null) return true
             if (tags.containsKey("power") || tags["power"] != null) return true

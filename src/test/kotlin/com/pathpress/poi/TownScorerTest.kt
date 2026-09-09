@@ -492,4 +492,69 @@ class TownScorerTest {
         assertEquals("DiningTown", rankedDiningHeavy.first().town.name)
         assertEquals(20, rankedDiningHeavy.first().score)
     }
+
+    @Test
+    fun `scoreTownForOvernight excludes adult museums and castles from familyCount for toddler prompts`() {
+        val town = TownInfo(name = "TestTown", lat = 35.0, lng = -120.0, type = "town")
+        val artMuseum =
+            POI(
+                id = "m1",
+                name = "City Art Museum",
+                lat = 35.005,
+                lng = -120.005,
+                type = "museum",
+                tags = mapOf("tourism" to "museum", "museum" to "art"),
+            )
+        val castle =
+            POI(
+                id = "c1",
+                name = "Ancient Castle",
+                lat = 35.008,
+                lng = -120.008,
+                type = "museum",
+                tags = mapOf("historic" to "castle", "tourism" to "museum"),
+            )
+        val childrenMuseum =
+            POI(
+                id = "cm1",
+                name = "Children's Discovery Museum",
+                lat = 35.011,
+                lng = -120.011,
+                type = "museum",
+                tags = mapOf("tourism" to "museum", "museum" to "children"),
+            )
+        val playground =
+            POI(
+                id = "p1",
+                name = "Seaside Playground",
+                lat = 35.014,
+                lng = -120.014,
+                type = "playground",
+                tags = mapOf("leisure" to "playground"),
+            )
+
+        val store =
+            PoiCacheStore(
+                pois = listOf(artMuseum, castle, childrenMuseum, playground),
+                towns = listOf(town),
+            )
+
+        val genericScored =
+            TownScorer.scoreTownForOvernight(
+                town,
+                store,
+                config = Config(),
+                userPrompt = "family road trip",
+            )
+        assertEquals(4, genericScored.familyCount)
+
+        val toddlerScored =
+            TownScorer.scoreTownForOvernight(
+                town,
+                store,
+                config = Config(),
+                userPrompt = "road trip with our toddler",
+            )
+        assertEquals(2, toddlerScored.familyCount)
+    }
 }

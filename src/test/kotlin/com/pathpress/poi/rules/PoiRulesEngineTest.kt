@@ -156,4 +156,146 @@ class PoiRulesEngineTest {
             "Expected zoo score ($zooScore) to be strictly greater than generic museum score ($museumScore) for toddler prompt",
         )
     }
+
+    @Test
+    fun `CategoryAndPersonaScoringRule penalizes adult museums and castles for toddler prompts while boosting playgrounds and children museums`() {
+        val playground =
+            createTestPoi(
+                "1",
+                name = "Sunny Park Playground",
+                tags = mapOf("leisure" to "playground"),
+                type = "playground",
+            )
+        val childrenMuseum =
+            createTestPoi(
+                "2",
+                name = "MOXI Children's Discovery",
+                tags = mapOf("tourism" to "museum", "museum" to "children"),
+                type = "museum",
+            )
+        val artMuseum =
+            createTestPoi(
+                "3",
+                name = "Fine Arts Museum",
+                tags = mapOf("tourism" to "museum", "museum" to "art"),
+                type = "museum",
+            )
+        val castle =
+            createTestPoi(
+                "4",
+                name = "Hearst Castle",
+                tags =
+                    mapOf(
+                        "historic" to "castle",
+                        "tourism" to "museum",
+                        "castle_type" to "stately",
+                    ),
+                type = "museum",
+            )
+
+        val toddlerContext = PoiEvaluationContext(userPrompt = "coastal trip with our toddler")
+
+        val playgroundScore =
+            CategoryAndPersonaScoringRule.calculateScore(playground, toddlerContext)
+        val childrenMuseumScore =
+            CategoryAndPersonaScoringRule.calculateScore(childrenMuseum, toddlerContext)
+        val artMuseumScore = CategoryAndPersonaScoringRule.calculateScore(artMuseum, toddlerContext)
+        val castleScore = CategoryAndPersonaScoringRule.calculateScore(castle, toddlerContext)
+
+        assertTrue(
+            playgroundScore >= 20.0,
+            "Expected playground score to be >= 20.0 but got $playgroundScore",
+        )
+        assertTrue(
+            childrenMuseumScore >= 20.0,
+            "Expected children's museum score to be >= 20.0 but got $childrenMuseumScore",
+        )
+        assertTrue(
+            artMuseumScore < 0.0,
+            "Expected adult art museum to receive toddler penalty (< 0.0) but got $artMuseumScore",
+        )
+        assertTrue(
+            castleScore < 0.0,
+            "Expected stately castle to receive toddler penalty (< 0.0) but got $castleScore",
+        )
+    }
+
+    @Test
+    fun `PoiRulesEngine prioritizes local playground over adult art museum with Wikipedia for toddler prompts`() {
+        val engine = PoiRulesEngine.default
+        val playground =
+            createTestPoi(
+                "1",
+                name = "Beach Playground",
+                tags = mapOf("leisure" to "playground"),
+                type = "playground",
+            )
+        val famousArtMuseum =
+            createTestPoi(
+                "2",
+                name = "Famous Art Museum",
+                tags =
+                    mapOf(
+                        "tourism" to "museum",
+                        "museum" to "art",
+                        "wikipedia" to "en:Famous_Art_Museum",
+                        "website" to "https://famousart.org",
+                        "opening_hours" to "10:00-17:00",
+                    ),
+                type = "museum",
+            )
+
+        val toddlerContext = PoiEvaluationContext(userPrompt = "toddler friendly beach route")
+        val playgroundScore = engine.calculatePoiQualityScore(playground, toddlerContext)
+        val artMuseumScore = engine.calculatePoiQualityScore(famousArtMuseum, toddlerContext)
+
+        assertTrue(
+            playgroundScore > artMuseumScore,
+            "Expected local playground ($playgroundScore) to outrank famous art museum ($artMuseumScore) for toddler prompt",
+        )
+    }
+
+    @Test
+    fun `PersonaExclusionFilterRule excludes formal museums and castles when explicitly requested`() {
+        val artMuseum =
+            createTestPoi(
+                "1",
+                name = "City Art Gallery",
+                tags = mapOf("tourism" to "museum", "museum" to "art"),
+                type = "museum",
+            )
+        val childrenMuseum =
+            createTestPoi(
+                "2",
+                name = "Discovery Children's Museum",
+                tags = mapOf("tourism" to "museum", "museum" to "children"),
+                type = "museum",
+            )
+        val castle =
+            createTestPoi(
+                "3",
+                name = "Historic Castle",
+                tags = mapOf("historic" to "castle"),
+                type = "historic",
+            )
+
+        val avoidMuseumContext =
+            PoiEvaluationContext(userPrompt = "toddler friendly, avoid museums and castles")
+
+        assertTrue(PersonaExclusionFilterRule.isExcluded(artMuseum, avoidMuseumContext))
+        assertTrue(PersonaExclusionFilterRule.isExcluded(castle, avoidMuseumContext))
+        assertFalse(PersonaExclusionFilterRule.isExcluded(childrenMuseum, avoidMuseumContext))
+    }
+
+    @Test
+    fun `PoiEvaluationContext uses word boundaries for prompt matching`() {
+        val skidsContext = PoiEvaluationContext(userPrompt = "skid marks on highway")
+        assertFalse(skidsContext.isFamilyOrToddlerOrQuickBreak)
+
+        val kidsContext = PoiEvaluationContext(userPrompt = "trip with kids")
+        assertTrue(kidsContext.isFamilyOrToddlerOrQuickBreak)
+
+        val toddlerContext = PoiEvaluationContext(userPrompt = "traveling with a toddler")
+        assertTrue(toddlerContext.isToddlerOrBaby)
+    }
 }

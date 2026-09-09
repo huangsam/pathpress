@@ -186,17 +186,29 @@ object CategoryAndPersonaScoringRule : PoiScoringRule {
         var score = 0.0
         val tags = poi.tags
 
+        val isChildMuseum = isChildrenMuseum(poi)
+        val isFormalMuseumOrCastle = isFormalAdultMuseumOrCastle(poi)
+
+        if (context.isToddlerOrBaby && isFormalMuseumOrCastle) {
+            // Formal adult museums, galleries, and historic castle tours feature quiet rules,
+            // stairs, and fragile artifacts incompatible with toddlers. Penalize them so
+            // interactive, open-air toddler destinations are chosen.
+            return -12.0
+        }
+
         val isHighEngagementKidSpot =
             poi.type in HIGH_ENGAGEMENT_KID_TYPES ||
                 tags["leisure"] in LEISURE_KID_TYPES ||
                 tags["tourism"] in TOURISM_KID_TYPES ||
-                tags["natural"] == "beach"
+                tags["natural"] == "beach" ||
+                tags["amenity"] == "splash_pad" ||
+                isChildMuseum
 
         val isGeneralFamilyFriendly =
             isHighEngagementKidSpot ||
-                poi.type in GENERAL_FAMILY_TYPES ||
+                (poi.type in GENERAL_FAMILY_TYPES && !isFormalMuseumOrCastle) ||
                 tags["leisure"] == "park" ||
-                tags["tourism"] == "museum" ||
+                (tags["tourism"] == "museum" && isChildMuseum) ||
                 tags["amenity"] == "cafe"
 
         if (poi.type in CORE_SCENIC_TYPES || isGeneralFamilyFriendly) {
@@ -205,7 +217,11 @@ object CategoryAndPersonaScoringRule : PoiScoringRule {
 
         if (isGeneralFamilyFriendly) {
             score += 2.0 // Prioritization bonus
-            if (context.isFamilyOrToddlerOrQuickBreak) {
+            if (context.isToddlerOrBaby && isHighEngagementKidSpot) {
+                score +=
+                    12.0 // High toddler-engagement bonus for playgrounds, beaches, zoos, children's
+                // museums
+            } else if (context.isFamilyOrToddlerOrQuickBreak) {
                 score += if (isHighEngagementKidSpot) 8.0 else 2.0 // Tiered persona bonus
             }
         }

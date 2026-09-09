@@ -119,8 +119,19 @@ class ThemeParkClusteringTest {
                 type = "park",
             )
 
+        val legolandPoi =
+            POI(
+                id = "8b",
+                name = "Legoland Water Park",
+                lat = 33.126,
+                lng = -117.311,
+                tags = mapOf("website" to "https://www.legoland.com/california/"),
+                type = "water_park",
+            )
+
         assertEquals("disney.com", ThemeParkClustering.getThemeParkDomain(disneyPoi))
         assertEquals("seaworld.com", ThemeParkClustering.getThemeParkDomain(seaWorldPoi))
+        assertEquals("legoland.com", ThemeParkClustering.getThemeParkDomain(legolandPoi))
         assertNull(ThemeParkClustering.getThemeParkDomain(genericPoi))
     }
 
