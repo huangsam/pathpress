@@ -13,7 +13,7 @@ class ConfigTest {
         assertEquals("gemini-1.5-flash", config.defaultGeminiModel)
         assertEquals("claude-3-haiku-20240307", config.defaultClaudeModel)
         assertEquals("gpt-4o-mini", config.defaultOpenAiModel)
-        assertEquals("qwen3.6:35b-mlx", config.defaultOllamaModel)
+        assertEquals("qwen3.8:27b-mlx", config.defaultOllamaModel)
         assertEquals(10L, config.httpLlmConnectTimeoutSeconds)
         assertEquals(120L, config.httpLlmRequestTimeoutSeconds)
         assertEquals(10L, config.geocoderTimeoutSeconds)

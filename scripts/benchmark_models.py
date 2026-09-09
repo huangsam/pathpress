@@ -9,7 +9,7 @@ Automatically runs `ollama stop <model>` after each model batch to reclaim syste
 
 Usage:
     python3 scripts/benchmark_models.py --runs 5
-    python3 scripts/benchmark_models.py --models "qwen3.6:35b-mlx,gemma4:26b-mlx,qwen3.5:9b-mlx" --runs 5
+    python3 scripts/benchmark_models.py --models "qwen3.8:27b-mlx,gemma4:26b-mlx,qwen3.5:9b-mlx" --runs 5
 """
 
 import argparse
@@ -24,7 +24,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JAR_PATH = os.path.join(REPO_ROOT, "build", "libs", "pathpress-standalone.jar")
 
 DEFAULT_MODELS = [
-    "qwen3.6:35b-mlx",
+    "qwen3.8:27b-mlx",
     "gemma4:26b-mlx",
     "gemma4:12b-mlx",
     "qwen3.5:9b-mlx",
