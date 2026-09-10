@@ -10,6 +10,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.io.TempDir
 
 class MapTileStorageTest {
@@ -124,6 +125,7 @@ class MapTileStorageTest {
     }
 
     @Test
+    @Tag("network")
     fun `getTile handles corrupted disk file gracefully and recovers or returns null`() {
         // Case 1: Corrupt disk file with unfetchable coordinates returns null gracefully without
         // throwing

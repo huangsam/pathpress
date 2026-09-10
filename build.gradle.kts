@@ -83,11 +83,29 @@ tasks.test {
     maxHeapSize = "2g"
     jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
 
-    useJUnitPlatform {
-        if (providers.environmentVariable("CI").isPresent) {
-            excludeTags("network")
-        }
-    }
+    useJUnitPlatform { excludeTags("network", "benchmark") }
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests that make live network requests"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    maxHeapSize = "2g"
+    jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
+
+    useJUnitPlatform { includeTags("network") }
+}
+
+tasks.register<Test>("benchmarkTest") {
+    description = "Runs spatial and caching benchmark tests"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    maxHeapSize = "2g"
+    jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
+
+    useJUnitPlatform { includeTags("benchmark") }
 }
 
 tasks.shadowJar {

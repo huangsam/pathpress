@@ -108,7 +108,7 @@ build/matrix-output/
 
 ---
 
-## Gradle Unit & Integration Testing
+## Gradle Testing & Verification
 
 In accordance with `AGENTS.md` Rule 6, all code modifications must be formatted and verified with the Kotlin test suite:
 
@@ -116,4 +116,11 @@ In accordance with `AGENTS.md` Rule 6, all code modifications must be formatted 
 ./gradlew ktfmtFormat test
 ```
 
-Current test suite baseline: **201 / 201 unit and integration tests passing** (0 failures, 0 skipped).
+Current unit test suite baseline: **224 / 224 tests passing** (0 failures, 0 skipped).
+
+Live-network integration tests and benchmarks can be executed on demand:
+
+```bash
+./gradlew integrationTest  # Runs 9 external API and live-rendering tests
+./gradlew benchmarkTest    # Runs spatial corridor and caching microbenchmarks
+```

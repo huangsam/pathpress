@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Tag
 
 class SpatialTileStorageTest {
 
@@ -416,6 +417,7 @@ class SpatialTileStorageTest {
     }
 
     @Test
+    @Tag("benchmark")
     fun `benchmark comparison of bounding box vs corridor discovery with caching`() {
         val baseDir = File(".pois_cache/tiles")
         if (!baseDir.exists()) return
