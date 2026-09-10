@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - Prioritized toddler-friendly POIs (playgrounds, beaches, zoos, children's museums) over formal museums and castles for young family trips.
 
 ### Changed
+- Updated default Ollama model from qwen3.6:35b-mlx to qwen3.8:27b-mlx.
 - Enforced strict configuration injection across core spatial and AI planning services.
 
 ### Fixed
