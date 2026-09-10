@@ -275,7 +275,7 @@ class RouteCalculatorTest {
         val waypoints =
             listOf(
                 LocationCoords(36.6002, -121.8947), // Monterey
-                LocationCoords(36.2704, -121.8081), // Big Sur (unroutable — phase-1 offender)
+                LocationCoords(36.2704, -121.8081), // Big Sur (unroutable - phase-1 offender)
                 LocationCoords(35.3658, -120.8499), // Morro Bay
                 LocationCoords(34.4208, -119.6982), // Santa Barbara
             )

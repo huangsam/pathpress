@@ -217,7 +217,7 @@ object OsmTileStitcher {
         g.stroke = BasicStroke(3f)
         g.drawOval(endPxX - 10, endPxY - 10, 20, 20)
 
-        // Attribution bar — required by CARTO and OSM tile usage policies
+        // Attribution bar - required by CARTO and OSM tile usage policies
         val attrText = "© CARTO © OpenStreetMap"
         val attrFont = Font(Font.SANS_SERIF, Font.PLAIN, 14)
         g.font = attrFont

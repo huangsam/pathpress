@@ -528,7 +528,7 @@ class PoiExtractorTest {
     fun `rankAndSelectPois relaxes min-gap when candidate pool is sparse`() {
         val legPoints = listOf(LocationCoords(37.0, -122.0), LocationCoords(37.1, -122.0))
 
-        // 3 POIs very close together — the (1/limit)*0.65 gap will initially filter some,
+        // 3 POIs very close together - the (1/limit)*0.65 gap will initially filter some,
         // but the unconstrained safety fallback must still fill all requested slots.
         val p1 =
             POI(
